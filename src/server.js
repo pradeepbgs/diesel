@@ -1,11 +1,13 @@
 import {serve} from 'bun'
-import ResponseHandler from './responseHandler.js';
+import Trie from './trie.js';
+import handleRequest  from './handleRequest.js'
 
 class diesel {
     constructor(){
         this.routes = new Map()
         this.globalMiddlewares = [];
         this.middlewares = new Map()
+        this.trie = new Trie()
     }
 
     listen(port,callback){
@@ -13,69 +15,20 @@ class diesel {
             port,
             fetch: (req) => {
                 const url = new  URL(req.url)
-                return this.#handleRequest(req,url)
+                return handleRequest(req,url,this)
+            },
+            onClose() {
+                console.log("Server is shutting down...");
             }
           });
         if (typeof callback === 'function') {
-            callback();
+            return callback();
           }
           console.log(`Server is running on http://localhost:${port}`);
           return server;
     }
 
-    async #handleRequest(req,url){
-        const { pathname } = url;
-        const {method} = req
-
-        const routeKey = `${pathname}-${method}`
-
-        const routeHandler = this.routes.get(routeKey)
-        const response = new ResponseHandler()
-
-        const context = {
-            req,
-            text(data,status = 200){
-                return response.text(data,status)
-            },
-            json(data,status = 200){
-                return response.json(data,status)
-            },
-            file(data){
-                return response.file(data)
-            },
-            redirect(path,status = 302){
-                return response.redirect(path,status)
-            }
-        }
-
-        const middlewares = [
-            ...(this.globalMiddlewares),
-            ...(this.middlewares.get(pathname) || [])
-        ]
-
-       await executeMiddleware(middlewares,context)
-
-       if (response.response) {
-        return response.response
-       } 
-
-        if (routeHandler) {
-
-           await routeHandler(context)
-
-           if (response.response) {
-            return response.response
-           } 
-
-           return new Response("no response from this handler!")
-
-        } 
-        return new Response("Route not found", { status: 404 });
-        
-    }
-
     #addRoute(method,path,handlers){
-        const routeKey = `${path}-${method}`
         
         const middlewareHandlers = handlers.slice(0, -1);
 
@@ -83,10 +36,11 @@ class diesel {
             this.middlewares.set(path,[])
         }
         if (path === '/') {
-            // we will add all midl to global midl
-            if (!this.globalMiddlewares.includes(...middlewareHandlers)) {
-                this.globalMiddlewares.push(...middlewareHandlers)
-            }
+            middlewareHandlers.forEach(midlleware => {
+                if(!this.globalMiddlewares.includes(midlleware)){
+                    this.globalMiddlewares.push(midlleware)
+                }
+            })
         } else {
             if (!this.middlewares.get(path).includes(...middlewareHandlers)) {
                 this.middlewares.get(path).push(...middlewareHandlers);
@@ -94,7 +48,7 @@ class diesel {
         }
 
         const handler = handlers[handlers.length-1]
-        this.routes.set(routeKey,handler)
+        this.trie.insert(path,{handler,method})
         
     }
 
@@ -122,12 +76,5 @@ class diesel {
 
 }
 
-
-async function executeMiddleware(middlewares,context){
-    for(const middleware of middlewares){
-        await middleware(context)
-    }
-    return null;
-}
 
 export default diesel;
