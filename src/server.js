@@ -52,6 +52,23 @@ class diesel {
         
     }
 
+    use(pathORHandler,handler){
+        if (typeof pathORHandler === 'function') {
+            if (!this.globalMiddlewares.includes(pathORHandler)) {
+                return this.globalMiddlewares.push(pathORHandler)
+            }
+        }
+        // now it means it is path midl
+        const path = pathORHandler
+        if (!this.middlewares.has(path)) {
+            this.middlewares.set(path,[])
+        }
+
+        if(!this.middlewares.get(path).includes(handler)){
+            this.middlewares.get(path).push(handler)
+        }
+    }
+
     get(path,...handlers){
             return this.#addRoute("GET",path,handlers)
     }

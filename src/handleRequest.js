@@ -121,7 +121,7 @@ async function executeMiddleware(middlewares, context) {
     try {
       await Promise.resolve(middleware(context));
     } catch (error) {
-      console.error("Middleware error:", error);
+      // console.error("Middleware error:", error);
       return new Response("Internal Server Error", { status: 500 });
     }
   }
