@@ -1,4 +1,4 @@
-import ResponseHandler from "./responseHandler";
+import createCtx from "./ctx";
 
 export default async function handleRequest(req, url, diesel) {
   req.cookies = parseCookie(req.headers.get('cookie'))
@@ -14,7 +14,6 @@ export default async function handleRequest(req, url, diesel) {
     return new Response("method not allowed");
   }
 
-  const response = new ResponseHandler();
   req.query = Object.fromEntries(url.searchParams.entries());
 
   // if route is dynamic then extract dynamic value
@@ -24,59 +23,7 @@ export default async function handleRequest(req, url, diesel) {
     : {};
   req.params = dynamicParams;
 
-  const context = {
-    req,
-    settedValue: {},
-    next: () => {},
-    set(key, value) {
-      this.settedValue[key] = value;
-    },
-    get(key) {
-      return this.settedValue[key];
-    },
-    setAuthentication(isAuthenticated) {
-      this.isAuthenticated = isAuthenticated;
-    },
-    checkAuthentication() {
-      return this.isAuthenticated;
-    },
-    text(data, status = 200) {
-      return response.text(data, status);
-    },
-    json(data, status = 200) {
-      return response.json(data, status);
-    },
-    file(data) {
-      return response.file(data);
-    },
-    redirect(path, status = 302) {
-      return response.redirect(path, status);
-    },
-    getParams(props) {
-      if (props) {
-        return req.params[props];
-      }
-      return req.params;
-    },
-    getQuery(props) {
-      if (props) {
-        return req.query[props];
-      }
-      return req.query;
-    },
-    cookie(name, value, options = {}) {
-        return response.setCookies(name,value,options)  
-      },
-      getCookie(cookieName) {
-        if (cookieName) {
-        return req.cookies[cookieName];
-        }
-        else {
-          return req.cookies;
-        }
-        
-      },
-  };
+  const ctx = createCtx(req)
 
   const middlewares = [
     ...diesel.globalMiddlewares,
@@ -84,11 +31,11 @@ export default async function handleRequest(req, url, diesel) {
   ];
 
   // Execute middleware and check if any returns a response
-  const middlewareResult =  await executeMiddleware(middlewares, context);
+  const middlewareResult =  await executeMiddleware(middlewares, ctx);
   if(middlewareResult) return middlewareResult;
 
     // Route handler execution
-    const result = await routeHandler.handler(context);
+    const result = await routeHandler.handler(ctx);
     return result ?? new Response("no response from this handler!");
 }
 
