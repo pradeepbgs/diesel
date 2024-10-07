@@ -1,18 +1,17 @@
 class ResponseHandler {
     constructor(){
-        this.response = null;
         this.headers = {}
     }
 
     text(message, status = 200) {
-       this.response= new Response(message, { 
+       return new Response(message, { 
         status ,
         headers: this.headers
     });
     }
 
     json(data, status = 200) {
-        this.response = new Response(JSON.stringify(data), {
+        return new Response(JSON.stringify(data), {
             status,
             headers: {
                 ...this.headers,
@@ -28,7 +27,7 @@ class ResponseHandler {
     }
 
     redirect(location, status = 302) {
-        this.response = Response.redirect(location, {
+        return Response.redirect(location, {
             status,
             headers:this.headers
         });

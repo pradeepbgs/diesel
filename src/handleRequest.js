@@ -27,7 +27,6 @@ export default async function handleRequest(req, url, diesel) {
   const context = {
     req,
     settedValue: {},
-    settedValue: {},
     next: () => {},
     set(key, value) {
       this.settedValue[key] = value;
@@ -84,16 +83,13 @@ export default async function handleRequest(req, url, diesel) {
     ...(diesel.middlewares.get(pathname) || []),
   ];
 
-  await executeMiddleware(middlewares, context);
+  // Execute middleware and check if any returns a response
+  const middlewareResult =  await executeMiddleware(middlewares, context);
+  if(middlewareResult) return middlewareResult;
 
-  if (response.response) return response.response;
-
-  if (routeHandler?.handler) {
-    await routeHandler.handler(context);
-    return response.response ?? new Response("no response from this handler!");
-  }
-
-  return new Response(`cannot get ${pathname}`, { status: 404 });
+    // Route handler execution
+    const result = await routeHandler.handler(context);
+    return result ?? new Response("no response from this handler!");
 }
 
 const extractDynamicParams = (routePattern, path) => {
@@ -119,7 +115,8 @@ const extractDynamicParams = (routePattern, path) => {
 async function executeMiddleware(middlewares, context) {
   for (const middleware of middlewares) {
     try {
-      await Promise.resolve(middleware(context));
+     const result = await Promise.resolve(middleware(context));
+     if (result) return result;
     } catch (error) {
       // console.error("Middleware error:", error);
       return new Response("Internal Server Error", { status: 500 });
