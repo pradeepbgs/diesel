@@ -104,7 +104,20 @@ export default function createCtx(req) {
       }
     },
     getCookie(cookieName) {
-      return cookieName ? req.cookies[cookieName] : req.cookies;
+      const cookies = parseCookie(req.headers.get('cookie'))
+      return cookieName ? cookies[cookieName] : cookies;
     },
   };
+}
+
+function parseCookie(header){
+  const cookies = {}
+  if (!header) return cookies;
+
+  const cookieArray = header.split(";")
+  cookieArray.forEach(cookie =>{
+    const [cookieName,cookievalue] = cookie.trim().split("=")
+    cookies[cookieName] = cookievalue.split(" ")[0]
+  })
+  return cookies;
 }

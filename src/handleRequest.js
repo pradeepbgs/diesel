@@ -1,17 +1,17 @@
 import createCtx from "./ctx";
 
 export default async function handleRequest(req, url, diesel) {
-  req.cookies = parseCookie(req.headers.get('cookie'))
+  
   const { pathname } = url;
   const { method } = req;
 
   const routeHandler = diesel.trie.search(pathname, method);
   if (!routeHandler || !routeHandler.handler) {
-    return new Response(`Cannot find route for ${pathname}`, { status: 404 });
+    return responseNotFound(pathname)
   }
 
   if (routeHandler?.method !== method) {
-    return new Response("method not allowed");
+    return responseMethodNotAllowed()
   }
 
   req.query = Object.fromEntries(url.searchParams.entries());
@@ -36,7 +36,7 @@ export default async function handleRequest(req, url, diesel) {
 
     // Route handler execution
     const result = await routeHandler.handler(ctx);
-    return result ?? new Response("no response from this handler!");
+    return result ?? responseNoHandler()
 }
 
 const extractDynamicParams = (routePattern, path) => {
@@ -59,27 +59,31 @@ const extractDynamicParams = (routePattern, path) => {
   return object;
 };
 
-async function executeMiddleware(middlewares, context) {
+async function executeMiddleware(middlewares, ctx) {
   for (const middleware of middlewares) {
     try {
-     const result = await Promise.resolve(middleware(context));
+     const result = await middleware(ctx)
      if (result) return result;
     } catch (error) {
-      // console.error("Middleware error:", error);
-      return new Response("Internal Server Error", { status: 500 });
+      return responseServerError()
     }
   }
   return null;
 }
 
-function parseCookie(header){
-    const cookies = {}
-    if (!header) return cookies;
 
-    const cookieArray = header.split(";")
-    cookieArray.forEach(cookie =>{
-      const [cookieName,cookievalue] = cookie.trim().split("=")
-      cookies[cookieName] = cookievalue.split(" ")[0]
-    })
-    return cookies;
+function responseNotFound(path) {
+  return new Response(`Route not found for ${path}`, { status: 404 });
+}
+
+function responseMethodNotAllowed() {
+  return new Response("Method not allowed", { status: 405 });
+}
+
+function responseNoHandler() {
+  return new Response("No response from handler", { status: 204 });
+}
+
+function responseServerError() {
+  return new Response("Internal Server Error", { status: 500 });
 }

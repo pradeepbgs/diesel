@@ -28,6 +28,25 @@ class diesel {
           return server;
     }
 
+    register(pathPrefix,handlerInstance){
+        const routeEntries = Object.entries(handlerInstance.trie.root.children);
+        handlerInstance.trie.root.subMiddlewares.forEach((middleware,path)=>{
+            if (!this.middlewares.has(pathPrefix+path)) {
+              this.middlewares.set(pathPrefix+path, []);
+            } 
+            if (!this.middlewares.get(pathPrefix+path).includes(...middleware)) {
+              this.middlewares.get(pathPrefix+path).push(...middleware);
+            }
+          })
+          for (const [routeKey, routeNode] of routeEntries) {
+            const fullpath = pathPrefix + routeNode?.path;
+            const routeHandler = routeNode.handler[0];
+            const httpMethod = routeNode.method[0];
+            this.trie.insert(fullpath, { handler: routeHandler, method: httpMethod });
+          }
+          handlerInstance.trie = new Trie();
+    }
+
     #addRoute(method,path,handlers){
         
         const middlewareHandlers = handlers.slice(0, -1);
@@ -51,6 +70,7 @@ class diesel {
         this.trie.insert(path,{handler,method})
         
     }
+
 
     use(pathORHandler,handler){
         if (typeof pathORHandler === 'function') {
