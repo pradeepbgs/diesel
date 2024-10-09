@@ -1,9 +1,12 @@
-export default function createCtx(req) {
+export default function createCtx(req,url) {
   return {
     req,
     headers: {},
     settedValue: {},
     isAuthenticated:false,
+    parsedQuery:null,
+    parsedCookie:null,
+    parsedParams:null,
     next: () => {},
 
     setHeader(key,value){
@@ -64,11 +67,17 @@ export default function createCtx(req) {
     },
 
     getParams(props) {
+      if (!this.parsedParams) {
+        this.parsedParams = extractDynamicParams(req.routePattern,url.pathname)
+      }
       return props ? req.params[props] : req.params;
     },
 
     getQuery(props) {
-      return props ? req.query[props] : req.query;
+      if (!this.parsedQuery) {
+        this.parsedQuery = Object.fromEntries(url.searchParams.entries());
+      }
+      return props ? this.parsedQuery[props] : this.parsedQuery;
     },
 
     cookie(name, value, options = {}) {
@@ -104,8 +113,10 @@ export default function createCtx(req) {
       }
     },
     getCookie(cookieName) {
-      const cookies = parseCookie(req.headers.get('cookie'))
-      return cookieName ? cookies[cookieName] : cookies;
+      if (!this.parsedCookie) {
+        this.parsedCookie = parseCookie(req.headers.get('cookie'))
+      }
+      return cookieName ? this.parsedCookie[cookieName] : this.parsedCookie;
     },
   };
 }
@@ -121,3 +132,23 @@ function parseCookie(header){
   })
   return cookies;
 }
+
+const extractDynamicParams = (routePattern, path) => {
+  const object = {};
+  const routeSegments = routePattern.split("/");
+  const [pathWithoutQuery] = path.split("?"); // Ignore the query string in the path
+  const pathSegments = pathWithoutQuery.split("/"); // Re-split after removing query
+
+  if (routeSegments.length !== pathSegments.length) {
+    return null; // Path doesn't match the pattern
+  }
+
+  routeSegments.forEach((segment, index) => {
+    if (segment.startsWith(":")) {
+      const dynamicKey = segment.slice(1); // Remove ':' to get the key name
+      object[dynamicKey] = pathSegments[index]; // Map the path segment to the key
+    }
+  });
+
+  return object;
+};

@@ -14,16 +14,11 @@ export default async function handleRequest(req, url, diesel) {
     return responseMethodNotAllowed()
   }
 
-  req.query = Object.fromEntries(url.searchParams.entries());
+  if (routeHandler.isDynamic) {
+    req.routePattern = routeHandler?.path
+  }
 
-  // if route is dynamic then extract dynamic value
-
-  const dynamicParams = routeHandler?.isDynamic
-    ? extractDynamicParams(routeHandler?.path, pathname)
-    : {};
-  req.params = dynamicParams;
-
-  const ctx = createCtx(req)
+  const ctx = createCtx(req,url)
 
   const middlewares = [
     ...diesel.globalMiddlewares,
@@ -39,25 +34,6 @@ export default async function handleRequest(req, url, diesel) {
     return result ?? responseNoHandler()
 }
 
-const extractDynamicParams = (routePattern, path) => {
-  const object = {};
-  const routeSegments = routePattern.split("/");
-  const [pathWithoutQuery] = path.split("?"); // Ignore the query string in the path
-  const pathSegments = pathWithoutQuery.split("/"); // Re-split after removing query
-
-  if (routeSegments.length !== pathSegments.length) {
-    return null; // Path doesn't match the pattern
-  }
-
-  routeSegments.forEach((segment, index) => {
-    if (segment.startsWith(":")) {
-      const dynamicKey = segment.slice(1); // Remove ':' to get the key name
-      object[dynamicKey] = pathSegments[index]; // Map the path segment to the key
-    }
-  });
-
-  return object;
-};
 
 async function executeMiddleware(middlewares, ctx) {
   for (const middleware of middlewares) {
