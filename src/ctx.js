@@ -1,38 +1,46 @@
-export default function createCtx(req,url) {
+export default async function createCtx(req, url) {
+  let headers = {};
+  let settedValue = {};
+  let isAuthenticated = false;
+  let parsedQuery = null;
+  let parsedCookie = null;
+  let parsedParams = null;
+
+  if (req.method !== "GET") {
+    req.parsedBody = await parseBody(req);
+  }
   return {
     req,
-    headers: {},
-    settedValue: {},
-    isAuthenticated:false,
-    parsedQuery:null,
-    parsedCookie:null,
-    parsedParams:null,
+    url,
     next: () => {},
 
-    setHeader(key,value){
-        this.headers[key]=value
+    body() {
+      return req.parsedBody;
+    },
+    setHeader(key, value) {
+      headers[key] = value;
     },
 
     set(key, value) {
-      this.settedValue[key] = value;
+      settedValue[key] = value;
     },
 
     get(key) {
-      return this.settedValue[key];
+      return settedValue[key];
     },
 
-    setAuth(isAuthenticated) {
-      this.isAuthenticated = isAuthenticated;
+    setAuth(authStatus) {
+      isAuthenticated = authStatus;
     },
 
     getAuth() {
-      return this.isAuthenticated
+      return isAuthenticated;
     },
 
     text(data, status = 200) {
       return new Response(data, {
         status,
-        headers: this.headers,
+        headers: headers,
       });
     },
 
@@ -41,7 +49,7 @@ export default function createCtx(req,url) {
         status,
         headers: {
           "Content-Type": "application/json",
-          ...this.headers,
+          ...headers,
         },
       });
     },
@@ -51,7 +59,7 @@ export default function createCtx(req,url) {
         status: 200,
         headers: {
           "Content-Disposition": "attachment",
-          ...this.headers,
+          ...headers,
         },
       });
     },
@@ -61,23 +69,23 @@ export default function createCtx(req,url) {
         status,
         headers: {
           Location: path,
-          ...this.headers,
+          ...headers,
         },
       });
     },
 
     getParams(props) {
-      if (!this.parsedParams) {
-        this.parsedParams = extractDynamicParams(req.routePattern,url.pathname)
+      if (!parsedParams) {
+        parsedParams = extractDynamicParams(req.routePattern, url.pathname);
       }
       return props ? req.params[props] : req.params;
     },
 
     getQuery(props) {
-      if (!this.parsedQuery) {
-        this.parsedQuery = Object.fromEntries(url.searchParams.entries());
+      if (!parsedQuery) {
+        parsedQuery = Object.fromEntries(url.searchParams.entries());
       }
-      return props ? this.parsedQuery[props] : this.parsedQuery;
+      return props ? parsedQuery[props] : parsedQuery;
     },
 
     cookie(name, value, options = {}) {
@@ -95,41 +103,40 @@ export default function createCtx(req,url) {
       if (options.httpOnly) cookieString += `; HttpOnly`;
       if (options.sameSite) cookieString += `; SameSite=${options.sameSite}`;
 
-      if (this.headers["Set-Cookie"]) {
+      if (headers["Set-Cookie"]) {
         // If it's already an array, push the new cookie, otherwise convert to array
-        const existingCookies = Array.isArray(this.headers["Set-Cookie"])
-          ? this.headers["Set-Cookie"]
-          : [this.headers["Set-Cookie"]];
+        const existingCookies = Array.isArray(headers["Set-Cookie"])
+          ? headers["Set-Cookie"]
+          : [headers["Set-Cookie"]];
 
         // Add the new cookie string to the array
         existingCookies.push(cookieString);
-        
 
         // Update Set-Cookie header
-        this.headers["Set-Cookie"] = existingCookies;
+        headers["Set-Cookie"] = existingCookies;
       } else {
         // If no cookies exist, initialize the header
-        this.headers["Set-Cookie"] = cookieString;
+        headers["Set-Cookie"] = cookieString;
       }
     },
     getCookie(cookieName) {
-      if (!this.parsedCookie) {
-        this.parsedCookie = parseCookie(req.headers.get('cookie'))
+      if (!parsedCookie) {
+        parsedCookie = parseCookie(req.headers.get("cookie"));
       }
-      return cookieName ? this.parsedCookie[cookieName] : this.parsedCookie;
+      return cookieName ? parsedCookie[cookieName] : parsedCookie;
     },
   };
 }
 
-function parseCookie(header){
-  const cookies = {}
+function parseCookie(header) {
+  const cookies = {};
   if (!header) return cookies;
 
-  const cookieArray = header.split(";")
-  cookieArray.forEach(cookie =>{
-    const [cookieName,cookievalue] = cookie.trim().split("=")
-    cookies[cookieName] = cookievalue.split(" ")[0]
-  })
+  const cookieArray = header.split(";");
+  cookieArray.forEach((cookie) => {
+    const [cookieName, cookievalue] = cookie.trim().split("=");
+    cookies[cookieName] = cookievalue.split(" ")[0];
+  });
   return cookies;
 }
 
@@ -152,3 +159,30 @@ const extractDynamicParams = (routePattern, path) => {
 
   return object;
 };
+
+async function parseBody(req) {
+  const contentType = req.headers.get("Content-Type");
+  if (contentType.includes("application/json")) {
+    try {
+      return await req.json();
+    } catch (error) {
+      return new Response({ error: "Invalid JSON format" });
+    }
+  } else if (contentType.startsWith("application/x-www-form-urlencoded")) {
+    const body = await req.text();
+    return Object.fromEntries(new URLSearchParams(body));
+  } else if (contentType.startsWith("multipart/form-data")) {
+    const formData = await req.formData();
+    return formDataToObject(formData);
+  } else {
+    return new Response({ error: "unknown request body" });
+  }
+}
+
+function formDataToObject(formData) {
+  const obj = {};
+  for (const [key, value] of formData.entries()) {
+    obj[key] = value;
+  }
+  return obj;
+}

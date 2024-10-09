@@ -18,7 +18,7 @@ export default async function handleRequest(req, url, diesel) {
     req.routePattern = routeHandler?.path
   }
 
-  const ctx = createCtx(req,url)
+  const ctx = await createCtx(req,url)
 
   const middlewares = [
     ...diesel.globalMiddlewares,
