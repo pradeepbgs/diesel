@@ -1,21 +1,23 @@
-export default async function createCtx(req, url) {
+export default function createCtx(req, url) {
   let headers = {};
   let settedValue = {};
   let isAuthenticated = false;
   let parsedQuery = null;
   let parsedCookie = null;
   let parsedParams = null;
+  let parsedBody= null
 
-  if (req.method !== "GET") {
-    req.parsedBody = await parseBody(req);
-  }
   return {
     req,
     url,
     next: () => {},
 
-    body() {
-      return req.parsedBody;
+    async body() {
+      if (!parsedBody) {
+        parsedBody = await parseBody(req)
+        return parsedBody;
+      }
+      return parsedBody;
     },
     setHeader(key, value) {
       headers[key] = value;

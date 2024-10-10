@@ -1,53 +1,52 @@
 import createCtx from "./ctx";
 
 export default async function handleRequest(req, url, diesel) {
-  
   const { pathname } = url;
   const { method } = req;
 
+  // Try to find the route handler in the trie
   const routeHandler = diesel.trie.search(pathname, method);
-  if (!routeHandler || !routeHandler.handler) {
-    return responseNotFound(pathname)
-  }
+  
+  // Early return if route or method is not found
+  if (!routeHandler || !routeHandler.handler) return responseNotFound(pathname);
+  if (routeHandler.method !== method) return responseMethodNotAllowed();
 
-  if (routeHandler?.method !== method) {
-    return responseMethodNotAllowed()
-  }
+  // If the route is dynamic, we only set routePattern if necessary
+  if (routeHandler.isDynamic) req.routePattern = routeHandler.path;
 
-  if (routeHandler.isDynamic) {
-    req.routePattern = routeHandler?.path
-  }
+  const ctx = createCtx(req, url);
 
-  const ctx = await createCtx(req,url)
-
+  if (diesel.hasMiddleware) {
   const middlewares = [
     ...diesel.globalMiddlewares,
-    ...(diesel.middlewares.get(pathname) || []),
+    ...(diesel.middlewares.get(pathname) || [])
   ];
+  
+  const middlewareResult = await executeMiddleware(middlewares, ctx);
+  if (middlewareResult) return middlewareResult;
+  
+}
+ 
 
-  // Execute middleware and check if any returns a response
-  const middlewareResult =  await executeMiddleware(middlewares, ctx);
-  if(middlewareResult) return middlewareResult;
-
-    // Route handler execution
+  // Finally, execute the route handler and return its result
+  try {
     const result = await routeHandler.handler(ctx);
-    return result ?? responseNoHandler()
+    return result ?? responseNoHandler();
+  } catch (error) {
+    return responseServerError();
+  }
 }
 
-
+// Optimized middleware execution: stops as soon as a middleware returns a response
 async function executeMiddleware(middlewares, ctx) {
   for (const middleware of middlewares) {
-    try {
-     const result = await middleware(ctx)
-     if (result) return result;
-    } catch (error) {
-      return responseServerError()
-    }
+    const result = await middleware(ctx);
+    if (result) return result;  // Early exit if middleware returns a result
   }
   return null;
 }
 
-
+// Reused response functions for better organization and clarity
 function responseNotFound(path) {
   return new Response(`Route not found for ${path}`, { status: 404 });
 }

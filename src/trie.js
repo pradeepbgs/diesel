@@ -65,52 +65,42 @@ class TrieNode {
     }
     
   
-    search(path,method) {
+    search(path, method) {
       let node = this.root;
-      const pathSegments = path.split('/').filter(Boolean);  // Split incoming path into segments
-      // let importantHandler = null;
+      const pathSegments = path.split('/').filter(Boolean); // Split path into segments
     
       for (const segment of pathSegments) {
         let key = segment;
     
+        // Check for exact match first (static)
         if (!node.children[key]) {
+          // Try dynamic match (e.g., ':id')
           if (node.children[':']) {
-            // If there's no exact match, try matching dynamic segments (e.g., ':id')
             node = node.children[':'];
           } else {
-            return null;  // No match found
+            return null; // No match
           }
         } else {
           node = node.children[key];
         }
+      }
     
-        // if (node.isEndOfWord && node.isImportant) {
-        //   importantHandler = node.handler;
-        // }
+      // Method matching
+      let routeMethodIndex = node.method.indexOf(method); // More efficient method match
+      if (routeMethodIndex !== -1) {
+        return {
+          path: node.path,
+          handler: node.handler[routeMethodIndex],
+          isDynamic: node.isDynamic,
+          pattern: node.pattern,
+          method: node.method[routeMethodIndex]
+        };
       }
-      let count=0;
-      let routeMethod
-      for(let i=0;i<node.method.length;i++){
-        if (node.method[i] === method) {
-          routeMethod = node.method[i];
-          break;
-        } 
-        count++
-      }
-      return node.isEndOfWord && routeMethod? {
-        path: node.path,
-        handler: node.handler[count],
-        isDynamic: node.isDynamic,
-        pattern: node.pattern,
-        method:routeMethod
-      } : {
-        path: node.path,
-        handler: node.handler,
-        isDynamic: node.isDynamic,
-        pattern: node.pattern,
-        method:node.method
-      };
+    
+      // Fallback if method is not found
+      return null;
     }
+    
     
   
       // New getAllRoutes method
