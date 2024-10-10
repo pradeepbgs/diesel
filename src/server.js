@@ -8,9 +8,23 @@ class diesel {
         this.globalMiddlewares = [];
         this.middlewares = new Map()
         this.trie = new Trie()
+        this.hasMiddleware = false;
+    }
+
+    compile (){
+        if (this.globalMiddlewares.length > 0) {
+            this.hasMiddleware = true;
+        }
+        for (const [path, middlewares] of this.middlewares.entries()) {
+            if (middlewares.length > 0) {
+                this.hasMiddleware = true;
+                break;
+            }
+        }
     }
 
     listen(port,callback){
+        this.compile()
         const server = serve({
             port,
             fetch: (req) => {
