@@ -54,11 +54,18 @@ export default async function createCtx(req, url) {
       });
     },
 
-    file(filePath) {
-      return new Response(file(filePath), {
+    html(filepath) {
+      return new Response(Bun.file(filepath), {
         status: 200,
         headers: {
-          "Content-Disposition": "attachment",
+          ...headers,
+        },
+      });
+    },
+    file(filePath) {
+      return new Response(Bun.file(filePath), {
+        status: 200,
+        headers: {
           ...headers,
         },
       });
@@ -89,14 +96,11 @@ export default async function createCtx(req, url) {
     },
 
     cookie(name, value, options = {}) {
-      let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(
-        value
-      )}`;
+      let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
 
       // Add options to cookie string (e.g., expiration, path, HttpOnly, etc.)
       if (options.maxAge) cookieString += `; Max-Age=${options.maxAge}`;
-      if (options.expires)
-        cookieString += `; Expires=${options.expires.toUTCString()}`;
+      if (options.expires) cookieString += `; Expires=${options.expires.toUTCString()}`;
       if (options.path) cookieString += `; Path=${options.path}`;
       if (options.domain) cookieString += `; Domain=${options.domain}`;
       if (options.secure) cookieString += `; Secure`;
@@ -105,9 +109,7 @@ export default async function createCtx(req, url) {
 
       if (headers["Set-Cookie"]) {
         // If it's already an array, push the new cookie, otherwise convert to array
-        const existingCookies = Array.isArray(headers["Set-Cookie"])
-          ? headers["Set-Cookie"]
-          : [headers["Set-Cookie"]];
+        const existingCookies = Array.isArray(headers["Set-Cookie"]) ? headers["Set-Cookie"] : [headers["Set-Cookie"]];
 
         // Add the new cookie string to the array
         existingCookies.push(cookieString);
