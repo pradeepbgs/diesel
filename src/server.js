@@ -27,9 +27,13 @@ class diesel {
         this.compile()
         const server = serve({
             port,
-            fetch: (req) => {
+            fetch: async (req) => {
                 const url = new  URL(req.url)
-                return handleRequest(req,url,this)
+                try {
+                    return await handleRequest(req,url,this)
+                } catch (error) {
+                    return new Response('Internal Server Error', { status: 500 });
+                }
             },
             onClose() {
                 console.log("Server is shutting down...");
@@ -44,6 +48,7 @@ class diesel {
 
     register(pathPrefix,handlerInstance){
         const routeEntries = Object.entries(handlerInstance.trie.root.children);
+        // console.log(handlerInstance.trie.root);
         handlerInstance.trie.root.subMiddlewares.forEach((middleware,path)=>{
             if (!this.middlewares.has(pathPrefix+path)) {
               this.middlewares.set(pathPrefix+path, []);

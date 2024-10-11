@@ -10,7 +10,6 @@ export default async function handleRequest(req, url, diesel) {
   // Early return if route or method is not found
   if (!routeHandler || !routeHandler.handler) return responseNotFound(pathname);
   if (routeHandler.method !== method) return responseMethodNotAllowed();
-
   // If the route is dynamic, we only set routePattern if necessary
   if (routeHandler.isDynamic) req.routePattern = routeHandler.path;
 
@@ -19,9 +18,9 @@ export default async function handleRequest(req, url, diesel) {
   if (diesel.hasMiddleware) {
   const middlewares = [
     ...diesel.globalMiddlewares,
-    ...(diesel.middlewares.get(pathname) || [])
+    ...diesel.middlewares.get(pathname) || []
   ];
-  
+
   const middlewareResult = await executeMiddleware(middlewares, ctx);
   if (middlewareResult) return middlewareResult;
   
@@ -43,7 +42,6 @@ async function executeMiddleware(middlewares, ctx) {
     const result = await middleware(ctx);
     if (result) return result;  // Early exit if middleware returns a result
   }
-  return null;
 }
 
 // Reused response functions for better organization and clarity
