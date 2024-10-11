@@ -5,25 +5,35 @@ export default function createCtx(req, url) {
   let parsedQuery = null;
   let parsedCookie = null;
   let parsedParams = null;
-  let parsedBody= null
+  let parsedBody = null;
+  let responseStatus = 200; // Default status
 
   return {
     req,
     url,
     next: () => {},
-    ///////
+
+    // Set response status for chaining
+    status(status) {
+      responseStatus = status; 
+      return this; 
+    },
+
     async body() {
       if (!parsedBody) {
-        parsedBody = await parseBody(req)
+        parsedBody = await parseBody(req);
       }
       return parsedBody;
     },
+
     setHeader(key, value) {
       headers[key] = value;
+      return this; 
     },
 
     set(key, value) {
       settedValue[key] = value;
+      return this; 
     },
 
     get(key) {
@@ -32,22 +42,30 @@ export default function createCtx(req, url) {
 
     setAuth(authStatus) {
       isAuthenticated = authStatus;
+      return this; 
     },
 
     getAuth() {
       return isAuthenticated;
     },
 
-    text(data, status = 200) {
+    // Response methods with optional status
+    text(data, status) {
+      if (status) {
+        responseStatus = status; 
+      }
       return new Response(data, {
-        status,
+        status: responseStatus,
         headers: headers,
       });
     },
 
-    json(data, status = 200) {
+    json(data, status) {
+      if (status) {
+        responseStatus = status;
+      }
       return new Response(JSON.stringify(data), {
-        status,
+        status: responseStatus,
         headers: {
           "Content-Type": "application/json",
           ...headers,
@@ -55,26 +73,36 @@ export default function createCtx(req, url) {
       });
     },
 
-    html(filepath) {
+    html(filepath, status) {
+      if (status) {
+        responseStatus = status;
+      }
       return new Response(Bun.file(filepath), {
-        status: 200,
-        headers: {
-          ...headers,
-        },
-      });
-    },
-    file(filePath) {
-      return new Response(Bun.file(filePath), {
-        status: 200,
+        status: responseStatus,
         headers: {
           ...headers,
         },
       });
     },
 
-    redirect(path, status = 302) {
+    file(filePath, status) {
+      if (status) {
+        responseStatus = status;
+      }
+      return new Response(Bun.file(filePath), {
+        status: responseStatus,
+        headers: {
+          ...headers,
+        },
+      });
+    },
+
+    redirect(path, status) {
+      if (status) {
+        responseStatus = status;
+      }
       return new Response(null, {
-        status,
+        status: responseStatus,
         headers: {
           Location: path,
           ...headers,
@@ -109,19 +137,15 @@ export default function createCtx(req, url) {
       if (options.sameSite) cookieString += `; SameSite=${options.sameSite}`;
 
       if (headers["Set-Cookie"]) {
-        // If it's already an array, push the new cookie, otherwise convert to array
         const existingCookies = Array.isArray(headers["Set-Cookie"]) ? headers["Set-Cookie"] : [headers["Set-Cookie"]];
-
-        // Add the new cookie string to the array
         existingCookies.push(cookieString);
-
-        // Update Set-Cookie header
         headers["Set-Cookie"] = existingCookies;
       } else {
-        // If no cookies exist, initialize the header
         headers["Set-Cookie"] = cookieString;
       }
+      return this; 
     },
+
     async getCookie(cookieName) {
       if (!parsedCookie) {
         parsedCookie = await parseCookie(req.headers.get("cookie"));
@@ -131,37 +155,38 @@ export default function createCtx(req, url) {
   };
 }
 
+
 async function parseCookie(header) {
   const cookies = {};
   if (!header) return cookies;
 
   const cookieArray = header.split(";");
   cookieArray.forEach((cookie) => {
-    const [cookieName, cookievalue] = cookie.trim().split("=");
-    cookies[cookieName] = cookievalue.split(" ")[0];
+    const [cookieName, cookieValue] = cookie.trim().split("=");
+    cookies[cookieName] = cookieValue.split(" ")[0];
   });
   return cookies;
 }
 
-async function extractDynamicParams (routePattern, path) {
+async function extractDynamicParams(routePattern, path) {
   const object = {};
   const routeSegments = routePattern.split("/");
-  const [pathWithoutQuery] = path.split("?"); // Ignore the query string in the path
-  const pathSegments = pathWithoutQuery.split("/"); // Re-split after removing query
+  const [pathWithoutQuery] = path.split("?"); 
+  const pathSegments = pathWithoutQuery.split("/");
 
   if (routeSegments.length !== pathSegments.length) {
-    return null; // Path doesn't match the pattern
+    return null; 
   }
 
   routeSegments.forEach((segment, index) => {
     if (segment.startsWith(":")) {
-      const dynamicKey = segment.slice(1); // Remove ':' to get the key name
-      object[dynamicKey] = pathSegments[index]; // Map the path segment to the key
+      const dynamicKey = segment.slice(1); 
+      object[dynamicKey] = pathSegments[index];
     }
   });
 
   return object;
-};
+}
 
 async function parseBody(req) {
   const contentType = req.headers.get("Content-Type");

@@ -1,0 +1,4 @@
+[build]
+entry = ["src/server.js", "src/ctx.js", "src/handleRequest.js", "src/trie.js", "src/router.js"]
+outfile = "dist/optimized-server.js"
+minify = true

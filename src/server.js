@@ -1,4 +1,3 @@
-import {serve} from 'bun'
 import Trie from './trie.js';
 import handleRequest  from './handleRequest.js'
 
@@ -25,7 +24,7 @@ class diesel {
 
     listen(port,callback){
         this.compile()
-        const server = serve({
+        const server = Bun.serve({
             port,
             fetch: async (req) => {
                 const url = new  URL(req.url)

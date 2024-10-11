@@ -1,7 +1,7 @@
 {
   "name": "diesel-core",
   "version": "0.0.4",
-  "main": "src/server.js",
+  "main": "dist/server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
