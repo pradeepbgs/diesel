@@ -98,7 +98,13 @@ class TrieNode {
       }
     
       // Fallback if method is not found
-      return null;
+      return {
+        path: node.path,
+        handler: node.handler,
+        isDynamic: node.isDynamic,
+        pattern: node.pattern,
+        method: node.method[routeMethodIndex]
+      };
     }
     
     

@@ -11,11 +11,10 @@ export default function createCtx(req, url) {
     req,
     url,
     next: () => {},
-
+    ///////
     async body() {
       if (!parsedBody) {
         parsedBody = await parseBody(req)
-        return parsedBody;
       }
       return parsedBody;
     },
@@ -83,11 +82,11 @@ export default function createCtx(req, url) {
       });
     },
 
-    getParams(props) {
+    async getParams(props) {
       if (!parsedParams) {
-        parsedParams = extractDynamicParams(req.routePattern, url.pathname);
+        parsedParams = await extractDynamicParams(req.routePattern, url.pathname);
       }
-      return props ? req.params[props] : req.params;
+      return props ? parsedParams[props] : parsedParams;
     },
 
     getQuery(props) {
@@ -123,16 +122,16 @@ export default function createCtx(req, url) {
         headers["Set-Cookie"] = cookieString;
       }
     },
-    getCookie(cookieName) {
+    async getCookie(cookieName) {
       if (!parsedCookie) {
-        parsedCookie = parseCookie(req.headers.get("cookie"));
+        parsedCookie = await parseCookie(req.headers.get("cookie"));
       }
       return cookieName ? parsedCookie[cookieName] : parsedCookie;
     },
   };
 }
 
-function parseCookie(header) {
+async function parseCookie(header) {
   const cookies = {};
   if (!header) return cookies;
 
@@ -144,7 +143,7 @@ function parseCookie(header) {
   return cookies;
 }
 
-const extractDynamicParams = (routePattern, path) => {
+async function extractDynamicParams (routePattern, path) {
   const object = {};
   const routeSegments = routePattern.split("/");
   const [pathWithoutQuery] = path.split("?"); // Ignore the query string in the path
