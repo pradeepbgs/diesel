@@ -110,16 +110,16 @@ export default function createCtx(req, url) {
       });
     },
 
-    async getParams(props) {
+     getParams(props) {
       if (!parsedParams) {
-        parsedParams = await extractDynamicParams(req.routePattern, url.pathname);
+        parsedParams = extractDynamicParams(req.routePattern, url.pathname);
       }
       return props ? parsedParams[props] : parsedParams;
     },
 
     getQuery(props) {
       if (!parsedQuery) {
-        parsedQuery = Object.fromEntries(url.searchParams.entries());
+        parsedQuery = Object.fromEntries(url.searchParams);
       }
       return props ? parsedQuery[props] : parsedQuery;
     },
@@ -168,7 +168,7 @@ async function parseCookie(header) {
   return cookies;
 }
 
-async function extractDynamicParams(routePattern, path) {
+function extractDynamicParams(routePattern, path) {
   const object = {};
   const routeSegments = routePattern.split("/");
   const [pathWithoutQuery] = path.split("?"); 
@@ -189,23 +189,31 @@ async function extractDynamicParams(routePattern, path) {
 }
 
 async function parseBody(req) {
-  const contentType = req.headers.get("Content-Type");
-  if (contentType.includes("application/json")) {
-    try {
+  const contentType = req.headers.get("Content-Type") || "";
+
+  if (!contentType) return {};
+  
+  try {
+    if (contentType.startsWith("application/json")) {
       return await req.json();
-    } catch (error) {
-      return new Response({ error: "Invalid JSON format" });
     }
-  } else if (contentType.startsWith("application/x-www-form-urlencoded")) {
-    const body = await req.text();
-    return Object.fromEntries(new URLSearchParams(body));
-  } else if (contentType.startsWith("multipart/form-data")) {
-    const formData = await req.formData();
-    return formDataToObject(formData);
-  } else {
-    return new Response({ error: "unknown request body" });
+
+    if (contentType.startsWith("application/x-www-form-urlencoded")) {
+      const body = await req.text();
+      return Object.fromEntries(new URLSearchParams(body));
+    }
+
+    if (contentType.startsWith("multipart/form-data")) {
+      const formData = await req.formData();
+      return formDataToObject(formData);
+    }
+
+    return new Response({ error: "Unknown request body type" });
+  } catch (error) {
+    return new Response({ error: "Invalid request body format" });
   }
 }
+
 
 function formDataToObject(formData) {
   const obj = {};

@@ -3,7 +3,6 @@ class TrieNode {
       this.children = {};
       this.isEndOfWord = false;
       this.handler = [];
-      this.isImportant = false;
       this.isDynamic = false;
       this.pattern = '';
       this.path = "";
@@ -25,7 +24,6 @@ class TrieNode {
       if (path === '/') {
         node.isEndOfWord = true;
         node.handler.push(route.handler)
-        node.isImportant = route.isImportant;
         node.path = path;
         node.method.push(route.method)
         return;
@@ -54,7 +52,6 @@ class TrieNode {
       node.isEndOfWord = true;
       node.method.push(route.method);    
       node.handler.push(route.handler)
-      node.isImportant = route.isImportant;
       node.path = path;  // Store the original path
     }
     
