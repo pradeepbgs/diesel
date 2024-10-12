@@ -124,7 +124,7 @@ export default function createCtx(req, url) {
       return props ? parsedQuery[props] : parsedQuery;
     },
 
-    cookie(name, value, options = {}) {
+    async cookie(name, value, options = {}) {
       let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
 
       // Add options to cookie string (e.g., expiration, path, HttpOnly, etc.)
