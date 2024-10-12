@@ -110,16 +110,16 @@ export default function createCtx(req, url) {
       });
     },
 
-    async getParams(props) {
+     getParams(props) {
       if (!parsedParams) {
-        parsedParams = await extractDynamicParams(req.routePattern, url.pathname);
+        parsedParams = extractDynamicParams(req.routePattern, url.pathname);
       }
       return props ? parsedParams[props] : parsedParams;
     },
 
     getQuery(props) {
       if (!parsedQuery) {
-        parsedQuery = Object.fromEntries(url.searchParams.entries());
+        parsedQuery = Object.fromEntries(url.searchParams);
       }
       return props ? parsedQuery[props] : parsedQuery;
     },
@@ -168,7 +168,7 @@ async function parseCookie(header) {
   return cookies;
 }
 
-async function extractDynamicParams(routePattern, path) {
+function extractDynamicParams(routePattern, path) {
   const object = {};
   const routeSegments = routePattern.split("/");
   const [pathWithoutQuery] = path.split("?"); 
