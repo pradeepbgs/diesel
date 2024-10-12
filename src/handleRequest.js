@@ -3,7 +3,7 @@ import createCtx from "./ctx";
 export default async function handleRequest(req, url, diesel) {
   const { pathname } = url;
   const { method } = req;
-
+  
   // Try to find the route handler in the trie
   const routeHandler = diesel.trie.search(pathname, method);
   
