@@ -1,47 +1,41 @@
 import createCtx from "./ctx";
 
 export default async function handleRequest(req, url, diesel) {
-  const { pathname } = url;
-  const { method } = req;
 
   const ctx = createCtx(req, url);
 
   // OnReq hook 1
   if (diesel.hasOnReqHook) {
-    for (const hook of diesel.hooks.onRequest) {
-      await hook(ctx);
-    }
+    await diesel.hooks.onRequest(ctx)
   }
-
-  // Try to find the route handler in the trie
-  const routeHandler = diesel.trie.search(pathname, method);
-
-  // Early return if route or method is not found
-  if (!routeHandler || !routeHandler.handler) return responseNotFound(pathname);
-  if (routeHandler.method !== method) return responseMethodNotAllowed();
-  // If the route is dynamic, we only set routePattern if necessary
-  if (routeHandler.isDynamic) req.routePattern = routeHandler.path;
 
   // middleware execution 
   if (diesel.hasMiddleware) {
     const middlewares = [
       ...diesel.globalMiddlewares,
-      ...diesel.middlewares.get(pathname) || []
+      ...diesel.middlewares.get(url.pathname) || []
     ];
 
     const middlewareResult = await executeMiddleware(middlewares, ctx);
     if (middlewareResult) return middlewareResult;
-
   }
+
+  // Try to find the route handler in the trie
+  const routeHandler = diesel.trie.search(url.pathname, req.method);
+
+  // Early return if route or method is not found
+  if (!routeHandler || !routeHandler.handler) return responseNotFound(url.pathname);
+  if (routeHandler.method !== req.method) return responseMethodNotAllowed();
+
+  // If the route is dynamic, we only set routePattern if necessary
+  if (routeHandler.isDynamic) req.routePattern = routeHandler.path;
 
   // Run preHandler hooks 2
   if (diesel.hasPreHandlerHook) {
-    for (const hook of diesel.hooks.preHandler) {
-      const Hookresult = await hook(ctx);
+      const Hookresult = await diesel.hooks.preHandler(ctx);
       if(Hookresult) return Hookresult;
     }
-  }
-
+  
 
   // Finally, execute the route handler and return its result
   try {
@@ -49,17 +43,13 @@ export default async function handleRequest(req, url, diesel) {
 
     // 3. run the postHandler hooks 
     if (diesel.hasPostHandlerHook) {
-      for (const hook of diesel.hooks.postHandler) {
-        await hook(ctx);
-      }
+      await diesel.hooks.postHandler(ctx)  
     }
 
     // 4. Run onSend hooks before sending the response
     if (diesel.hasOnSendHook) {
-      for (const hook of diesel.hooks.onSend) {
-        const hookResponse = await hook(result, ctx);
+        const hookResponse = await diesel.hooks.onSend(result, ctx);
         if(hookResponse) return hookResponse
-      }
     }
 
     return result ?? responseNoHandler();
@@ -68,11 +58,11 @@ export default async function handleRequest(req, url, diesel) {
   }
 }
 
-// Optimized middleware execution: stops as soon as a middleware returns a response
+// middleware execution
 async function executeMiddleware(middlewares, ctx) {
   for (const middleware of middlewares) {
     const result = await middleware(ctx);
-    if (result) return result;  // Early exit if middleware returns a result
+    if (result) return result; 
   }
 }
 

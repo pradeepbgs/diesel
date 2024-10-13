@@ -1,7 +1,7 @@
 import Trie from "./trie.js";
 import handleRequest from "./handleRequest.js";
 
-class diesel {
+class Diesel {
   constructor() {
     this.routes = new Map();
     this.globalMiddlewares = [];
@@ -13,20 +13,20 @@ class diesel {
     this.hasPostHandlerHook=false;
     this.hasOnSendHook=false;
     this.hooks = {
-      onRequest: [],
-      preHandler: [],
-      postHandler: [],
-      onSend: [],
-      onError: [],
-      onClose: []
+      onRequest: null,
+      preHandler: null,
+      postHandler: null,
+      onSend: null,
+      onError: null,
+      onClose: null
     }
   }
 
   addHooks(typeOfHook,fnc){
-    if (this.hooks[typeOfHook]) {
-      this.hooks[typeOfHook].push(fnc)
-    }else{
-      throw new Error(`Unknown hook type: ${type}`);
+    if (this.hooks.hasOwnProperty(typeOfHook)) {
+      this.hooks[typeOfHook] = fnc;  // Overwrite or set the hook
+    } else {
+      throw new Error(`Unknown hook type: ${typeOfHook}`);  // Throw an error for invalid hook types
     }
   }
 
@@ -42,16 +42,25 @@ class diesel {
     } 
 
     // check if hook is present or not
-
-    if (this.hooks.onRequest.length>0) this.hasOnReqHook=true;
-    if(this.hooks.preHandler.length>0) this.hasPreHandlerHook=true;
-    if(this.hooks.postHandler.length>0) this.hasPostHandlerHook=true;
-    if(this.hooks.onSend.length>0) this.hasOnSendHook=true;
+    if (this.hooks.onRequest) this.hasOnReqHook=true;
+    if(this.hooks.preHandler) this.hasPreHandlerHook=true;
+    if(this.hooks.postHandler) this.hasPostHandlerHook=true;
+    if(this.hooks.onSend) this.hasOnSendHook=true;
     
   }
 
   listen(port, { sslCert = null, sslKey = null } = {}, callback) {
+    if (typeof Bun === 'undefined')
+      throw new Error(
+          '.listen() is designed to run on Bun only...'
+      )
+      
+    if (typeof port !== "number") {
+      throw new Error('Port must be a numeric value')
+    }
+
     this.compile();
+
     const options = {
       port,
       fetch: async (req) => {
@@ -72,6 +81,8 @@ class diesel {
       options.keyFile = sslKey;
     } 
     const server = Bun.serve(options);
+
+    Bun?.gc(false)
 
     if (typeof callback === "function") {
       return callback();
@@ -107,6 +118,12 @@ class diesel {
   }
 
   #addRoute(method, path, handlers) {
+    if(typeof path !== "string"){
+      throw new Error("Path must be a string type");
+    }
+    if(typeof method !== "string"){
+      throw new Error("method must be a string type");
+    }
     const middlewareHandlers = handlers.slice(0, -1);
 
     if (!this.middlewares.has(path)) {
@@ -146,26 +163,32 @@ class diesel {
   }
 
   get(path, ...handlers) {
-    return this.#addRoute("GET", path, handlers);
+     this.#addRoute("GET", path, handlers);
+     return this
   }
 
   post(path, ...handlers) {
-    return this.#addRoute("POST", path, handlers);
+    this.#addRoute("POST", path, handlers);
+    return this
   }
 
   put(path, ...handlers) {
-    return this.#addRoute("PUT", path, handlers);
+    this.#addRoute("PUT", path, handlers);
+    return this
   }
 
   patch(path, ...handlers) {
-    if (handlers.length > 0) {
-      return this.#addRoute("PATCH", path, handlers);
+    if(typeof path !== "string"){
+      throw new Error("Path must be a string type");
     }
+    this.#addRoute("PATCH", path, handlers);
+    return this
   }
 
   delete(path, ...handlers) {
-    return this.#addRoute("DELETE", path, handlers);
+     this.#addRoute("DELETE", path, handlers);
+     return this;
   }
 }
 
-export default diesel;
+export default Diesel
