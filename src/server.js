@@ -23,6 +23,12 @@ class Diesel {
   }
 
   addHooks(typeOfHook,fnc){
+    if(typeof typeOfHook !== 'string'){
+      throw new Error("hookName must be a string")
+    }
+    if(typeof fnc !== 'function'){
+      throw new Error("callback must be a instance of function")
+    }
     if (this.hooks.hasOwnProperty(typeOfHook)) {
       this.hooks[typeOfHook] = fnc;  // Overwrite or set the hook
     } else {
@@ -49,7 +55,7 @@ class Diesel {
     
   }
 
-  listen(port, { sslCert = null, sslKey = null } = {}, callback) {
+  listen(port, callback,{ sslCert = null, sslKey = null } = {}) {
     if (typeof Bun === 'undefined')
       throw new Error(
           '.listen() is designed to run on Bun only...'
@@ -82,7 +88,7 @@ class Diesel {
     } 
     const server = Bun.serve(options);
 
-    Bun?.gc(false)
+    // Bun?.gc(false)
 
     if (typeof callback === "function") {
       return callback();
@@ -98,6 +104,12 @@ class Diesel {
   }
 
   register(pathPrefix, handlerInstance) {
+    if (typeof pathPrefix !== 'string') {
+      throw new Error("path must be a string")
+    }
+   if(typeof handlerInstance !== 'object'){
+    throw new Error("handler parameter should be a instance of router object",handlerInstance)
+   }
     const routeEntries = Object.entries(handlerInstance.trie.root.children);
     // console.log(handlerInstance.trie.root);
     handlerInstance.trie.root.subMiddlewares.forEach((middleware, path) => {
@@ -178,9 +190,6 @@ class Diesel {
   }
 
   patch(path, ...handlers) {
-    if(typeof path !== "string"){
-      throw new Error("Path must be a string type");
-    }
     this.#addRoute("PATCH", path, handlers);
     return this
   }

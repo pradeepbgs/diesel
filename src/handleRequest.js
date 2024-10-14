@@ -1,5 +1,7 @@
 import createCtx from "./ctx";
 
+const routeCache = {}
+
 export default async function handleRequest(req, url, diesel) {
 
   const ctx = createCtx(req, url);
@@ -21,11 +23,22 @@ export default async function handleRequest(req, url, diesel) {
   }
 
   // Try to find the route handler in the trie
-  const routeHandler = diesel.trie.search(url.pathname, req.method);
+  let routeHandler;
+  if(routeCache[url.pathname+req.method]) {
+    routeHandler = routeCache[url.pathname+req.method]
+  } else {
+    routeHandler = diesel.trie.search(url.pathname, req.method);
+    routeCache[url.pathname+req.method]=routeHandler
+  }
 
   // Early return if route or method is not found
-  if (!routeHandler || !routeHandler.handler) return responseNotFound(url.pathname);
-  if (routeHandler.method !== req.method) return responseMethodNotAllowed();
+  if (!routeHandler || !routeHandler.handler) {
+    return new Response(`Route not found for ${url.pathname}`, { status: 404 })
+  }
+
+  if (routeHandler.method !== req.method) {
+    return new Response("Method not allowed", { status: 405 })
+  }
 
   // If the route is dynamic, we only set routePattern if necessary
   if (routeHandler.isDynamic) req.routePattern = routeHandler.path;
@@ -52,9 +65,9 @@ export default async function handleRequest(req, url, diesel) {
         if(hookResponse) return hookResponse
     }
 
-    return result ?? responseNoHandler();
+    return result ??  new Response("No response from handler", { status: 204 })
   } catch (error) {
-    return responseServerError();
+    return new Response("Internal Server Error", { status: 500 });
   }
 }
 
@@ -66,19 +79,4 @@ async function executeMiddleware(middlewares, ctx) {
   }
 }
 
-// Reused response functions for better organization and clarity
-function responseNotFound(path) {
-  return new Response(`Route not found for ${path}`, { status: 404 });
-}
 
-function responseMethodNotAllowed() {
-  return new Response("Method not allowed", { status: 405 });
-}
-
-function responseNoHandler() {
-  return new Response("No response from handler", { status: 204 });
-}
-
-function responseServerError() {
-  return new Response("Internal Server Error", { status: 500 });
-}
