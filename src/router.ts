@@ -1,42 +1,54 @@
 import diesel from "./main";
+import type { handlerFunction, HttpMethod } from "./types";
 
 class Router extends diesel {
   constructor() {
     super();
   }
-  #addRoute(method, path, handlers) {
+  #addRoute(method:HttpMethod, path:string, handlers:handlerFunction[]) {
       if (!this.trie.root.subMiddlewares.has(path)) {
           this.trie.root.subMiddlewares.set(path,[])
         }  
-        const middlewareHandlers = handlers.slice(0, -1);
+        const middlewareHandlers : handlerFunction[]= handlers.slice(0, -1);
 
-    if (!this.trie.root.subMiddlewares.get(path).includes(...middlewareHandlers)) {
-        this.trie.root.subMiddlewares.get(path).push(...middlewareHandlers)
-    }
+        const currentMiddlewares = this.trie.root.subMiddlewares.get(path)
+        
+        middlewareHandlers.forEach((midl:handlerFunction) => {
+          if (!currentMiddlewares?.includes(midl)) {
+            currentMiddlewares?.push(midl)
+          }
+        })
 
-    const handler = handlers[handlers.length - 1];
+    // if (!this.trie.root.subMiddlewares.get(path).includes(...middlewareHandlers)) {
+    //     this.trie.root.subMiddlewares.get(path).push(...middlewareHandlers)
+    // }
+
+    const handler : handlerFunction = handlers[handlers.length - 1];
     this.trie.insert(path, { handler, method });
   }
-  get(path, ...handlers) {
-    return this.#addRoute("GET", path, handlers);
+  get(path:string, ...handlers:handlerFunction[]) {
+    this.#addRoute("GET", path, handlers);
+    return this
   }
 
-  post(path, ...handlers) {
-    return this.#addRoute("POST", path, handlers);
+  post(path:string, ...handlers:handlerFunction[]) {
+    this.#addRoute("POST", path, handlers);
+    return this;
   }
 
-  put(path, ...handlers) {
-    return this.#addRoute("PUT", path, handlers);
+  put(path:string, ...handlers:handlerFunction[]) {
+    this.#addRoute("PUT", path, handlers);
+    return this
   }
 
-  patch(path, ...handlers) {
-    if (handlers.length > 0) {
-      return this.#addRoute("PATCH", path, handlers);
-    }
+  patch(path:string, ...handlers:handlerFunction[]) {
+      this.#addRoute("PATCH", path, handlers);
+      return this
   }
 
-  delete(path, ...handlers) {
-    return this.#addRoute("DELETE", path, handlers);
+  delete(path : string, ...handlers:handlerFunction[]) {
+    this.#addRoute("DELETE", path, handlers);
+    return this;
   }
 }
 

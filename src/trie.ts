@@ -1,4 +1,17 @@
+import type { handlerFunction, HttpMethod, RouteT } from "./types"
+
+
 class TrieNode {
+
+    children: Record<string,TrieNode>
+    isEndOfWord:boolean
+    handler:handlerFunction[]
+    isDynamic: boolean
+    pattern: string
+    path: string
+    method: string[]
+    subMiddlewares : Map<string,handlerFunction[]>
+
     constructor() {
       this.children = {};
       this.isEndOfWord = false;
@@ -12,11 +25,12 @@ class TrieNode {
   }
   
   export default class Trie {
+    root:TrieNode
     constructor() {
       this.root = new TrieNode();
     }
   
-    insert(path, route) {
+    insert(path:string, route:RouteT) : void {
       let node = this.root;
       const pathSegments = path.split('/').filter(Boolean); // Split path by segments
     
@@ -55,14 +69,14 @@ class TrieNode {
       node.path = path;  // Store the original path
     }
     
-    insertMidl(midl){
-      if (!this.root.subMiddlewares.has(midl)) {
-        this.root.subMiddlewares.set(midl)
-      }
-    }
+    // insertMidl(midl:handlerFunction): void {
+    //   if (!this.root.subMiddlewares.has(midl)) {
+    //     this.root.subMiddlewares.set(midl)
+    //   }
+    // }
     
   
-    search(path, method) {
+    search(path:string, method:HttpMethod) {
       let node = this.root;
       const pathSegments = path.split('/').filter(Boolean); // Split path into segments
     
@@ -108,28 +122,28 @@ class TrieNode {
   
       // New getAllRoutes method
   
-    getAllRoutes() {
-      const routes = [];
-      // Helper function to recursively collect all routes
-      const traverse = (node, currentPath) => {
-        if (node.isEndOfWord) {
-          routes.push({
-            path: currentPath,
-            handler: node.handler,
-            isImportant: node.isImportant,
-            isDynamic: node.isDynamic,
-            pattern: node.pattern,
-          });
-        }
-        // Recursively traverse all children
-        for (const key in node.children) {
-          const child = node.children[key];
-          const newPath = currentPath + (key === ':' ? '/:' + child.pattern : '/' + key); // Reconstruct the full path
-          traverse(child, newPath);
-        }
-      };
-      // Start traversal from the root
-      traverse(this.root, "");
-      return routes;
-    }
+    // getAllRoutes() {
+    //   const routes = [];
+    //   // Helper function to recursively collect all routes
+    //   const traverse = (node, currentPath) => {
+    //     if (node.isEndOfWord) {
+    //       routes.push({
+    //         path: currentPath,
+    //         handler: node.handler,
+    //         isImportant: node.isImportant,
+    //         isDynamic: node.isDynamic,
+    //         pattern: node.pattern,
+    //       });
+    //     }
+    //     // Recursively traverse all children
+    //     for (const key in node.children) {
+    //       const child = node.children[key];
+    //       const newPath = currentPath + (key === ':' ? '/:' + child.pattern : '/' + key); // Reconstruct the full path
+    //       traverse(child, newPath);
+    //     }
+    //   };
+    //   // Start traversal from the root
+    //   traverse(this.root, "");
+    //   return routes;
+    // }
   }

@@ -1,4 +1,4 @@
-import Diesel from "../diesel/src/main";
+import Diesel from "../main/main";
 import jwt from "jsonwebtoken";
 
 const app = new Diesel();

@@ -1,11 +1,11 @@
 // build.js
 await Bun.build({
     entrypoints: [
-        './src/server.js',
-        './src/ctx.js',
-        './src/handleRequest.js',
-        './src/trie.js',
-        './src/router.js'
+        './src/main.ts',
+        './src/ctx.ts',
+        './src/handleRequest.ts',
+        './src/trie.ts',
+        './src/router.ts'
     ],
     outdir: './dist',
     minify: true, // Enable minification
