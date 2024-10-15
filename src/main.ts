@@ -1,6 +1,6 @@
 import Trie from "./trie.js";
 import handleRequest from "./handleRequest.js";
-import { HookType, type ContextType, type DieselT, type handlerFunction, type Hooks, type listenCalllBackType, type RouteNodeType } from "./types.js";
+import { HookType, type ContextType, type DieselT, type handlerFunction, type Hooks, type HttpMethod, type listenCalllBackType, type RouteNodeType } from "./types.js";
 
 class Diesel {
   routes : Map<String,any>;
@@ -139,12 +139,12 @@ class Diesel {
       const fullpath = pathPrefix + routeNode?.path;
       const routeHandler = routeNode.handler[0];
       const httpMethod = routeNode.method[0];
-      this.trie.insert(fullpath, { handler: routeHandler, method: httpMethod });
+      this.trie.insert(fullpath, { handler: routeHandler as handlerFunction, method: httpMethod });
     }
     handlerInstance.trie = new Trie();
   }
 
-  #addRoute(method:string, path:string, handlers:any) {
+  #addRoute(method:HttpMethod, path:string, handlers:handlerFunction[]) {
     if(typeof path !== "string"){
       throw new Error("Path must be a string type");
     }

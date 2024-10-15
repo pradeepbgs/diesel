@@ -1,4 +1,4 @@
-import Router from "../diesel/src/router";
+import Router from "../src/router";
 
 const route = new Router();
 

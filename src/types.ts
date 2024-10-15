@@ -1,6 +1,9 @@
+
 export type listenCalllBackType = () => void;
 export type handlerFunction = (ctx:ContextType) => Promise<Response | null | void> ;
 export type HookFunction = (ctx:ContextType ,result?: Response | null | void,) => Promise<Response | null | void>
+
+export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD";
 
 export enum HookType {
     onRequest = "onRequest",
@@ -100,4 +103,9 @@ export interface ParseBodyResult {
     error?: string; // Optional error field
     data?: any; // The parsed data field
     
+}
+
+export interface RouteT{
+    method: string
+    handler: handlerFunction
 }
