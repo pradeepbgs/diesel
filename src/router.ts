@@ -1,4 +1,4 @@
-import diesel from "./server";
+import diesel from "./main";
 
 class Router extends diesel {
   constructor() {

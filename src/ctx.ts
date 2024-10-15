@@ -1,48 +1,58 @@
-export default function createCtx(req, url) {
-  let headers = {};
-  let settedValue = {};
+import type { ContextType, CookieOptions, ParseBodyResult } from "./types";
+
+export default function createCtx(req: Request, url: URL): ContextType {
+  let headers: any = {};
+  let settedValue: Record<string, string> = {};
   let isAuthenticated = false;
-  let parsedQuery = null;
-  let parsedCookie = null;
-  let parsedParams = null;
-  let parsedBody = null;
-  let responseStatus = 200; // Default status
+  let parsedQuery: any = null;
+  let parsedCookie: any = null
+  let parsedParams: any = null;
+  let parsedBody: ParseBodyResult | null;
+  let responseStatus = 200;
 
   return {
     req,
     url,
-    next: () => {},
+    next: () => { },
 
     // Set response status for chaining
-    status(status) {
-      responseStatus = status; 
-      return this; 
+    status(status: number) {
+      responseStatus = status;
+      return this;
     },
 
-    async body() {
+    async body(): Promise<any> {
       if (!parsedBody) {
         parsedBody = await parseBody(req);
+      }
+      if (parsedBody.error) {
+        return new Response(JSON.stringify({ error: parsedBody.error }), {
+          status: 400, // Bad Request
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
       }
       return parsedBody;
     },
 
-    setHeader(key, value) {
+    setHeader(key: string, value: any) {
       headers[key] = value;
-      return this; 
+      return this;
     },
 
-    set(key, value) {
+    set(key: string, value: any) {
       settedValue[key] = value;
-      return this; 
+      return this;
     },
 
-    get(key) {
-      return settedValue[key];
+    get(key: string) {
+      return settedValue[key] || null;
     },
 
-    setAuth(authStatus) {
+    setAuth(authStatus: boolean) {
       isAuthenticated = authStatus;
-      return this; 
+      return this;
     },
 
     getAuth() {
@@ -50,9 +60,9 @@ export default function createCtx(req, url) {
     },
 
     // Response methods with optional status
-    text(data, status) {
+    text(data: string, status?: number) {
       if (status) {
-        responseStatus = status; 
+        responseStatus = status;
       }
       return new Response(data, {
         status: responseStatus,
@@ -60,7 +70,7 @@ export default function createCtx(req, url) {
       });
     },
 
-    json(data, status) {
+    json(data: any, status?: number) {
       if (status) {
         responseStatus = status;
       }
@@ -73,7 +83,7 @@ export default function createCtx(req, url) {
       });
     },
 
-    html(filepath, status) {
+    html(filepath: string, status?: number) {
       if (status) {
         responseStatus = status;
       }
@@ -85,7 +95,7 @@ export default function createCtx(req, url) {
       });
     },
 
-    file(filePath, status) {
+    file(filePath: string, status?: number) {
       if (status) {
         responseStatus = status;
       }
@@ -97,7 +107,7 @@ export default function createCtx(req, url) {
       });
     },
 
-    redirect(path, status) {
+    redirect(path: string, status?: number) {
       if (status) {
         responseStatus = status;
       }
@@ -110,21 +120,23 @@ export default function createCtx(req, url) {
       });
     },
 
-     getParams(props) {
+    getParams(props: string)
+      : string | Record<string, string> | null {
       if (!parsedParams) {
-        parsedParams = extractDynamicParams(req.routePattern, url.pathname);
+        parsedParams = extractDynamicParams(req?.routePattern, url?.pathname);
       }
-      return props ? parsedParams[props] : parsedParams;
+      return props ? parsedParams[props] || null : parsedParams;
     },
 
-    getQuery(props) {
+    getQuery(props?: any)
+      : string | Record<string, string> | null {
       if (!parsedQuery) {
         parsedQuery = Object.fromEntries(url.searchParams);
       }
-      return props ? parsedQuery[props] : parsedQuery;
+      return props ? parsedQuery[props] || null : parsedQuery;
     },
 
-    async cookie(name, value, options = {}) {
+    async cookie(name: string, value: string, options: CookieOptions = {}) {
       let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
 
       // Add options to cookie string (e.g., expiration, path, HttpOnly, etc.)
@@ -143,44 +155,52 @@ export default function createCtx(req, url) {
       } else {
         headers["Set-Cookie"] = cookieString;
       }
-      return this; 
+      return this;
     },
 
-    async getCookie(cookieName) {
+    async getCookie(cookieName?: string)
+      : Promise<string | Record<string, string> | null> {
       if (!parsedCookie) {
-        parsedCookie = await parseCookie(req.headers.get("cookie"));
+        const cookieHeader = req.headers.get("cookie")
+        if (cookieHeader) {
+          parsedCookie = await parseCookie(cookieHeader);
+        }
       }
-      return cookieName ? parsedCookie[cookieName] : parsedCookie;
+      return cookieName ? parsedCookie[cookieName] || null : parsedCookie;
     },
   };
 }
 
 
-async function parseCookie(header) {
-  const cookies = {};
+async function parseCookie(header: string | undefined)
+  : Promise<Record<string, string>> {
+  const cookies: Record<string, string> = {};
   if (!header) return cookies;
 
   const cookieArray = header.split(";");
   cookieArray.forEach((cookie) => {
-    const [cookieName, cookieValue] = cookie.trim().split("=");
-    cookies[cookieName] = cookieValue.split(" ")[0];
+    const [cookieName, cookieValue] = cookie?.trim()?.split("=");
+    if (cookieName && cookieValue) {
+      cookies[cookieName.trim()] = cookieValue.split(' ')[0].trim()
+    }
   });
   return cookies;
 }
 
-function extractDynamicParams(routePattern, path) {
-  const object = {};
+function extractDynamicParams(routePattern: any, path: string)
+  : Record<string, string> | null {
+  const object: Record<string, string> = {};
   const routeSegments = routePattern.split("/");
-  const [pathWithoutQuery] = path.split("?"); 
+  const [pathWithoutQuery] = path.split("?");
   const pathSegments = pathWithoutQuery.split("/");
 
   if (routeSegments.length !== pathSegments.length) {
-    return null; 
+    return null;
   }
 
-  routeSegments.forEach((segment, index) => {
+  routeSegments.forEach((segment: string, index: number) => {
     if (segment.startsWith(":")) {
-      const dynamicKey = segment.slice(1); 
+      const dynamicKey = segment.slice(1);
       object[dynamicKey] = pathSegments[index];
     }
   });
@@ -188,11 +208,12 @@ function extractDynamicParams(routePattern, path) {
   return object;
 }
 
-async function parseBody(req) {
-  const contentType = req.headers.get("Content-Type") || "";
+async function parseBody(req: Request)
+  : Promise<ParseBodyResult> {
+  const contentType: string = req.headers.get("Content-Type") || "";
 
   if (!contentType) return {};
-  
+
   try {
     if (contentType.startsWith("application/json")) {
       return await req.json();
@@ -208,15 +229,15 @@ async function parseBody(req) {
       return formDataToObject(formData);
     }
 
-    return new Response({ error: "Unknown request body type" });
+    return { error: "Unknown request body type" };
   } catch (error) {
-    return new Response({ error: "Invalid request body format" });
+    return { error: "Invalid request body format" };
   }
 }
 
 
-function formDataToObject(formData) {
-  const obj = {};
+function formDataToObject(formData: any): Record<string, string> {
+  const obj: Record<string, string> = {};
   for (const [key, value] of formData.entries()) {
     obj[key] = value;
   }

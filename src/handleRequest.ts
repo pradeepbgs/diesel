@@ -1,10 +1,11 @@
 import createCtx from "./ctx";
+import type { ContextType, DieselT, handlerFunction, RouteCache, RouteHandlerT } from "./types";
 
-const routeCache = {}
+const routeCache:RouteCache = {}
 
-export default async function handleRequest(req, url, diesel) {
+export default async function handleRequest(req:Request, url:URL, diesel:DieselT): Promise<Response> {
 
-  const ctx = createCtx(req, url);
+  const ctx:ContextType = createCtx(req, url);
 
   // OnReq hook 1
   if (diesel.hasOnReqHook) {
@@ -13,17 +14,19 @@ export default async function handleRequest(req, url, diesel) {
 
   // middleware execution 
   if (diesel.hasMiddleware) {
-    const middlewares = [
+    
+    const middlewares : handlerFunction[] = [
       ...diesel.globalMiddlewares,
       ...diesel.middlewares.get(url.pathname) || []
-    ];
+    ] 
 
     const middlewareResult = await executeMiddleware(middlewares, ctx);
     if (middlewareResult) return middlewareResult;
+
   }
 
   // Try to find the route handler in the trie
-  let routeHandler;
+  let routeHandler :RouteHandlerT | undefined;
   if(routeCache[url.pathname+req.method]) {
     routeHandler = routeCache[url.pathname+req.method]
   } else {
@@ -52,7 +55,7 @@ export default async function handleRequest(req, url, diesel) {
 
   // Finally, execute the route handler and return its result
   try {
-    const result = await routeHandler.handler(ctx);
+    const result = await routeHandler.handler(ctx) as Response | null | void ;
 
     // 3. run the postHandler hooks 
     if (diesel.hasPostHandlerHook) {
@@ -72,7 +75,7 @@ export default async function handleRequest(req, url, diesel) {
 }
 
 // middleware execution
-async function executeMiddleware(middlewares, ctx) {
+async function executeMiddleware(middlewares:handlerFunction[], ctx:ContextType): Promise<Response | null | void> {
   for (const middleware of middlewares) {
     const result = await middleware(ctx);
     if (result) return result; 

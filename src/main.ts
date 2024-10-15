@@ -1,7 +1,19 @@
 import Trie from "./trie.js";
 import handleRequest from "./handleRequest.js";
+import { HookType, type ContextType, type DieselT, type handlerFunction, type Hooks, type listenCalllBackType, type RouteNodeType } from "./types.js";
 
 class Diesel {
+  routes : Map<String,any>;
+  globalMiddlewares : handlerFunction[] 
+  middlewares: Map<string,handlerFunction[]>;
+  trie :Trie
+  hasOnReqHook: boolean;
+  hasMiddleware: boolean;
+  hasPreHandlerHook: boolean;
+  hasPostHandlerHook: boolean;
+  hasOnSendHook: boolean;
+  hooks : Hooks
+
   constructor() {
     this.routes = new Map();
     this.globalMiddlewares = [];
@@ -22,7 +34,7 @@ class Diesel {
     }
   }
 
-  addHooks(typeOfHook,fnc){
+  addHooks(typeOfHook:HookType,fnc:handlerFunction) :void {
     if(typeof typeOfHook !== 'string'){
       throw new Error("hookName must be a string")
     }
@@ -36,7 +48,7 @@ class Diesel {
     }
   }
 
-  compile() {
+  compile():void {
     if (this.globalMiddlewares.length > 0) {
       this.hasMiddleware = true;
     }
@@ -55,7 +67,7 @@ class Diesel {
     
   }
 
-  listen(port, callback,{ sslCert = null, sslKey = null } = {}) {
+  listen(port:number, callback?:listenCalllBackType,{ sslCert = null, sslKey = null }:any = {}) {
     if (typeof Bun === 'undefined')
       throw new Error(
           '.listen() is designed to run on Bun only...'
@@ -66,13 +78,12 @@ class Diesel {
     }
 
     this.compile();
-
-    const options = {
+    const options:any = {
       port,
-      fetch: async (req) => {
+      fetch: async (req:Request) => {
         const url = new URL(req.url);
         try {
-          return await handleRequest(req, url, this);
+          return await handleRequest(req, url,this);
         } catch (error) {
           return new Response("Internal Server Error", { status: 500 });
         }
@@ -103,22 +114,26 @@ class Diesel {
     return server;
   }
 
-  register(pathPrefix, handlerInstance) {
+  register(pathPrefix:string, handlerInstance:any) {
     if (typeof pathPrefix !== 'string') {
       throw new Error("path must be a string")
     }
    if(typeof handlerInstance !== 'object'){
     throw new Error("handler parameter should be a instance of router object",handlerInstance)
    }
-    const routeEntries = Object.entries(handlerInstance.trie.root.children);
-    // console.log(handlerInstance.trie.root);
-    handlerInstance.trie.root.subMiddlewares.forEach((middleware, path) => {
+    const routeEntries:[string,RouteNodeType][] = Object.entries(handlerInstance.trie.root.children) as [string,RouteNodeType][];
+
+    handlerInstance.trie.root.subMiddlewares.forEach((middleware:handlerFunction[], path:string) => {
       if (!this.middlewares.has(pathPrefix + path)) {
         this.middlewares.set(pathPrefix + path, []);
       }
-      if (!this.middlewares.get(pathPrefix + path).includes(...middleware)) {
-        this.middlewares.get(pathPrefix + path).push(...middleware);
-      }
+
+      middleware?.forEach((midl:handlerFunction)=>{
+        if(!this.middlewares.get(pathPrefix+path)?.includes(midl)){
+          this.middlewares.get(pathPrefix+path)?.push(midl)
+        }
+      })
+
     });
     for (const [routeKey, routeNode] of routeEntries) {
       const fullpath = pathPrefix + routeNode?.path;
@@ -129,72 +144,73 @@ class Diesel {
     handlerInstance.trie = new Trie();
   }
 
-  #addRoute(method, path, handlers) {
+  #addRoute(method:string, path:string, handlers:any) {
     if(typeof path !== "string"){
       throw new Error("Path must be a string type");
     }
     if(typeof method !== "string"){
       throw new Error("method must be a string type");
     }
-    const middlewareHandlers = handlers.slice(0, -1);
-
+    const middlewareHandlers:handlerFunction[] = handlers.slice(0, -1);
+    const handler = handlers[handlers.length - 1];
+    
     if (!this.middlewares.has(path)) {
       this.middlewares.set(path, []);
     }
-    if (path === "/") {
-      middlewareHandlers.forEach((midlleware) => {
-        if (!this.globalMiddlewares.includes(midlleware)) {
-          this.globalMiddlewares.push(midlleware);
+      middlewareHandlers.forEach((middleware:handlerFunction) => {
+        if (path ==='/') {
+          if (!this.globalMiddlewares.includes(middleware)) {
+            this.globalMiddlewares.push(middleware);
+          }
+        } else {
+          if(!this.middlewares.get(path)?.includes(middleware)){
+            this.middlewares.get(path)?.push(middleware)
+          }
         }
       });
-    } else {
-      if (!this.middlewares.get(path).includes(...middlewareHandlers)) {
-        this.middlewares.get(path).push(...middlewareHandlers);
-      }
-    }
 
-    const handler = handlers[handlers.length - 1];
     this.trie.insert(path, { handler, method });
   }
 
-  use(pathORHandler, handler) {
+  use(pathORHandler:string | handlerFunction, handler:handlerFunction) {
     if (typeof pathORHandler === "function") {
       if (!this.globalMiddlewares.includes(pathORHandler)) {
         return this.globalMiddlewares.push(pathORHandler);
       }
     }
     // now it means it is path midl
-    const path = pathORHandler;
+    const path: string = pathORHandler as string;
+
     if (!this.middlewares.has(path)) {
       this.middlewares.set(path, []);
     }
 
-    if (!this.middlewares.get(path).includes(handler)) {
-      this.middlewares.get(path).push(handler);
+    if (!this.middlewares.get(path)?.includes(handler)) {
+      this.middlewares.get(path)?.push(handler);
     }
   }
 
-  get(path, ...handlers) {
+  get(path:string, ...handlers:handlerFunction[]) {
      this.#addRoute("GET", path, handlers);
      return this
   }
 
-  post(path, ...handlers) {
+  post(path:string, ...handlers:handlerFunction[]) {
     this.#addRoute("POST", path, handlers);
     return this
   }
 
-  put(path, ...handlers) {
+  put(path:string, ...handlers:handlerFunction[]) {
     this.#addRoute("PUT", path, handlers);
     return this
   }
 
-  patch(path, ...handlers) {
+  patch(path:string, ...handlers:handlerFunction[]) {
     this.#addRoute("PATCH", path, handlers);
     return this
   }
 
-  delete(path, ...handlers) {
+  delete(path:any, ...handlers:handlerFunction[]) {
      this.#addRoute("DELETE", path, handlers);
      return this;
   }
