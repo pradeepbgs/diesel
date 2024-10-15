@@ -1,4 +1,4 @@
-import Diesel from "../main/main";
+import Diesel from "../src/main";
 import jwt from "jsonwebtoken";
 
 const app = new Diesel();
@@ -63,7 +63,7 @@ app.get("/c", async(xl) => {
   await xl.cookie("refreshToken", refreshToken, options)
   // xl.cookie("refreshToken", refreshToken, options);
   await xl.getCookie()
-  return new Response(JSON.stringify({ msg: "setting cookie" }));
+  return xl.status(200).json({msg:"setting cookies"})
 });
 
 // For "/test", middlewares h, s will run before the handler
