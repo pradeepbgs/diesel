@@ -1,7 +1,7 @@
 import type { ContextType, CookieOptions, ParseBodyResult } from "./types";
 
 export default function createCtx(req: Request, url: URL): ContextType {
-  let headers: any = {};
+  let headers : Headers = new Headers()
   let settedValue: Record<string, string> = {};
   let isAuthenticated = false;
   let parsedQuery: any = null;
@@ -28,16 +28,13 @@ export default function createCtx(req: Request, url: URL): ContextType {
       if (parsedBody.error) {
         return new Response(JSON.stringify({ error: parsedBody.error }), {
           status: 400, // Bad Request
-          headers: {
-            "Content-Type": "application/json",
-          },
         });
       }
       return parsedBody;
     },
 
     setHeader(key: string, value: any) {
-      headers[key] = value;
+      headers.set(key,value)
       return this;
     },
 
@@ -61,62 +58,38 @@ export default function createCtx(req: Request, url: URL): ContextType {
 
     // Response methods with optional status
     text(data: string, status?: number) {
-      if (status) {
-        responseStatus = status;
-      }
       return new Response(data, {
-        status: responseStatus,
-        headers: headers,
+        status: status ?? responseStatus,
+        headers
       });
     },
 
     json(data: any, status?: number) {
-      if (status) {
-        responseStatus = status;
-      }
       return new Response(JSON.stringify(data), {
-        status: responseStatus,
-        headers: {
-          "Content-Type": "application/json",
-          ...headers,
-        },
+        status: status ?? responseStatus,
+        headers
       });
     },
 
     html(filepath: string, status?: number) {
-      if (status) {
-        responseStatus = status;
-      }
       return new Response(Bun.file(filepath), {
-        status: responseStatus,
-        headers: {
-          ...headers,
-        },
+        status: status ?? responseStatus,
+        headers
       });
     },
 
     file(filePath: string, status?: number) {
-      if (status) {
-        responseStatus = status;
-      }
       return new Response(Bun.file(filePath), {
-        status: responseStatus,
-        headers: {
-          ...headers,
-        },
+        status: status ?? responseStatus,
+        headers
       });
     },
 
     redirect(path: string, status?: number) {
-      if (status) {
-        responseStatus = status;
-      }
+      headers.set('Location', path);
       return new Response(null, {
-        status: responseStatus,
-        headers: {
-          Location: path,
-          ...headers,
-        },
+        status: status ?? 302,
+        headers
       });
     },
 
@@ -147,14 +120,11 @@ export default function createCtx(req: Request, url: URL): ContextType {
       if (options.secure) cookieString += `; Secure`;
       if (options.httpOnly) cookieString += `; HttpOnly`;
       if (options.sameSite) cookieString += `; SameSite=${options.sameSite}`;
+      
+      headers?.append('Set-Cookie',cookieString)
+      // console.log(headers)
+      // console.log(Object.fromEntries(headers))
 
-      if (headers["Set-Cookie"]) {
-        const existingCookies = Array.isArray(headers["Set-Cookie"]) ? headers["Set-Cookie"] : [headers["Set-Cookie"]];
-        existingCookies.push(cookieString);
-        headers["Set-Cookie"] = existingCookies;
-      } else {
-        headers["Set-Cookie"] = cookieString;
-      }
       return this;
     },
 
