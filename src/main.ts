@@ -1,6 +1,13 @@
 import Trie from "./trie.js";
 import handleRequest from "./handleRequest.js";
-import { HookType, type ContextType, type DieselT, type handlerFunction, type Hooks, type HttpMethod, type listenCalllBackType, type RouteNodeType } from "./types.js";
+import { 
+  HookType, 
+  type handlerFunction, 
+  type Hooks, 
+  type HttpMethod, 
+  type listenCalllBackType, 
+  type RouteNodeType 
+} from "./types.js";
 
 class Diesel {
   routes : Map<String,any>;
@@ -78,6 +85,7 @@ class Diesel {
     }
 
     this.compile();
+    const dieselInstance = this as Diesel
     const options:any = {
       port,
       fetch: async (req:Request) => {

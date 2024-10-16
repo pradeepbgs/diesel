@@ -1,9 +1,10 @@
 {
   "name": "diesel-core",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "main": "dist/main.js",
+  "types": "dist/main.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "bun run build.js"
   },
   "keywords": [],
   "author": "",
