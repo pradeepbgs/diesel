@@ -8,7 +8,7 @@ export default async function handleRequest(req:Request, url:URL, diesel:DieselT
   const ctx:ContextType = createCtx(req, url);
 
   // OnReq hook 1
-  if (diesel.hasOnReqHook) {
+  if (diesel.hasOnReqHook && diesel.hooks.onRequest) {
     await diesel.hooks.onRequest(ctx)
   }
 
@@ -47,7 +47,7 @@ export default async function handleRequest(req:Request, url:URL, diesel:DieselT
   if (routeHandler.isDynamic) req.routePattern = routeHandler.path;
 
   // Run preHandler hooks 2
-  if (diesel.hasPreHandlerHook) {
+  if (diesel.hasPreHandlerHook && diesel.hooks.preHandler) {
       const Hookresult = await diesel.hooks.preHandler(ctx);
       if(Hookresult) return Hookresult;
     }
@@ -58,13 +58,13 @@ export default async function handleRequest(req:Request, url:URL, diesel:DieselT
     const result = await routeHandler.handler(ctx) as Response | null | void ;
 
     // 3. run the postHandler hooks 
-    if (diesel.hasPostHandlerHook) {
-      await diesel.hooks.postHandler(ctx)  
+    if (diesel.hasPostHandlerHook && diesel.hooks.postHandler) {
+      await diesel.hooks.postHandler(ctx) 
     }
 
     // 4. Run onSend hooks before sending the response
-    if (diesel.hasOnSendHook) {
-        const hookResponse = await diesel.hooks.onSend(result, ctx);
+    if (diesel.hasOnSendHook && diesel.hooks.onSend) {
+        const hookResponse = await diesel.hooks.onSend(ctx,result);
         if(hookResponse) return hookResponse
     }
 
