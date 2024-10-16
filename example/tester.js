@@ -36,7 +36,7 @@ app.get("/r", (xl) => {
 
 
 app.get("/", async (xl) => {
-  return new Response("hello world")
+  return xl.status(200).text("hello d")
 })
 
 app.post("/", async (xl) => {
@@ -63,7 +63,7 @@ app.get("/c", async(xl) => {
   await xl.cookie("refreshToken", refreshToken, options)
   // xl.cookie("refreshToken", refreshToken, options);
   await xl.getCookie()
-  return xl.status(200).json({msg:"setting cookies"})
+  return xl.json({msg:"setting cookies"})
 });
 
 // For "/test", middlewares h, s will run before the handler

@@ -1,14 +1,14 @@
 import type { ContextType, CookieOptions, ParseBodyResult } from "./types";
 
 export default function createCtx(req: Request, url: URL): ContextType {
-  let headers : Headers = new Headers()
+  let headers: Headers = new Headers()
   let settedValue: Record<string, string> = {};
-  let isAuthenticated = false;
+  let isAuthenticated: boolean = false;
   let parsedQuery: any = null;
   let parsedCookie: any = null
   let parsedParams: any = null;
   let parsedBody: ParseBodyResult | null;
-  let responseStatus = 200;
+  let responseStatus: number = 200;
 
   return {
     req,
@@ -16,7 +16,7 @@ export default function createCtx(req: Request, url: URL): ContextType {
     next: () => { },
 
     // Set response status for chaining
-    status(status: number) {
+    status(status: number): ContextType {
       responseStatus = status;
       return this;
     },
@@ -33,26 +33,26 @@ export default function createCtx(req: Request, url: URL): ContextType {
       return parsedBody;
     },
 
-    setHeader(key: string, value: any) {
-      headers.set(key,value)
+    setHeader(key: string, value: any): ContextType {
+      headers.set(key, value)
       return this;
     },
 
-    set(key: string, value: any) {
+    set(key: string, value: any): ContextType {
       settedValue[key] = value;
       return this;
     },
 
-    get(key: string) {
+    get(key: string): any | null {
       return settedValue[key] || null;
     },
 
-    setAuth(authStatus: boolean) {
+    setAuth(authStatus: boolean): ContextType {
       isAuthenticated = authStatus;
       return this;
     },
 
-    getAuth() {
+    getAuth(): boolean {
       return isAuthenticated;
     },
 
@@ -64,28 +64,28 @@ export default function createCtx(req: Request, url: URL): ContextType {
       });
     },
 
-    json(data: any, status?: number) {
+    json(data: any, status?: number): Response {
       return new Response(JSON.stringify(data), {
         status: status ?? responseStatus,
         headers
       });
     },
 
-    html(filepath: string, status?: number) {
+    html(filepath: string, status?: number): Response {
       return new Response(Bun.file(filepath), {
         status: status ?? responseStatus,
         headers
       });
     },
 
-    file(filePath: string, status?: number) {
+    file(filePath: string, status?: number): Response {
       return new Response(Bun.file(filePath), {
         status: status ?? responseStatus,
         headers
       });
     },
 
-    redirect(path: string, status?: number) {
+    redirect(path: string, status?: number): Response {
       headers.set('Location', path);
       return new Response(null, {
         status: status ?? 302,
@@ -109,7 +109,7 @@ export default function createCtx(req: Request, url: URL): ContextType {
       return props ? parsedQuery[props] || null : parsedQuery;
     },
 
-    async cookie(name: string, value: string, options: CookieOptions = {}) {
+    async cookie(name: string, value: string, options: CookieOptions = {}): Promise<ContextType> {
       let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
 
       // Add options to cookie string (e.g., expiration, path, HttpOnly, etc.)
@@ -120,11 +120,9 @@ export default function createCtx(req: Request, url: URL): ContextType {
       if (options.secure) cookieString += `; Secure`;
       if (options.httpOnly) cookieString += `; HttpOnly`;
       if (options.sameSite) cookieString += `; SameSite=${options.sameSite}`;
-      
-      headers?.append('Set-Cookie',cookieString)
-      // console.log(headers)
-      // console.log(Object.fromEntries(headers))
 
+      headers?.append('Set-Cookie', cookieString)
+      
       return this;
     },
 
