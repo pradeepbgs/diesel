@@ -1,6 +1,6 @@
-import diesel from "./main";
+import { Diesel } from "./main";
 import type { handlerFunction } from "./types";
-declare class Router extends diesel {
+declare class Router extends Diesel {
     #private;
     constructor();
     get(path: string, ...handlers: handlerFunction[]): this;

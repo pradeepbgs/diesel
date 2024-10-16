@@ -224,4 +224,4 @@ class Diesel {
   }
 }
 
-export default Diesel
+export {Diesel}
