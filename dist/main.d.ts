@@ -24,4 +24,4 @@ declare class Diesel {
     patch(path: string, ...handlers: handlerFunction[]): this;
     delete(path: any, ...handlers: handlerFunction[]): this;
 }
-export default Diesel;
+export { Diesel };

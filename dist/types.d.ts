@@ -1,7 +1,7 @@
 export type listenCalllBackType = () => void;
-export type handlerFunction = (ctx: ContextType) => Promise<Response | null | void>;
-export type HookFunction = (ctx: ContextType, result?: Response | null | void) => Promise<Response | null | void>;
-export type onSendHookFunc = (result?: Response | null | void, ctx?: ContextType) => Promise<Response | null | void>;
+export type handlerFunction = (ctx: ContextType) => Response | Promise<Response | null | void>;
+export type HookFunction = (ctx: ContextType, result?: Response | null | void) => Response | Promise<Response | null | void>;
+export type onSendHookFunc = (result?: Response | null | void, ctx?: ContextType) => Response | Promise<Response | null | void>;
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD";
 export declare enum HookType {
     onRequest = "onRequest",

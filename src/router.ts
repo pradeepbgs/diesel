@@ -1,7 +1,7 @@
-import diesel from "./main";
+import {Diesel} from "./main";
 import type { handlerFunction, HttpMethod } from "./types";
 
-class Router extends diesel {
+class Router extends Diesel {
   constructor() {
     super();
   }
