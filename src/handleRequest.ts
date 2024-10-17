@@ -1,5 +1,5 @@
 import createCtx from "./ctx";
-import type { ContextType, DieselT, handlerFunction, RouteCache, RouteHandlerT } from "./types";
+import type { ContextType, corsT, DieselT, handlerFunction, RouteCache, RouteHandlerT } from "./types";
 
 const routeCache:RouteCache = {}
 
@@ -7,6 +7,10 @@ export default async function handleRequest(req:Request, url:URL, diesel:DieselT
 
   const ctx:ContextType = createCtx(req, url);
 
+  if (diesel.corsConfig) {
+    const corsResult = await applyCors(req,ctx,diesel.corsConfig)
+    if(corsResult) return corsResult;
+  }
   // OnReq hook 1
   if (diesel.hasOnReqHook && diesel.hooks.onRequest) {
     await diesel.hooks.onRequest(ctx)
@@ -83,3 +87,49 @@ async function executeMiddleware(middlewares:handlerFunction[], ctx:ContextType)
 }
 
 
+async function applyCors(req:Request,ctx:ContextType,config:corsT={}) : Promise<Response | null> {
+  const origin = req.headers.get('origin') ?? '*'
+  const allowedOrigins = config?.origin
+  const allowedHeaders = config?.allowedHeaders ?? ["Content-Type", "Authorization"]
+  const allowedMethods = config?.methods ?? ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+  const allowedCredentials = config?.credentials ?? false
+  const exposedHeaders = config?.exposedHeaders ?? []
+
+  ctx.setHeader('Access-Control-Allow-Methods',allowedMethods)
+  ctx.setHeader("Access-Control-Allow-Headers", allowedHeaders);
+  ctx.setHeader("Access-Control-Allow-Credentials", allowedCredentials);
+  if (exposedHeaders.length) {
+    ctx.setHeader("Access-Control-Expose-Headers", exposedHeaders);
+  }
+
+  if (allowedOrigins === '*'){
+    ctx.setHeader("Access-Control-Allow-Origin", "*")
+  } else if (Array.isArray(allowedOrigins)){
+    if (origin && allowedOrigins.includes(origin)) {
+      ctx.setHeader("Access-Control-Allow-Origin",origin)
+    } else if(allowedOrigins.includes('*')){
+      ctx.setHeader("Access-Control-Allow-Origin",'*')
+    }
+    else {
+      return ctx.status(403).json({ message: "CORS not allowed" })
+    }
+  } else if (typeof allowedOrigins === 'string'){
+    if(origin === allowedOrigins){
+      ctx.setHeader("Access-Control-Allow-Origin",origin)
+    }
+    else {
+      return ctx.status(403).json({ message: "CORS not allowed" });
+    }
+  } else {
+    return ctx.status(403).json({ message: "CORS not allowed" })
+  }
+
+  ctx.setHeader("Access-Control-Allow-Origin",origin)
+
+  if (req.method === 'OPTIONS') {
+    ctx.setHeader('Access-Control-Max-Age','86400')
+    return ctx.status(204).text('')
+  }
+
+  return null
+}
