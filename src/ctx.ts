@@ -1,6 +1,7 @@
+import { Server } from "bun";
 import type { ContextType, CookieOptions, ParseBodyResult } from "./types";
 
-export default function createCtx(req: Request, url: URL): ContextType {
+export default function createCtx(req: Request, server:Server ,url: URL): ContextType {
   let headers: Headers = new Headers()
   let settedValue: Record<string, string> = {};
   let isAuthenticated: boolean = false;
@@ -12,6 +13,7 @@ export default function createCtx(req: Request, url: URL): ContextType {
 
   return {
     req,
+    server,
     url,
     next: () => { },
 
@@ -19,6 +21,10 @@ export default function createCtx(req: Request, url: URL): ContextType {
     status(status: number): ContextType {
       responseStatus = status;
       return this;
+    },
+
+    getIP(){
+      return this.server.requestIP(this.req)
     },
 
     async body(): Promise<any> {

@@ -1,8 +1,10 @@
+import { Server } from "bun";
 
 export type listenCalllBackType = () => void;
-export type handlerFunction = (ctx: ContextType) => Response | Promise<Response | null | void>;
-export type HookFunction = (ctx:ContextType ,result?: Response | null | void,) => Response | Promise<Response | null | void>
-export type onSendHookFunc = (result?: Response | null | void, ctx?:ContextType) => Response | Promise<Response | null | void>
+export type handlerFunction = (ctx: ContextType, server?: Server) => Response | Promise<Response | null | void>;
+export type middlewareFunc = (ctx:ContextType,server?:Server) => void | Response | Promise<Response>
+export type HookFunction = (ctx: ContextType, result?: Response | null | void, server?: Server) => Response | Promise<Response | null | void>
+// export type onSendHookFunc = (result?: Response | null | void, ctx?:ContextType) => Response | Promise<Response | null | void>
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD";
 
 export enum HookType {
@@ -25,9 +27,11 @@ export interface Hooks {
 
 export interface ContextType {
     req: Request;
+    server: Server;
     url: URL;
     next: () => void;
     status: (status: number) => this;
+    getIP: () => any;
     body: () => Promise<any>;
     setHeader: (key: string, value: any) => this;
     set: (key: string, value: any) => this;
@@ -45,27 +49,27 @@ export interface ContextType {
     getCookie: (cookieName?: string) => Promise<any>;
 }
 
-export interface CookieOptions { 
-    maxAge?:number
-    expires?:Date
-    path?:string
-    domain?:string
-    secure?:boolean
-    httpOnly?:boolean
+export interface CookieOptions {
+    maxAge?: number
+    expires?: Date
+    path?: string
+    domain?: string
+    secure?: boolean
+    httpOnly?: boolean
     sameSite?: "Strict" | "Lax" | "None";
 }
 
 export interface RouteNodeType {
     path: string;
-    handler: Function[]; 
+    handler: Function[];
     method: string[];
 }
 
-export interface RouteHandlerT{
-    method:string;
-    handler: (ctx:ContextType) => Promise<Response | null | void>;
+export interface RouteHandlerT {
+    method: string;
+    handler: (ctx: ContextType) => Promise<Response | null | void>;
     isDynamic?: boolean;
-    path?:string;
+    path?: string;
 }
 
 
@@ -75,19 +79,19 @@ export interface DieselT {
     hasPreHandlerHook: boolean;
     hasPostHandlerHook: boolean;
     hasOnSendHook: boolean;
-    hooks:{
-        onRequest: ((ctx:ContextType) =>void) | null
-        preHandler:( (ctx:ContextType) => Promise<Response | void | null>) | null
-        postHandler: ((ctx: ContextType) => Promise<Response | void | null>) | null; // Updated to include Response | null
-        onSend: ((ctx?: ContextType, result?: Response | null | void) => Promise<Response | void | null>) | null;
+    hooks: {
+        onRequest: ((ctx: ContextType, serer?: Server) => void) | null
+        preHandler: ((ctx: ContextType, serer?: Server) => Promise<Response | void | null>) | null
+        postHandler: ((ctx: ContextType, serer?: Server) => Promise<Response | void | null>) | null; // Updated to include Response | null
+        onSend: ((ctx?: ContextType, result?: Response | null | void, serer?: Server) => Promise<Response | void | null>) | null;
     };
-    corsConfig : corsT | null
-    globalMiddlewares: Array<(ctx:ContextType) => Promise<Response | null | void >>
-    middlewares: Map< string , Array<(ctx:ContextType) => Promise<Response | null | void >>>
+    corsConfig: corsT | null
+    globalMiddlewares: Array<(ctx: ContextType, serer?: Server) => void | Promise<Response | null | void>>
+    middlewares: Map<string, Array<(ctx: ContextType, serer?: Server) => void | Promise<Response | null | void>>>
     trie: {
         search: (pathname: string, method: string) => RouteHandlerT | undefined;
     };
-} 
+}
 
 export interface RouteCache {
     [key: string]: RouteHandlerT | undefined;
@@ -95,17 +99,17 @@ export interface RouteCache {
 
 declare global {
     interface Request {
-      routePattern?: string; // Add the custom property
+        routePattern?: string; // Add the custom property
     }
-  }
-  
+}
+
 export interface ParseBodyResult {
     error?: string; // Optional error field
     data?: any; // The parsed data field
-    
+
 }
 
-export interface RouteT{
+export interface RouteT {
     method: string
     handler: handlerFunction
 }
@@ -116,7 +120,7 @@ export type corsT = {
     allowedHeaders?: string | string[] | null
     exposedHeaders?: string | string[] | null
     credentials?: boolean | null;
-  maxAge?: number;
-  preflightContinue?: boolean;
-  optionsSuccessStatus?: number;
+    maxAge?: number;
+    preflightContinue?: boolean;
+    optionsSuccessStatus?: number;
 } | null

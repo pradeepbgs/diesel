@@ -1,14 +1,29 @@
-import {Diesel} from "../dist/main";
+import {Diesel, rateLimit} from "../src/main";
 
 const app = new Diesel()
 
-app.cors({
-  origin: ['http://localhost:5173','*'],
-  methods: 'GET,POST,PUT,DELETE',
-  allowedHeaders: 'Content-Type,Authorization'
-})
+// app.cors({
+//   origin: ['http://localhost:5173','*'],
+//   methods: 'GET,POST,PUT,DELETE',
+//   allowedHeaders: 'Content-Type,Authorization'
+// })
+
+function h() {
+  // console.log('object')
+}
+
+const limiter = rateLimit({
+  time: 60000,  // Time window in milliseconds (e.g., 1 minute)
+  max: 10,     // Maximum number of requests allowed in the time window
+  message: "Rate limit exceeded. Please try again later." // Custom error message
+});
+app.use(h)
+app.use(limiter)
+
 
 app.get("/", async(xl) => {
+  // const ip = xl.req
+  // console.log(ip)
     return xl.json({
       message: 'Hello from Express!',
       author: 'Pradeep',
