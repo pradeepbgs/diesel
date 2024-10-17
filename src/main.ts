@@ -1,6 +1,7 @@
 import Trie from "./trie.js";
 import handleRequest from "./handleRequest.js";
 import { 
+  corsT,
   HookType, 
   type handlerFunction, 
   type Hooks, 
@@ -20,12 +21,14 @@ class Diesel {
   hasPostHandlerHook: boolean;
   hasOnSendHook: boolean;
   hooks : Hooks
+  corsConfig : corsT
 
   constructor() {
     this.routes = new Map();
     this.globalMiddlewares = [];
     this.middlewares = new Map();
     this.trie = new Trie();
+    this.corsConfig = null;
     this.hasMiddleware = false;
     this.hasOnReqHook=false;
     this.hasPreHandlerHook=false;
@@ -39,6 +42,10 @@ class Diesel {
       onError: null,
       onClose: null
     }
+  }
+
+  cors(corsConfig:corsT){
+    this.corsConfig = corsConfig
   }
 
   addHooks(typeOfHook:HookType,fnc:handlerFunction) :void {

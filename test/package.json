@@ -2,6 +2,9 @@
   "name": ".",
   "module": "index.ts",
   "type": "module",
+  "scripts": {
+    "test": ""
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },

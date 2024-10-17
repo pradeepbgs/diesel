@@ -1,9 +1,20 @@
-import {Diesel} from "../dist/main.js";
+import {Diesel} from "../dist/main";
 
 const app = new Diesel()
 
+app.cors({
+  origin: ['http://localhost:5173','*'],
+  methods: 'GET,POST,PUT,DELETE',
+  allowedHeaders: 'Content-Type,Authorization'
+})
+
 app.get("/", async(xl) => {
-    return xl.json({ msg: "hello" });
+    return xl.json({
+      message: 'Hello from Express!',
+      author: 'Pradeep',
+      app: 'Express App',
+      features: ['Fast', 'Flexible', 'Lightweight']
+    });
 });
 
 app.get("/test/:id", async (xl) => {

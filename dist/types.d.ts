@@ -72,6 +72,7 @@ export interface DieselT {
         postHandler: ((ctx: ContextType) => Promise<Response | void | null>) | null;
         onSend: ((ctx?: ContextType, result?: Response | null | void) => Promise<Response | void | null>) | null;
     };
+    corsConfig: corsT | null;
     globalMiddlewares: Array<(ctx: ContextType) => Promise<Response | null | void>>;
     middlewares: Map<string, Array<(ctx: ContextType) => Promise<Response | null | void>>>;
     trie: {
@@ -94,3 +95,13 @@ export interface RouteT {
     method: string;
     handler: handlerFunction;
 }
+export type corsT = {
+    origin?: string | string[] | null;
+    methods?: string | string[] | null;
+    allowedHeaders?: string | string[] | null;
+    exposedHeaders?: string | string[] | null;
+    credentials?: boolean | null;
+    maxAge?: number;
+    preflightContinue?: boolean;
+    optionsSuccessStatus?: number;
+} | null;

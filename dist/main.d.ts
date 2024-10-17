@@ -1,5 +1,5 @@
 import Trie from "./trie.js";
-import { HookType, type handlerFunction, type Hooks, type listenCalllBackType } from "./types.js";
+import { corsT, HookType, type handlerFunction, type Hooks, type listenCalllBackType } from "./types.js";
 declare class Diesel {
     #private;
     routes: Map<String, any>;
@@ -12,7 +12,9 @@ declare class Diesel {
     hasPostHandlerHook: boolean;
     hasOnSendHook: boolean;
     hooks: Hooks;
+    corsConfig: corsT;
     constructor();
+    cors(corsConfig: corsT): void;
     addHooks(typeOfHook: HookType, fnc: handlerFunction): void;
     compile(): void;
     listen(port: number, callback?: listenCalllBackType, { sslCert, sslKey }?: any): void | import("bun").Server;
