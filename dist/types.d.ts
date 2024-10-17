@@ -1,7 +1,8 @@
+import { Server } from "bun";
 export type listenCalllBackType = () => void;
-export type handlerFunction = (ctx: ContextType) => Response | Promise<Response | null | void>;
-export type HookFunction = (ctx: ContextType, result?: Response | null | void) => Response | Promise<Response | null | void>;
-export type onSendHookFunc = (result?: Response | null | void, ctx?: ContextType) => Response | Promise<Response | null | void>;
+export type handlerFunction = (ctx: ContextType, server?: Server) => Response | Promise<Response | null | void>;
+export type middlewareFunc = (ctx: ContextType, server?: Server) => void | Response | Promise<Response>;
+export type HookFunction = (ctx: ContextType, result?: Response | null | void, server?: Server) => Response | Promise<Response | null | void>;
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD";
 export declare enum HookType {
     onRequest = "onRequest",
@@ -21,9 +22,11 @@ export interface Hooks {
 }
 export interface ContextType {
     req: Request;
+    server: Server;
     url: URL;
     next: () => void;
     status: (status: number) => this;
+    getIP: () => any;
     body: () => Promise<any>;
     setHeader: (key: string, value: any) => this;
     set: (key: string, value: any) => this;
@@ -67,14 +70,14 @@ export interface DieselT {
     hasPostHandlerHook: boolean;
     hasOnSendHook: boolean;
     hooks: {
-        onRequest: ((ctx: ContextType) => void) | null;
-        preHandler: ((ctx: ContextType) => Promise<Response | void | null>) | null;
-        postHandler: ((ctx: ContextType) => Promise<Response | void | null>) | null;
-        onSend: ((ctx?: ContextType, result?: Response | null | void) => Promise<Response | void | null>) | null;
+        onRequest: ((ctx: ContextType, serer?: Server) => void) | null;
+        preHandler: ((ctx: ContextType, serer?: Server) => Promise<Response | void | null>) | null;
+        postHandler: ((ctx: ContextType, serer?: Server) => Promise<Response | void | null>) | null;
+        onSend: ((ctx?: ContextType, result?: Response | null | void, serer?: Server) => Promise<Response | void | null>) | null;
     };
     corsConfig: corsT | null;
-    globalMiddlewares: Array<(ctx: ContextType) => Promise<Response | null | void>>;
-    middlewares: Map<string, Array<(ctx: ContextType) => Promise<Response | null | void>>>;
+    globalMiddlewares: Array<(ctx: ContextType, serer?: Server) => void | Promise<Response | null | void>>;
+    middlewares: Map<string, Array<(ctx: ContextType, serer?: Server) => void | Promise<Response | null | void>>>;
     trie: {
         search: (pathname: string, method: string) => RouteHandlerT | undefined;
     };

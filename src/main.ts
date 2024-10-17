@@ -1,27 +1,31 @@
 import Trie from "./trie.js";
 import handleRequest from "./handleRequest.js";
-import { 
+import {
+  ContextType,
   corsT,
-  HookType, 
-  type handlerFunction, 
-  type Hooks, 
-  type HttpMethod, 
-  type listenCalllBackType, 
-  type RouteNodeType 
+  HookFunction,
+  HookType,
+  middlewareFunc,
+  type handlerFunction,
+  type Hooks,
+  type HttpMethod,
+  type listenCalllBackType,
+  type RouteNodeType
 } from "./types.js";
+import { Server } from "bun";
 
 class Diesel {
-  routes : Map<String,any>;
-  globalMiddlewares : handlerFunction[] 
-  middlewares: Map<string,handlerFunction[]>;
-  trie :Trie
+  routes: Map<String, any>;
+  globalMiddlewares: middlewareFunc[]
+  middlewares: Map<string, middlewareFunc[]>;
+  trie: Trie
   hasOnReqHook: boolean;
   hasMiddleware: boolean;
   hasPreHandlerHook: boolean;
   hasPostHandlerHook: boolean;
   hasOnSendHook: boolean;
-  hooks : Hooks
-  corsConfig : corsT
+  hooks: Hooks
+  corsConfig: corsT
 
   constructor() {
     this.routes = new Map();
@@ -30,10 +34,10 @@ class Diesel {
     this.trie = new Trie();
     this.corsConfig = null;
     this.hasMiddleware = false;
-    this.hasOnReqHook=false;
-    this.hasPreHandlerHook=false;
-    this.hasPostHandlerHook=false;
-    this.hasOnSendHook=false;
+    this.hasOnReqHook = false;
+    this.hasPreHandlerHook = false;
+    this.hasPostHandlerHook = false;
+    this.hasOnSendHook = false;
     this.hooks = {
       onRequest: null,
       preHandler: null,
@@ -44,15 +48,15 @@ class Diesel {
     }
   }
 
-  cors(corsConfig:corsT){
+  cors(corsConfig: corsT) {
     this.corsConfig = corsConfig
   }
 
-  addHooks(typeOfHook:HookType,fnc:handlerFunction) :void {
-    if(typeof typeOfHook !== 'string'){
+  addHooks(typeOfHook: HookType, fnc: HookFunction): void {
+    if (typeof typeOfHook !== 'string') {
       throw new Error("hookName must be a string")
     }
-    if(typeof fnc !== 'function'){
+    if (typeof fnc !== 'function') {
       throw new Error("callback must be a instance of function")
     }
     if (this.hooks.hasOwnProperty(typeOfHook)) {
@@ -62,7 +66,7 @@ class Diesel {
     }
   }
 
-  compile():void {
+  compile(): void {
     if (this.globalMiddlewares.length > 0) {
       this.hasMiddleware = true;
     }
@@ -71,34 +75,34 @@ class Diesel {
         this.hasMiddleware = true;
         break;
       }
-    } 
+    }
 
     // check if hook is present or not
-    if (this.hooks.onRequest) this.hasOnReqHook=true;
-    if(this.hooks.preHandler) this.hasPreHandlerHook=true;
-    if(this.hooks.postHandler) this.hasPostHandlerHook=true;
-    if(this.hooks.onSend) this.hasOnSendHook=true;
-    
+    if (this.hooks.onRequest) this.hasOnReqHook = true;
+    if (this.hooks.preHandler) this.hasPreHandlerHook = true;
+    if (this.hooks.postHandler) this.hasPostHandlerHook = true;
+    if (this.hooks.onSend) this.hasOnSendHook = true;
+
   }
 
-  listen(port:number, callback?:listenCalllBackType,{ sslCert = null, sslKey = null }:any = {}) {
+  listen(port: number, callback?: listenCalllBackType, { sslCert = null, sslKey = null }: any = {}) {
     if (typeof Bun === 'undefined')
       throw new Error(
-          '.listen() is designed to run on Bun only...'
+        '.listen() is designed to run on Bun only...'
       )
-      
+
     if (typeof port !== "number") {
       throw new Error('Port must be a numeric value')
     }
 
     this.compile();
     const dieselInstance = this as Diesel
-    const options:any = {
+    const options: any = {
       port,
-      fetch: async (req:Request) => {
+      fetch: async (req: Request, server: Server) => {
         const url = new URL(req.url);
         try {
-          return await handleRequest(req, url,this);
+          return await handleRequest(req, server, url, this);
         } catch (error) {
           return new Response("Internal Server Error", { status: 500 });
         }
@@ -111,7 +115,7 @@ class Diesel {
     if (sslCert && sslKey) {
       options.certFile = sslCert;
       options.keyFile = sslKey;
-    } 
+    }
     const server = Bun.serve(options);
 
     // Bun?.gc(false)
@@ -119,33 +123,33 @@ class Diesel {
     if (typeof callback === "function") {
       return callback();
     }
-    
+
     if (sslCert && sslKey) {
-        console.log(`HTTPS server is running on https://localhost:${port}`);
+      console.log(`HTTPS server is running on https://localhost:${port}`);
     } else {
-        console.log(`HTTP server is running on http://localhost:${port}`);
+      console.log(`HTTP server is running on http://localhost:${port}`);
     }
 
     return server;
   }
 
-  register(pathPrefix:string, handlerInstance:any) {
+  register(pathPrefix: string, handlerInstance: any) {
     if (typeof pathPrefix !== 'string') {
       throw new Error("path must be a string")
     }
-   if(typeof handlerInstance !== 'object'){
-    throw new Error("handler parameter should be a instance of router object",handlerInstance)
-   }
-    const routeEntries:[string,RouteNodeType][] = Object.entries(handlerInstance.trie.root.children) as [string,RouteNodeType][];
+    if (typeof handlerInstance !== 'object') {
+      throw new Error("handler parameter should be a instance of router object", handlerInstance)
+    }
+    const routeEntries: [string, RouteNodeType][] = Object.entries(handlerInstance.trie.root.children) as [string, RouteNodeType][];
 
-    handlerInstance.trie.root.subMiddlewares.forEach((middleware:handlerFunction[], path:string) => {
+    handlerInstance.trie.root.subMiddlewares.forEach((middleware: middlewareFunc[], path: string) => {
       if (!this.middlewares.has(pathPrefix + path)) {
         this.middlewares.set(pathPrefix + path, []);
       }
 
-      middleware?.forEach((midl:handlerFunction)=>{
-        if(!this.middlewares.get(pathPrefix+path)?.includes(midl)){
-          this.middlewares.get(pathPrefix+path)?.push(midl)
+      middleware?.forEach((midl: middlewareFunc) => {
+        if (!this.middlewares.get(pathPrefix + path)?.includes(midl)) {
+          this.middlewares.get(pathPrefix + path)?.push(midl)
         }
       })
 
@@ -159,39 +163,40 @@ class Diesel {
     handlerInstance.trie = new Trie();
   }
 
-  #addRoute(method:HttpMethod, path:string, handlers:handlerFunction[]) {
-    if(typeof path !== "string"){
+  #addRoute(method: HttpMethod, path: string, handlers: handlerFunction[]) {
+    if (typeof path !== "string") {
       throw new Error("Path must be a string type");
     }
-    if(typeof method !== "string"){
+    if (typeof method !== "string") {
       throw new Error("method must be a string type");
     }
-    const middlewareHandlers:handlerFunction[] = handlers.slice(0, -1);
+    const middlewareHandlers = handlers.slice(0, -1) as middlewareFunc[]
     const handler = handlers[handlers.length - 1];
-    
+
     if (!this.middlewares.has(path)) {
       this.middlewares.set(path, []);
     }
-      middlewareHandlers.forEach((middleware:handlerFunction) => {
-        if (path ==='/') {
-          if (!this.globalMiddlewares.includes(middleware)) {
-            this.globalMiddlewares.push(middleware);
-          }
-        } else {
-          if(!this.middlewares.get(path)?.includes(middleware)){
-            this.middlewares.get(path)?.push(middleware)
-          }
+    middlewareHandlers.forEach((middleware: middlewareFunc) => {
+      if (path === '/') {
+        if (!this.globalMiddlewares.includes(middleware)) {
+          this.globalMiddlewares.push(middleware);
         }
-      });
+      } else {
+        if (!this.middlewares.get(path)?.includes(middleware)) {
+          this.middlewares.get(path)?.push(middleware)
+        }
+      }
+    });
 
     this.trie.insert(path, { handler, method });
   }
 
-  use(pathORHandler:string | handlerFunction, handler:handlerFunction) {
+  use(pathORHandler?: string | middlewareFunc, handler?: middlewareFunc) {
     if (typeof pathORHandler === "function") {
       if (!this.globalMiddlewares.includes(pathORHandler)) {
-        return this.globalMiddlewares.push(pathORHandler);
+        this.globalMiddlewares.push(pathORHandler);
       }
+      return
     }
     // now it means it is path midl
     const path: string = pathORHandler as string;
@@ -200,35 +205,77 @@ class Diesel {
       this.middlewares.set(path, []);
     }
 
-    if (!this.middlewares.get(path)?.includes(handler)) {
-      this.middlewares.get(path)?.push(handler);
+    if (handler) {
+      if (!this.middlewares.get(path)?.includes(handler)) {
+        this.middlewares.get(path)?.push(handler);
+      }
     }
   }
 
-  get(path:string, ...handlers:handlerFunction[]) {
-     this.#addRoute("GET", path, handlers);
-     return this
+  get(path: string, ...handlers: handlerFunction[]) {
+    this.#addRoute("GET", path, handlers);
+    return this
   }
 
-  post(path:string, ...handlers:handlerFunction[]) {
+  post(path: string, ...handlers: handlerFunction[]) {
     this.#addRoute("POST", path, handlers);
     return this
   }
 
-  put(path:string, ...handlers:handlerFunction[]) {
+  put(path: string, ...handlers: handlerFunction[]) {
     this.#addRoute("PUT", path, handlers);
     return this
   }
 
-  patch(path:string, ...handlers:handlerFunction[]) {
+  patch(path: string, ...handlers: handlerFunction[]) {
     this.#addRoute("PATCH", path, handlers);
     return this
   }
 
-  delete(path:any, ...handlers:handlerFunction[]) {
-     this.#addRoute("DELETE", path, handlers);
-     return this;
+  delete(path: any, ...handlers: handlerFunction[]) {
+    this.#addRoute("DELETE", path, handlers);
+    return this;
   }
 }
 
-export {Diesel}
+function rateLimit(props: { time?: number; max?: number; message?: string })  {
+  const {
+    time: windowMs = 60000,
+    max = 100,
+    message = "Rate limit exceeded. Please try again later."
+  } = props;
+
+  const requests = new Map<string, { count: number, startTime: any }>()
+
+  return  (ctx: ContextType) : void | Response => {
+    const currentTime:any = new Date()
+    const socketIP = ctx.getIP().address
+
+    if (!requests.has(socketIP)) {
+      requests.set(socketIP, { count: 0, startTime: currentTime })
+    } 
+      const requestInfo = requests.get(socketIP)
+      if (requestInfo) {
+        if (currentTime - requestInfo.startTime > windowMs) {
+          requestInfo.count = 1
+          requestInfo.startTime = currentTime
+        } else {
+          requestInfo.count++
+        }
+      }
+
+      if (requestInfo && requestInfo.count > max) {
+        return ctx.status(429).json({
+          error: message 
+        })
+      }
+    
+    ctx.next()
+
+  }
+}
+
+export {
+  Diesel,
+  rateLimit
+}

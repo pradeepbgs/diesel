@@ -1,30 +1,30 @@
+import { Server } from "bun";
 import createCtx from "./ctx";
-import type { ContextType, corsT, DieselT, handlerFunction, RouteCache, RouteHandlerT } from "./types";
+import type { ContextType, corsT, DieselT, handlerFunction, middlewareFunc, RouteCache, RouteHandlerT } from "./types";
 
 const routeCache:RouteCache = {}
 
-export default async function handleRequest(req:Request, url:URL, diesel:DieselT): Promise<Response> {
+export default async function handleRequest(req:Request, server:Server ,url:URL, diesel:DieselT): Promise<Response> {
 
-  const ctx:ContextType = createCtx(req, url);
+  const ctx:ContextType = createCtx(req, server,url);
 
   if (diesel.corsConfig) {
-    const corsResult = await applyCors(req,ctx,diesel.corsConfig)
+    const corsResult = await applyCors(req, ctx, diesel.corsConfig)
     if(corsResult) return corsResult;
   }
   // OnReq hook 1
   if (diesel.hasOnReqHook && diesel.hooks.onRequest) {
-    await diesel.hooks.onRequest(ctx)
+    await diesel.hooks.onRequest(ctx,server)
   }
 
   // middleware execution 
   if (diesel.hasMiddleware) {
-    
-    const middlewares : handlerFunction[] = [
+    const middlewares  = [
       ...diesel.globalMiddlewares,
       ...diesel.middlewares.get(url.pathname) || []
-    ] 
+    ]  as  middlewareFunc[]
 
-    const middlewareResult = await executeMiddleware(middlewares, ctx);
+    const middlewareResult = await executeMiddleware(middlewares, ctx,server);
     if (middlewareResult) return middlewareResult;
 
   }
@@ -79,15 +79,15 @@ export default async function handleRequest(req:Request, url:URL, diesel:DieselT
 }
 
 // middleware execution
-async function executeMiddleware(middlewares:handlerFunction[], ctx:ContextType): Promise<Response | null | void> {
+async function executeMiddleware(middlewares: middlewareFunc[], ctx: ContextType, server: Server): Promise<Response | null | void> {
   for (const middleware of middlewares) {
-    const result = await middleware(ctx);
+    const result = await middleware(ctx,server);
     if (result) return result; 
   }
 }
 
 
-async function applyCors(req:Request,ctx:ContextType,config:corsT={}) : Promise<Response | null> {
+async function applyCors(req:Request,ctx:ContextType,config:corsT={}) :Promise<Response | null> {
   const origin = req.headers.get('origin') ?? '*'
   const allowedOrigins = config?.origin
   const allowedHeaders = config?.allowedHeaders ?? ["Content-Type", "Authorization"]
