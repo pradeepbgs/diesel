@@ -1,8 +1,9 @@
 import Trie from "./trie.js";
 import handleRequest from "./handleRequest.js";
+import rateLimit from "./utils.js";
 import {
-  ContextType,
   corsT,
+  FilterMethods,
   HookFunction,
   HookType,
   middlewareFunc,
@@ -14,8 +15,11 @@ import {
 } from "./types.js";
 import { Server } from "bun";
 
+
+
+
 class Diesel {
-  routes: Map<String, any>;
+  routes : string[] | undefined
   globalMiddlewares: middlewareFunc[]
   middlewares: Map<string, middlewareFunc[]>;
   trie: Trie
@@ -26,9 +30,13 @@ class Diesel {
   hasOnSendHook: boolean;
   hooks: Hooks
   corsConfig: corsT
+  filters: string[]
+  filterFunction : middlewareFunc | null
 
   constructor() {
-    this.routes = new Map();
+    this.routes = []
+    this.filters = []
+    this.filterFunction = null
     this.globalMiddlewares = [];
     this.middlewares = new Map();
     this.trie = new Trie();
@@ -48,11 +56,42 @@ class Diesel {
     }
   }
 
+  
+  filter() :FilterMethods {
+
+    return {
+      routeMatcher: (...routes:string[]) => {
+        this.routes = routes.sort()
+        return this.filter();
+      },
+
+      permitAll: () => {
+        for(const route of this?.routes!){
+          this.filters.push(route)
+        }
+        // this.routes = []
+        return this.filter()
+      },
+
+      require: (fnc?:middlewareFunc) => {
+        if(!fnc || typeof fnc !== 'function' ){
+          return new Response(JSON.stringify({
+            message:"Authentication required"
+          }),{status:400})
+        }
+        this.filterFunction = fnc
+      }
+    };
+  }
+
   cors(corsConfig: corsT) {
     this.corsConfig = corsConfig
   }
 
-  addHooks(typeOfHook: HookType, fnc: HookFunction): void {
+  addHooks(
+    typeOfHook: HookType, 
+    fnc: HookFunction
+  ): void {
     if (typeof typeOfHook !== 'string') {
       throw new Error("hookName must be a string")
     }
@@ -85,7 +124,12 @@ class Diesel {
 
   }
 
-  listen(port: number, callback?: listenCalllBackType, { sslCert = null, sslKey = null }: any = {}) {
+  listen(
+    port: number, 
+    callback?: listenCalllBackType, 
+    { sslCert = null, sslKey = null }: any = {}
+  ) : Server | void {
+
     if (typeof Bun === 'undefined')
       throw new Error(
         '.listen() is designed to run on Bun only...'
@@ -133,7 +177,10 @@ class Diesel {
     return server;
   }
 
-  register(pathPrefix: string, handlerInstance: any) {
+  register(
+    pathPrefix: string, 
+    handlerInstance: any
+  ) : void {
     if (typeof pathPrefix !== 'string') {
       throw new Error("path must be a string")
     }
@@ -163,7 +210,12 @@ class Diesel {
     handlerInstance.trie = new Trie();
   }
 
-  #addRoute(method: HttpMethod, path: string, handlers: handlerFunction[]) {
+  #addRoute(
+    method: HttpMethod, 
+    path: string, 
+    handlers: handlerFunction[]
+  ) : void {
+
     if (typeof path !== "string") {
       throw new Error("Path must be a string type");
     }
@@ -191,7 +243,11 @@ class Diesel {
     this.trie.insert(path, { handler, method });
   }
 
-  use(pathORHandler?: string | middlewareFunc, handler?: middlewareFunc) {
+  use(
+    pathORHandler?: string | middlewareFunc, 
+    handler?: middlewareFunc
+  ) : void {
+
     if (typeof pathORHandler === "function") {
       if (!this.globalMiddlewares.includes(pathORHandler)) {
         this.globalMiddlewares.push(pathORHandler);
@@ -212,70 +268,47 @@ class Diesel {
     }
   }
 
-  get(path: string, ...handlers: handlerFunction[]) {
+  get(
+    path: string, 
+    ...handlers: handlerFunction[]
+  ) : this {
     this.#addRoute("GET", path, handlers);
     return this
   }
 
-  post(path: string, ...handlers: handlerFunction[]) {
+  post(
+    path: string, 
+    ...handlers: handlerFunction[]
+  ): this {
     this.#addRoute("POST", path, handlers);
     return this
   }
 
-  put(path: string, ...handlers: handlerFunction[]) {
+  put(path: string, ...handlers: handlerFunction[]) : this{
     this.#addRoute("PUT", path, handlers);
     return this
   }
 
-  patch(path: string, ...handlers: handlerFunction[]) {
+  patch(
+    path: string, 
+    ...handlers: handlerFunction[]
+  ) : this {
     this.#addRoute("PATCH", path, handlers);
     return this
   }
 
-  delete(path: any, ...handlers: handlerFunction[]) {
+  delete(
+    path: any, 
+    ...handlers: handlerFunction[]
+  ) : this {
     this.#addRoute("DELETE", path, handlers);
     return this;
   }
 }
 
-function rateLimit(props: { time?: number; max?: number; message?: string })  {
-  const {
-    time: windowMs = 60000,
-    max = 100,
-    message = "Rate limit exceeded. Please try again later."
-  } = props;
-
-  const requests = new Map<string, { count: number, startTime: any }>()
-
-  return  (ctx: ContextType) : void | Response => {
-    const currentTime:any = new Date()
-    const socketIP = ctx.getIP().address
-
-    if (!requests.has(socketIP)) {
-      requests.set(socketIP, { count: 0, startTime: currentTime })
-    } 
-      const requestInfo = requests.get(socketIP)
-      if (requestInfo) {
-        if (currentTime - requestInfo.startTime > windowMs) {
-          requestInfo.count = 1
-          requestInfo.startTime = currentTime
-        } else {
-          requestInfo.count++
-        }
-      }
-
-      if (requestInfo && requestInfo.count > max) {
-        return ctx.status(429).json({
-          error: message 
-        })
-      }
-    
-    ctx.next()
-
-  }
-}
 
 export {
   Diesel,
-  rateLimit
+  rateLimit,
+  // filter
 }
