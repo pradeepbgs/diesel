@@ -1,42 +1,22 @@
 import { Server } from "bun";
 import createCtx from "./ctx";
 import type { ContextType, corsT, DieselT, handlerFunction, middlewareFunc, RouteCache, RouteHandlerT } from "./types";
+import { binaryS } from "./utils";
 
-const routeCache:RouteCache = {}
+// const routeCache:RouteCache = {}
 
 export default async function handleRequest(req:Request, server:Server ,url:URL, diesel:DieselT): Promise<Response> {
 
   const ctx:ContextType = createCtx(req, server,url);
 
-  if (diesel.corsConfig) {
-    const corsResult = await applyCors(req, ctx, diesel.corsConfig)
-    if(corsResult) return corsResult;
-  }
-  // OnReq hook 1
-  if (diesel.hasOnReqHook && diesel.hooks.onRequest) {
-    await diesel.hooks.onRequest(ctx,server)
-  }
-
-  // middleware execution 
-  if (diesel.hasMiddleware) {
-    const middlewares  = [
-      ...diesel.globalMiddlewares,
-      ...diesel.middlewares.get(url.pathname) || []
-    ]  as  middlewareFunc[]
-
-    const middlewareResult = await executeMiddleware(middlewares, ctx,server);
-    if (middlewareResult) return middlewareResult;
-
-  }
-
   // Try to find the route handler in the trie
-  let routeHandler :RouteHandlerT | undefined;
-  if(routeCache[url.pathname+req.method]) {
-    routeHandler = routeCache[url.pathname+req.method]
-  } else {
-    routeHandler = diesel.trie.search(url.pathname, req.method);
-    routeCache[url.pathname+req.method]=routeHandler
-  }
+  let routeHandler :RouteHandlerT | undefined = diesel.trie.search(url.pathname, req.method);; 
+  // if(routeCache[url.pathname+req.method]) {
+  //   routeHandler = routeCache[url.pathname+req.method]
+  // } else {
+  //   routeHandler = diesel.trie.search(url.pathname, req.method);
+  //   routeCache[url.pathname+req.method]=routeHandler
+  // }
 
   // Early return if route or method is not found
   if (!routeHandler || !routeHandler.handler) {
@@ -49,6 +29,50 @@ export default async function handleRequest(req:Request, server:Server ,url:URL,
 
   // If the route is dynamic, we only set routePattern if necessary
   if (routeHandler.isDynamic) req.routePattern = routeHandler.path;
+
+  if (diesel.corsConfig) {
+    const corsResult = await applyCors(req, ctx, diesel.corsConfig)
+    if(corsResult) return corsResult;
+  }
+
+  // OnReq hook 1
+  if (diesel.hasOnReqHook && diesel.hooks.onRequest) {
+    diesel.hooks.onRequest(ctx,server)
+  }
+
+
+  if (diesel.filters.length > 0) {
+    const path = req.routePattern ?? url.pathname
+    const hasRoute = diesel.filters.includes(path)
+ 
+    if (hasRoute === false) {
+      if (diesel.filterFunction) {
+        const filterResult = await diesel?.filterFunction(ctx)
+        if(filterResult) return filterResult
+      } 
+      else {
+        return new Response(JSON.stringify({
+          message:"Authentication required"
+        }),{status:400})
+      }
+    }
+  }
+
+  // middleware execution 
+  if (diesel.hasMiddleware) {
+    const middlewares  = [
+      ...diesel.globalMiddlewares,
+      ...diesel.middlewares.get(url.pathname) || []
+    ]  as  middlewareFunc[]
+
+    for (const middleware of middlewares) {
+      const result = await middleware(ctx,server);
+      if (result) return result; 
+    }
+
+  }
+
+  
 
   // Run preHandler hooks 2
   if (diesel.hasPreHandlerHook && diesel.hooks.preHandler) {

@@ -1,9 +1,10 @@
 import Trie from "./trie.js";
-import { ContextType, corsT, HookFunction, HookType, middlewareFunc, type handlerFunction, type Hooks, type listenCalllBackType } from "./types.js";
+import rateLimit from "./utils.js";
+import { corsT, FilterMethods, HookFunction, HookType, middlewareFunc, type handlerFunction, type Hooks, type listenCalllBackType } from "./types.js";
 import { Server } from "bun";
 declare class Diesel {
     #private;
-    routes: Map<String, any>;
+    routes: string[] | undefined;
     globalMiddlewares: middlewareFunc[];
     middlewares: Map<string, middlewareFunc[]>;
     trie: Trie;
@@ -14,11 +15,14 @@ declare class Diesel {
     hasOnSendHook: boolean;
     hooks: Hooks;
     corsConfig: corsT;
+    filters: string[];
+    filterFunction: middlewareFunc | null;
     constructor();
+    filter(): FilterMethods;
     cors(corsConfig: corsT): void;
     addHooks(typeOfHook: HookType, fnc: HookFunction): void;
     compile(): void;
-    listen(port: number, callback?: listenCalllBackType, { sslCert, sslKey }?: any): void | Server;
+    listen(port: number, callback?: listenCalllBackType, { sslCert, sslKey }?: any): Server | void;
     register(pathPrefix: string, handlerInstance: any): void;
     use(pathORHandler?: string | middlewareFunc, handler?: middlewareFunc): void;
     get(path: string, ...handlers: handlerFunction[]): this;
@@ -27,9 +31,4 @@ declare class Diesel {
     patch(path: string, ...handlers: handlerFunction[]): this;
     delete(path: any, ...handlers: handlerFunction[]): this;
 }
-declare function rateLimit(props: {
-    time?: number;
-    max?: number;
-    message?: string;
-}): (ctx: ContextType) => void | Response;
-export { Diesel, rateLimit };
+export { Diesel, rateLimit, };

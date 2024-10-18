@@ -9,7 +9,7 @@ const app = new Diesel()
 // })
 
 function h() {
-  // console.log('object')
+ return new Response("hello world")
 }
 
 const limiter = rateLimit({
@@ -17,9 +17,16 @@ const limiter = rateLimit({
   max: 10,     // Maximum number of requests allowed in the time window
   message: "Rate limit exceeded. Please try again later." // Custom error message
 });
-app.use(h)
-app.use(limiter)
+// app.use(h)
+// app.use(limiter)
 
+app
+.filter()
+.routeMatcher('/api/user/register','/api/user/login','/test/:id','/')
+.permitAll()
+.require()
+
+// .require(you can pass jwt auth parser)
 
 app.get("/", async(xl) => {
   // const ip = xl.req
@@ -37,5 +44,9 @@ app.get("/test/:id", async (xl) => {
     const params = xl.getParams('id');
     return new Response(JSON.stringify({ msg: "hello world", q, params }));
   });
+
+  app.get("/ok",(xl)=>{
+    return xl.status(200).text("kaise ho??")
+  })
 
 app.listen(3000)

@@ -85,6 +85,8 @@ export interface DieselT {
         postHandler: ((ctx: ContextType, serer?: Server) => Promise<Response | void | null>) | null; // Updated to include Response | null
         onSend: ((ctx?: ContextType, result?: Response | null | void, serer?: Server) => Promise<Response | void | null>) | null;
     };
+    filters: string[]
+    filterFunction: (ctx:ContextType) => void | Response | Promise<Response|void>
     corsConfig: corsT | null
     globalMiddlewares: Array<(ctx: ContextType, serer?: Server) => void | Promise<Response | null | void>>
     middlewares: Map<string, Array<(ctx: ContextType, serer?: Server) => void | Promise<Response | null | void>>>
@@ -124,3 +126,9 @@ export type corsT = {
     preflightContinue?: boolean;
     optionsSuccessStatus?: number;
 } | null
+
+export interface FilterMethods {
+    routeMatcher: (...routes: string[]) => FilterMethods;
+    permitAll: () => FilterMethods;
+    require: (fnc?: middlewareFunc) => Response | void;
+  }
