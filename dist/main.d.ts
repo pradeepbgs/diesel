@@ -2,7 +2,7 @@ import Trie from "./trie.js";
 import rateLimit from "./utils.js";
 import { corsT, FilterMethods, HookFunction, HookType, middlewareFunc, type handlerFunction, type Hooks, type listenCalllBackType } from "./types.js";
 import { Server } from "bun";
-declare class Diesel {
+export default class Diesel {
     #private;
     routes: string[] | undefined;
     globalMiddlewares: middlewareFunc[];
@@ -31,4 +31,4 @@ declare class Diesel {
     patch(path: string, ...handlers: handlerFunction[]): this;
     delete(path: any, ...handlers: handlerFunction[]): this;
 }
-export { Diesel, rateLimit, };
+export { rateLimit, };
