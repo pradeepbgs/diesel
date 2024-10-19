@@ -10,6 +10,9 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "jsonwebtoken": "^9.0.2"
+    "@types/jsonwebtoken": "^9.0.7",
+    "diesel-core": "^0.0.13",
+    "jsonwebtoken": "^9.0.2",
+    "jwt": "^0.2.0"
   }
 }

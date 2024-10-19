@@ -16,9 +16,7 @@ import {
 import { Server } from "bun";
 
 
-
-
-class Diesel {
+export default class Diesel {
   routes : string[] | undefined
   globalMiddlewares: middlewareFunc[]
   middlewares: Map<string, middlewareFunc[]>;
@@ -308,7 +306,5 @@ class Diesel {
 
 
 export {
-  Diesel,
   rateLimit,
-  // filter
 }

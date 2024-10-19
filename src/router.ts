@@ -1,4 +1,4 @@
-import {Diesel} from "./main";
+import Diesel from "./main";
 import type { handlerFunction, HttpMethod } from "./types";
 
 class Router extends Diesel {

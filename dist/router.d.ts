@@ -1,4 +1,4 @@
-import { Diesel } from "./main";
+import Diesel from "./main";
 import type { handlerFunction } from "./types";
 declare class Router extends Diesel {
     #private;
