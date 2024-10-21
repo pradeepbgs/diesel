@@ -35,11 +35,13 @@ const limiter = rateLimit({
 // app.use(h)
 // app.use(limiter)
 
-app
-.filter()
-.routeMatcher('/api/user/register','/api/user/login','/test/:id','/cookie')
-.permitAll()
-.require(authJwt)
+// app
+// .filter()
+// .routeMatcher('/api/user/register','/api/user/login','/test/:id','/cookie')
+// .permitAll()
+// .require(authJwt)
+
+app.use(authJwt)
 
 // .require(you can pass jwt auth parser)
 
