@@ -10,7 +10,7 @@ export default async function handleRequest(req: Request, server: Server, url: U
   const ctx: ContextType = createCtx(req, server, url);
 
   // Try to find the route handler in the trie
-  let routeHandler: RouteHandlerT | undefined = diesel.trie.search(url.pathname, req.method);;
+  let routeHandler: RouteHandlerT | undefined = diesel.trie.search(url.pathname, req.method)
   // if(routeCache[url.pathname+req.method]) {
   //   routeHandler = routeCache[url.pathname+req.method]
   // } else {
@@ -31,22 +31,29 @@ export default async function handleRequest(req: Request, server: Server, url: U
   // cors execution
   if (diesel.corsConfig) {
     const corsResult = await applyCors(req, ctx, diesel.corsConfig)
-    if(corsResult) return corsResult;
+    if (corsResult) return corsResult;
   }
 
   // OnReq hook 1
   if (diesel.hasOnReqHook && diesel.hooks.onRequest) diesel.hooks.onRequest(ctx, server)
 
   // filter applying
-  if (diesel.filters.length > 0) {
+  if (diesel.hasFilterEnabled) {
 
     const path = req.routePattern ?? url.pathname
     const hasRoute = diesel.filters.includes(path)
 
     if (hasRoute === false) {
       if (diesel.filterFunction) {
-        const filterResult = await diesel?.filterFunction(ctx, server)
-        if (filterResult) return filterResult
+        try {
+          const filterResult = await diesel.filterFunction(ctx, server)
+          if (filterResult) return filterResult
+        } catch (error) {
+          console.error("Error in filterFunction:", error);
+          return new Response(JSON.stringify({
+            message: "Internal Server Error"
+          }), { status: 500 });
+        }
       } else {
         return new Response(JSON.stringify({
           message: "Authentication required"
@@ -100,7 +107,7 @@ export default async function handleRequest(req: Request, server: Server, url: U
 }
 
 
-async function applyCors(req: Request, ctx: ContextType, config: corsT = {}): Promise<Response | null>  {
+async function applyCors(req: Request, ctx: ContextType, config: corsT = {}): Promise<Response | null> {
   const origin = req.headers.get('origin') ?? '*'
   const allowedOrigins = config?.origin
   const allowedHeaders = config?.allowedHeaders ?? ["Content-Type", "Authorization"]

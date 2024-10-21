@@ -3,6 +3,7 @@ import handleRequest from "./handleRequest.js";
 import rateLimit from "./utils.js";
 import {
   corsT,
+  DieselT,
   FilterMethods,
   HookFunction,
   HookType,
@@ -30,11 +31,10 @@ export default class Diesel {
   corsConfig: corsT
   filters: string[]
   filterFunction : middlewareFunc | null
+  hasFilterEnabled: boolean
 
   constructor() {
     this.routes = []
-    this.filters = []
-    this.filterFunction = null
     this.globalMiddlewares = [];
     this.middlewares = new Map();
     this.trie = new Trie();
@@ -52,10 +52,14 @@ export default class Diesel {
       onError: null,
       onClose: null
     }
+    this.filters = []
+    this.filterFunction = null
+    this.hasFilterEnabled = false
   }
 
   
   filter() :FilterMethods {
+    this.hasFilterEnabled = true
 
     return {
       routeMatcher: (...routes:string[]) => {
@@ -67,7 +71,6 @@ export default class Diesel {
         for(const route of this?.routes!){
           this.filters.push(route)
         }
-        // this.routes = []
         return this.filter()
       },
 
@@ -138,13 +141,13 @@ export default class Diesel {
     }
 
     this.compile();
-    const dieselInstance = this as Diesel
+
     const options: any = {
       port,
       fetch: async (req: Request, server: Server) => {
         const url = new URL(req.url);
         try {
-          return await handleRequest(req, server, url, this);
+          return await handleRequest(req, server, url, this as DieselT);
         } catch (error) {
           return new Response("Internal Server Error", { status: 500 });
         }
@@ -160,7 +163,7 @@ export default class Diesel {
     }
     const server = Bun.serve(options);
 
-    // Bun?.gc(false)
+    Bun?.gc(false)
 
     if (typeof callback === "function") {
       return callback();
@@ -252,7 +255,7 @@ export default class Diesel {
       }
       return
     }
-    // now it means it is path midl
+    
     const path: string = pathORHandler as string;
 
     if (!this.middlewares.has(path)) {
