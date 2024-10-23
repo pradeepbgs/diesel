@@ -59,9 +59,11 @@ class TrieNode {
         node = node.children[key];
         // Set dynamic route information if applicable
         node.isDynamic = isDynamic;
-        node.pattern = segment;  // Store the actual pattern like ':id'
+        node.pattern = segment;
+        node.method.push(route.method)
+        node.handler.push(route.handler)
+        node.path = path;  // Store the actual pattern like ':id'
       }
-    
       // After looping through the entire path, assign route details
       node.isEndOfWord = true;
       node.method.push(route.method);    
@@ -95,7 +97,7 @@ class TrieNode {
           node = node.children[key];
         }
       }
-    
+      
       // Method matching
       let routeMethodIndex = node.method.indexOf(method); // More efficient method match
       if (routeMethodIndex !== -1) {

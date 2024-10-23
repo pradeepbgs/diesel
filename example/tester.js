@@ -4,6 +4,8 @@ import jwt from "jsonwebtoken";
 const app = new Diesel();
 const secret = "secret";
 
+// app.filter().permitAll().require()
+
 app.get("/r", (xl) => {
   return xl.html(`${import.meta.dir}/index.html`);
 });

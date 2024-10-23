@@ -1,4 +1,4 @@
-import Router from "../src/router";
+import Router from "../src/route";
 
 const route = new Router();
 
@@ -10,7 +10,7 @@ const s = () =>{
   console.log('s')
 }
 
-route.get("/register", h,(xl) => {
+route.get("/register/:id", h,(xl) => {
   return xl.text("from register user");
 })
 
