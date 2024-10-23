@@ -1,0 +1,36 @@
+import Trie from "./trie.js";
+import rateLimit from "./utils.js";
+import { corsT, FilterMethods, HookFunction, HookType, middlewareFunc, type handlerFunction, type Hooks, type HttpMethod, type listenCalllBackType } from "./types.js";
+import { Server } from "bun";
+export default class Diesel {
+    routes: string[] | undefined;
+    globalMiddlewares: middlewareFunc[];
+    middlewares: Map<string, middlewareFunc[]>;
+    trie: Trie;
+    hasOnReqHook: boolean;
+    hasMiddleware: boolean;
+    hasPreHandlerHook: boolean;
+    hasPostHandlerHook: boolean;
+    hasOnSendHook: boolean;
+    hooks: Hooks;
+    corsConfig: corsT;
+    filters: string[];
+    filterFunction: middlewareFunc | null;
+    hasFilterEnabled: boolean;
+    wss: WebSocket | null | undefined;
+    constructor();
+    filter(): FilterMethods;
+    cors(corsConfig: corsT): void;
+    addHooks(typeOfHook: HookType, fnc: HookFunction): void;
+    compile(): void;
+    listen(port: number, callback?: listenCalllBackType, { sslCert, sslKey }?: any): Server | void;
+    register(pathPrefix: string, handlerInstance: any): void;
+    addRoute(method: HttpMethod, path: string, handlers: handlerFunction[]): void;
+    use(pathORHandler?: string | middlewareFunc, handler?: middlewareFunc): void;
+    get(path: string, ...handlers: handlerFunction[]): this;
+    post(path: string, ...handlers: handlerFunction[]): this;
+    put(path: string, ...handlers: handlerFunction[]): this;
+    patch(path: string, ...handlers: handlerFunction[]): this;
+    delete(path: any, ...handlers: handlerFunction[]): this;
+}
+export { rateLimit, };

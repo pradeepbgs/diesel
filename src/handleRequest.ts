@@ -3,14 +3,15 @@ import createCtx from "./ctx";
 import type { ContextType, corsT, DieselT, handlerFunction, middlewareFunc, RouteCache, RouteHandlerT } from "./types";
 
 
-// const routeCache:RouteCache = {}
+const routeCache:RouteCache = {}
 
 export default async function handleRequest(req: Request, server: Server, url: URL, diesel: DieselT): Promise<Response> {
 
   const ctx: ContextType = createCtx(req, server, url);
 
   // Try to find the route handler in the trie
-  let routeHandler: RouteHandlerT | undefined = diesel.trie.search(url.pathname, req.method)
+  let routeHandler: RouteHandlerT | undefined = diesel.trie.search(url.pathname, req.method);
+ 
   // if(routeCache[url.pathname+req.method]) {
   //   routeHandler = routeCache[url.pathname+req.method]
   // } else {
@@ -42,7 +43,6 @@ export default async function handleRequest(req: Request, server: Server, url: U
 
     const path = req.routePattern ?? url.pathname
     const hasRoute = diesel.filters.includes(path)
-
     if (hasRoute === false) {
       if (diesel.filterFunction) {
         try {

@@ -1,15 +1,17 @@
-import Diesel ,{rateLimit} from "diesel-core";
+import { Server } from "bun";
+import Diesel ,{rateLimit} from "../src/main";
+import { ContextType, CookieOptions, middlewareFunc } from "../dist/types";
 import jwt from 'jsonwebtoken'
 
 const app = new Diesel()
-const secret = 'pussy'
+const secret = 'pradeep'
 // app.cors({
 //   origin: ['http://localhost:5173','*'],
 //   methods: 'GET,POST,PUT,DELETE',
 //   allowedHeaders: 'Content-Type,Authorization'
 // })
 
-async function authJwt(ctx:any, server:any) {
+async function authJwt (ctx:ContextType, server?:Server): Promise<void | Response> {
   const token = await ctx.getCookie("accessToken");  // Retrieve the JWT token from cookies
   if (!token) {
     return ctx.status(401).json({ message: "Authentication token missing" });
@@ -35,13 +37,13 @@ const limiter = rateLimit({
 // app.use(h)
 // app.use(limiter)
 
-// app
-// .filter()
-// .routeMatcher('/api/user/register','/api/user/login','/test/:id','/cookie')
-// .permitAll()
-// .require(authJwt)
+app
+.filter()
+.routeMatcher('/api/user/register','/api/user/login','/test/:id','/cookie')
+.permitAll()
+.require()
 
-app.use(authJwt)
+// app.use(authJwt)
 
 // .require(you can pass jwt auth parser)
 
@@ -70,7 +72,7 @@ app.get("/test/:id", async (xl) => {
   
     const accessToken = jwt.sign(user, secret, { expiresIn: "1d" });
     const refreshToken = jwt.sign(user, secret, { expiresIn: "10d" });
-    const options = {
+    const options : CookieOptions= {
       httpOnly: true, // Makes cookie accessible only by the web server (not JS)
       secure: true, // Ensures the cookie is sent over HTTPS
       maxAge: 24 * 60 * 60 * 1000, // 1 day in milliseconds
@@ -83,5 +85,7 @@ app.get("/test/:id", async (xl) => {
     await xl.getCookie()
     return xl.json({msg:"setting cookies"})
   });
+
+
 
 app.listen(3000)

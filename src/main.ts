@@ -18,6 +18,7 @@ import { Server } from "bun";
 
 
 export default class Diesel {
+
   routes : string[] | undefined
   globalMiddlewares: middlewareFunc[]
   middlewares: Map<string, middlewareFunc[]>;
@@ -32,6 +33,7 @@ export default class Diesel {
   filters: string[]
   filterFunction : middlewareFunc | null
   hasFilterEnabled: boolean
+  wss : WebSocket | null | undefined
 
   constructor() {
     this.routes = []
@@ -55,6 +57,7 @@ export default class Diesel {
     this.filters = []
     this.filterFunction = null
     this.hasFilterEnabled = false
+    this.wss = null
   }
 
   
@@ -75,12 +78,9 @@ export default class Diesel {
       },
 
       require: (fnc?:middlewareFunc) => {
-        if(!fnc || typeof fnc !== 'function' ){
-          return new Response(JSON.stringify({
-            message:"Authentication required"
-          }),{status:400})
+        if (fnc) {
+          this.filterFunction = fnc
         }
-        this.filterFunction = fnc
       }
     };
   }
@@ -189,7 +189,7 @@ export default class Diesel {
       throw new Error("handler parameter should be a instance of router object", handlerInstance)
     }
     const routeEntries: [string, RouteNodeType][] = Object.entries(handlerInstance.trie.root.children) as [string, RouteNodeType][];
-
+    
     handlerInstance.trie.root.subMiddlewares.forEach((middleware: middlewareFunc[], path: string) => {
       if (!this.middlewares.has(pathPrefix + path)) {
         this.middlewares.set(pathPrefix + path, []);
@@ -211,7 +211,7 @@ export default class Diesel {
     handlerInstance.trie = new Trie();
   }
 
-  #addRoute(
+  addRoute(
     method: HttpMethod, 
     path: string, 
     handlers: handlerFunction[]
@@ -273,7 +273,7 @@ export default class Diesel {
     path: string, 
     ...handlers: handlerFunction[]
   ) : this {
-    this.#addRoute("GET", path, handlers);
+    this.addRoute("GET", path, handlers);
     return this
   }
 
@@ -281,12 +281,12 @@ export default class Diesel {
     path: string, 
     ...handlers: handlerFunction[]
   ): this {
-    this.#addRoute("POST", path, handlers);
+    this.addRoute("POST", path, handlers);
     return this
   }
 
   put(path: string, ...handlers: handlerFunction[]) : this{
-    this.#addRoute("PUT", path, handlers);
+    this.addRoute("PUT", path, handlers);
     return this
   }
 
@@ -294,7 +294,7 @@ export default class Diesel {
     path: string, 
     ...handlers: handlerFunction[]
   ) : this {
-    this.#addRoute("PATCH", path, handlers);
+    this.addRoute("PATCH", path, handlers);
     return this
   }
 
@@ -302,7 +302,7 @@ export default class Diesel {
     path: any, 
     ...handlers: handlerFunction[]
   ) : this {
-    this.#addRoute("DELETE", path, handlers);
+    this.addRoute("DELETE", path, handlers);
     return this;
   }
 }
