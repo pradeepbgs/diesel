@@ -1,24 +1,14 @@
 import { Server } from "bun";
 import createCtx from "./ctx";
-import type { ContextType, corsT, DieselT, handlerFunction, middlewareFunc, RouteCache, RouteHandlerT } from "./types";
-
-
-const routeCache:RouteCache = {}
+import type { ContextType, corsT, DieselT, middlewareFunc, RouteHandlerT } from "./types";
 
 export default async function handleRequest(req: Request, server: Server, url: URL, diesel: DieselT): Promise<Response> {
 
-  const ctx: ContextType = createCtx(req, server, url);
+
 
   // Try to find the route handler in the trie
-  let routeHandler: RouteHandlerT | undefined = diesel.trie.search(url.pathname, req.method);
+  const routeHandler: RouteHandlerT | undefined = diesel.trie.search(url.pathname, req.method);
  
-  // if(routeCache[url.pathname+req.method]) {
-  //   routeHandler = routeCache[url.pathname+req.method]
-  // } else {
-  //   routeHandler = diesel.trie.search(url.pathname, req.method);
-  //   routeCache[url.pathname+req.method]=routeHandler
-  // }
-
   // Early return if route or method is not found
   if (!routeHandler || routeHandler.method !== req.method) {
     return new Response(routeHandler ? "Method not allowed" : `Route not found for ${url.pathname}`, {
@@ -28,6 +18,9 @@ export default async function handleRequest(req: Request, server: Server, url: U
 
   // If the route is dynamic, we only set routePattern if necessary
   if (routeHandler.isDynamic) req.routePattern = routeHandler.path;
+
+  // create the context which contains the methods Req,Res, many more
+  const ctx: ContextType = createCtx(req, server, url);
 
   // cors execution
   if (diesel.corsConfig) {

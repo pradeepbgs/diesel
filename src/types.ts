@@ -30,6 +30,8 @@ export interface ContextType {
     server: Server;
     url: URL;
     next: () => void;
+    setUser: (data?:any) => void
+    getUser: () => any
     status: (status: number) => this;
     getIP: () => any;
     body: () => Promise<any>;

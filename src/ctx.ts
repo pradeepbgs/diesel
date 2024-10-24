@@ -5,17 +5,28 @@ export default function createCtx(req: Request, server:Server ,url: URL): Contex
   let headers: Headers = new Headers()
   let settedValue: Record<string, string> = {};
   let isAuthenticated: boolean = false;
-  let parsedQuery: any = null;
-  let parsedCookie: any = null
-  let parsedParams: any = null;
+  let parsedQuery: any = {};
+  let parsedCookie: any = {}
+  let parsedParams: any = {};
   let parsedBody: ParseBodyResult | null;
   let responseStatus: number = 200;
+  let user : any = {}
 
   return {
     req,
     server,
     url,
     next: () => { },
+
+    getUser(){
+      return user
+    },
+
+    setUser(data?:any){
+     if (data) {
+       user = data
+     }
+    },
 
     // Set response status for chaining
     status(status: number): ContextType {
@@ -135,7 +146,7 @@ export default function createCtx(req: Request, server:Server ,url: URL): Contex
     async getCookie(cookieName?: string)
       : Promise<string | Record<string, string> | null> {
       if (!parsedCookie) {
-        const cookieHeader = req.headers.get("cookie")
+        const cookieHeader = req.headers?.get("cookie")
         if (cookieHeader) {
           parsedCookie = await parseCookie(cookieHeader);
         }

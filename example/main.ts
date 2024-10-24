@@ -20,7 +20,7 @@ async function authJwt (ctx:ContextType, server?:Server): Promise<void | Respons
     // Verify the JWT token using a secret key
     const user = jwt.verify(token, secret);  // Replace with your JWT secret
     // Set the user data in context
-    ctx.set("user", user);
+    ctx.setUser(user);
 
     // Proceed to the next middleware/route handler
     return ctx.next();
@@ -37,21 +37,22 @@ const limiter = rateLimit({
 // app.use(h)
 // app.use(limiter)
 
-app
-.filter()
-.routeMatcher('/api/user/register','/api/user/login','/test/:id','/cookie')
-.permitAll()
-.require(authJwt)
+// app
+// .filter()
+// .routeMatcher('/api/user/register','/api/user/login','/test/:id','/cookie')
+// .permitAll()
+// .require(authJwt as middlewareFunc)
 
 // app.use(authJwt)
 
 // .require(you can pass jwt auth parser)
 
 app.get("/", async(xl) => {
-  // const ip = xl.req
-  // console.log(ip)
-  const user = xl.get('user')
-    return xl.json({user:user});
+  // // const ip = xl.req
+  // // console.log(ip)
+  // const user = xl.getUser()
+  //   return xl.json({user:user});
+  return xl.status(200).text("hello world")
 });
 
 app.get("/test/:id", async (xl) => {
