@@ -38,10 +38,88 @@ app.listen(port, () => {
 })
 
 ```
+## Filter and Route Security
+**Diesel** provides a simple way to manage public and protected routes by using a filter() method. You can define specific routes to be publicly accessible, while others will require authentication or custom middleware functions.
+
+### How to Use the Filter
+The **filter()** method allows you to secure certain endpoints while keeping others public. You can specify routes that should be publicly accessible using permitAll(), and apply authentication or other middleware to the remaining routes with require().
+
+
+### Example Usage
+```javascript
+import  Diesel  from "diesel-core";
+import jwt from 'jsonwebtoken';
+
+const app = new Diesel();
+
+async function authJwt (ctx:ContextType, server?:Server): Promise<void | Response> {
+  const token = await ctx.getCookie("accessToken");  // Retrieve the JWT token from cookies
+  if (!token) {
+    return ctx.status(401).json({ message: "Authentication token missing" });
+  }
+  try {
+    // Verify the JWT token using a secret key
+    const user = jwt.verify(token, secret);  // Replace with your JWT secret
+    // Set the user data in context
+    ctx.set("user", user);
+
+    // Proceed to the next middleware/route handler
+    return ctx.next();
+  } catch (error) {
+    return ctx.status(403).json({ message: "Invalid token" });
+  }
+}
+
+// Define routes and apply filter
+app
+  .filter()
+  .routeMatcher('/api/user/register', '/api/user/login', '/test/:id', '/cookie') // Define public routes
+  .permitAll() // Mark these routes as public (no auth required)
+  .require(authJwt); // Apply the authJwt middleware to all other routes
+
+// Example public route (no auth required)
+app.get("/api/user/register", async (xl) => {
+  return xl.json({ msg: "This is a public route. No authentication needed." });
+});
+
+// Example protected route (requires auth)
+app.get("/api/user/profile", async (xl) => {
+  // This route is protected, so the auth middleware will run before this handler
+  return xl.json({ msg: "You are authenticated!" });
+});
+
+// Start the server
+const port = 3000;
+app.listen(port, () => {
+  console.log(`Diesel is running on port ${port}`);
+});
+```
+## Filter Methods
+1. **routeMatcher(...routes: string[])** : Passed endpoints in this routeMatcher will be ***Public*** means they don't need authentication, including those with dynamic parameters (e.g., /test/:id).
+
+```javascript 
+.routeMatcher('/api/user/register', '/api/user/login', '/test/:id')
+```
+1. **permitAll()** : Marks the routes specified in routeMatcher() as publicly accessible, meaning no middleware (like authentication) will be required for these routes.
+
+```javascript 
+.permitAll()
+```
+1. **require(fnc?: middlewareFunc)** :Means that defined routes in ***routeMatcher*** is public & All endpoints needs authentication.
+
+*Note* : If you don't pass a middleware function to require(), DieselJS will throw an "Unauthorized" error by default. Ensure that you implement and pass a valid authentication function
+```javascript 
+.require(authJwt)
+```
+## Use Case
+ * **Public Routes** :  Some routes ***(like /api/user/register or /api/user/login)*** are often open to all users without authentication. These routes can be specified with permitAll().
+
+ * **Protected Routes** : For other routes ***(like /api/user/profile)***, you'll want to require authentication or custom middleware. Use require(authJwt) to ensure that the user is authenticated before accessing these routes.
 
 ## Using Hooks in DieselJS
 
 DieselJS allows you to enhance your request handling by utilizing hooks at various stages of the request lifecycle. This gives you the flexibility to execute custom logic for logging, authentication, data manipulation, and more.
+
 
 ### Available Hooks
 

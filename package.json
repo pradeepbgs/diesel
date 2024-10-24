@@ -1,6 +1,6 @@
 {
   "name": "diesel-core",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "main": "dist/main.js",
   "types": "dist/main.d.ts",
   "scripts": {

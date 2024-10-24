@@ -41,7 +41,7 @@ app
 .filter()
 .routeMatcher('/api/user/register','/api/user/login','/test/:id','/cookie')
 .permitAll()
-.require()
+.require(authJwt)
 
 // app.use(authJwt)
 
