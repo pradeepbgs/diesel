@@ -1,7 +1,7 @@
 import { Server } from "bun";
 export type listenCalllBackType = () => void;
 export type handlerFunction = (ctx: ContextType, server?: Server) => Response | Promise<Response | null | void>;
-export type middlewareFunc = (ctx: ContextType, server?: Server) => void | Response | Promise<Response>;
+export type middlewareFunc = (ctx: ContextType, server?: Server | undefined) => void | Response | Promise<Response>;
 export type HookFunction = (ctx: ContextType, result?: Response | null | void, server?: Server) => Response | Promise<Response | null | void>;
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD";
 export declare enum HookType {
@@ -25,6 +25,8 @@ export interface ContextType {
     server: Server;
     url: URL;
     next: () => void;
+    setUser: (data?: any) => void;
+    getUser: () => any;
     status: (status: number) => this;
     getIP: () => any;
     body: () => Promise<any>;
@@ -76,6 +78,7 @@ export interface DieselT {
         onSend: ((ctx?: ContextType, result?: Response | null | void, serer?: Server) => Promise<Response | void | null>) | null;
     };
     filters: string[];
+    hasFilterEnabled: boolean;
     filterFunction: (ctx: ContextType, serer?: Server) => void | Response | Promise<Response | void>;
     corsConfig: corsT | null;
     globalMiddlewares: Array<(ctx: ContextType, serer?: Server) => void | Promise<Response | null | void>>;

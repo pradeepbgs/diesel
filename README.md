@@ -19,13 +19,13 @@ bun add diesel-core
 
 ### Code Example
 ```javascript
-import { Diesel } from "diesel-core"
+import Diesel  from "diesel-core"
 
 const app = new Diesel()
 const port = 3000
 
-app.get("/", async (xl) => {
- return xl.status(200).text("Hello world...!")
+app.get("/", async (ctx:ContextType) => {
+ return ctx.status(200).text("Hello world...!")
   // OR
   // return xl.text("Hello world!")
   // OR 
@@ -50,23 +50,24 @@ The **filter()** method allows you to secure certain endpoints while keeping oth
 import  Diesel  from "diesel-core";
 import jwt from 'jsonwebtoken';
 
+
 const app = new Diesel();
 
-async function authJwt (ctx:ContextType, server?:Server): Promise<void | Response> {
-  const token = await ctx.getCookie("accessToken");  // Retrieve the JWT token from cookies
+async function authJwt (xl:ContextType, server?:Server): Promise<void | Response> {
+  const token = await xl.getCookie("accessToken");  // Retrieve the JWT token from cookies
   if (!token) {
-    return ctx.status(401).json({ message: "Authentication token missing" });
+    return xl.status(401).json({ message: "Authentication token missing" });
   }
   try {
     // Verify the JWT token using a secret key
     const user = jwt.verify(token, secret);  // Replace with your JWT secret
     // Set the user data in context
-    ctx.set("user", user);
+    xl.setUser(user);
 
     // Proceed to the next middleware/route handler
-    return ctx.next();
+    return xl.next();
   } catch (error) {
-    return ctx.status(403).json({ message: "Invalid token" });
+    return xl.status(403).json({ message: "Invalid token" });
   }
 }
 
@@ -85,14 +86,19 @@ app.get("/api/user/register", async (xl) => {
 // Example protected route (requires auth)
 app.get("/api/user/profile", async (xl) => {
   // This route is protected, so the auth middleware will run before this handler
-  return xl.json({ msg: "You are authenticated!" });
+  const user = xl.getUser()
+  return xl.json({ 
+    msg: "You are authenticated!" ,
+    user
+    });
 });
 
 // Start the server
 const port = 3000;
 app.listen(port, () => {
   console.log(`Diesel is running on port ${port}`);
-});
+})
+
 ```
 ## Filter Methods
 1. **routeMatcher(...routes: string[])** : Passed endpoints in this routeMatcher will be ***Public*** means they don't need authentication, including those with dynamic parameters (e.g., /test/:id).
@@ -143,19 +149,19 @@ app.addHooks("onRequest",(xl) =>{
 // Define a preHandler hook
 app.addHooks("preHandler",(xl) =>{
     // Check for authentication token
-  const authToken = ctx.req.headers.get("Authorization");
+  const authToken = xl.req.headers.get("Authorization");
   if (!authToken) {
     return new Response("Unauthorized", { status: 401 });
   }
 })
 
 // Define a postHandler hook
-app.addHooks('postHandler', async (ctx) => {
-  console.log(`Response sent for: ${ctx.req.url}`);
+app.addHooks('postHandler', async (xl) => {
+  console.log(`Response sent for: ${xl.req.url}`);
 });
 
 // Define an onSend hook
-app.addHooks('onSend',async (ctx, result) => {
+app.addHooks('onSend',async (xl, result) => {
   console.log(`Sending response with status: ${result.status}`);
   return result; // You can modify the response here if needed
 });

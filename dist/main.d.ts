@@ -1,9 +1,8 @@
 import Trie from "./trie.js";
 import rateLimit from "./utils.js";
-import { corsT, FilterMethods, HookFunction, HookType, middlewareFunc, type handlerFunction, type Hooks, type listenCalllBackType } from "./types.js";
+import { corsT, FilterMethods, HookFunction, HookType, middlewareFunc, type handlerFunction, type Hooks, type HttpMethod, type listenCalllBackType } from "./types.js";
 import { Server } from "bun";
 export default class Diesel {
-    #private;
     routes: string[] | undefined;
     globalMiddlewares: middlewareFunc[];
     middlewares: Map<string, middlewareFunc[]>;
@@ -17,6 +16,8 @@ export default class Diesel {
     corsConfig: corsT;
     filters: string[];
     filterFunction: middlewareFunc | null;
+    hasFilterEnabled: boolean;
+    wss: WebSocket | null | undefined;
     constructor();
     filter(): FilterMethods;
     cors(corsConfig: corsT): void;
@@ -24,6 +25,7 @@ export default class Diesel {
     compile(): void;
     listen(port: number, callback?: listenCalllBackType, { sslCert, sslKey }?: any): Server | void;
     register(pathPrefix: string, handlerInstance: any): void;
+    addRoute(method: HttpMethod, path: string, handlers: handlerFunction[]): void;
     use(pathORHandler?: string | middlewareFunc, handler?: middlewareFunc): void;
     get(path: string, ...handlers: handlerFunction[]): this;
     post(path: string, ...handlers: handlerFunction[]): this;
