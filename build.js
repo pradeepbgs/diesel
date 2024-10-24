@@ -1,5 +1,5 @@
-// build.js
-await Bun.build({
+// tsc will create main folder
+Bun.build({
     entrypoints: [
         './main/main.ts',
         './main/ctx.ts',
@@ -9,4 +9,6 @@ await Bun.build({
     ],
     outdir: './dist',
     minify: true, // Enable minification
-});
+})
+
+await Bun.spawn(['rm', '-rf', './main']);

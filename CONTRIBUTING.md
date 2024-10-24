@@ -1,1 +1,1 @@
-if you changes code OR fixing bugs  so after doing make sure to run bun build.js
+if you changes code OR fixing bugs  so after doing make sure to run tsc and  bun build.js
