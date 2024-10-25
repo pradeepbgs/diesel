@@ -169,11 +169,28 @@ app.addHooks('onSend',async (xl, result) => {
 
 # Middleware example
 
+**No Need to call NonSense *next()* in Middleware**
+
+**just dont return , if evrything goes right**
+
 ```javascript
-function h (xl) => {
-  return xl.status(200).text("hi im from middleware")
+async function authJwt (ctx:ContextType, server?:Server): Promise<void | Response> {
+  
+  try {
+    const token = ctx?.getCookie("accessToken"); 
+    if (!token) {
+      return ctx.status(401).json({ message: "Authentication token missing" });
+    }
+    // Verify the JWT token using a secret key
+    const user = jwt.verify(token, secret);
+    ctx.set('user',user);
+  } catch (error) {
+    return ctx.status(403).json({ message: "Invalid token" });
+  }
 }
-app.use(hello)
+
+// this is a global middleware
+app.use(authJwt)
 
 // path middleware example
 app.use("/user",authJWT)

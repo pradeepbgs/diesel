@@ -269,6 +269,7 @@ export default class Diesel {
     }
   }
 
+
   get(
     path: string, 
     ...handlers: handlerFunction[]

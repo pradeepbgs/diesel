@@ -5,9 +5,9 @@ export default function createCtx(req: Request, server:Server ,url: URL): Contex
   let headers: Headers = new Headers()
   let settedValue: Record<string, string> = {};
   let isAuthenticated: boolean = false;
-  let parsedQuery: any = {};
-  let parsedCookie: any = {}
-  let parsedParams: any = {};
+  let parsedQuery: any 
+  let parsedCookie: any = null
+  let parsedParams: any 
   let parsedBody: ParseBodyResult | null;
   let responseStatus: number = 200;
   let user : any = {}
@@ -111,22 +111,26 @@ export default function createCtx(req: Request, server:Server ,url: URL): Contex
     },
 
     getParams(props: string)
-      : string | Record<string, string> | null {
+      : string | Record<string, string> | {} {
       if (!parsedParams) {
         parsedParams = extractDynamicParams(req?.routePattern, url?.pathname);
       }
-      return props ? parsedParams[props] || null : parsedParams;
+      return props ? parsedParams[props] || {} : parsedParams;
     },
 
     getQuery(props?: any)
-      : string | Record<string, string> | null {
-      if (!parsedQuery) {
-        parsedQuery = Object.fromEntries(url.searchParams);
+      : string | Record<string, string> | {} {
+      try {
+        if (!parsedQuery) {
+          parsedQuery = Object.fromEntries(url.searchParams);
+        }
+        return props ? parsedQuery[props] || {} : parsedQuery;
+      } catch (error) {
+        return {}
       }
-      return props ? parsedQuery[props] || null : parsedQuery;
     },
 
-    async cookie(name: string, value: string, options: CookieOptions = {}): Promise<ContextType> {
+    cookie(name: string, value: string, options: CookieOptions = {}) {
       let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
 
       // Add options to cookie string (e.g., expiration, path, HttpOnly, etc.)
@@ -143,22 +147,26 @@ export default function createCtx(req: Request, server:Server ,url: URL): Contex
       return this;
     },
 
-    async getCookie(cookieName?: string)
-      : Promise<string | Record<string, string> | null> {
-      if (!parsedCookie) {
+    getCookie(cookieName?: string){
+      if (!parsedCookie || Object.keys(parsedCookie).length === 0) {
         const cookieHeader = req.headers?.get("cookie")
         if (cookieHeader) {
-          parsedCookie = await parseCookie(cookieHeader);
+          parsedCookie = parseCookie(cookieHeader);
+        } else {
+          return null
         }
       }
-      return cookieName ? parsedCookie[cookieName] || null : parsedCookie;
+      if (!parsedCookie) {
+        return null
+      }
+      return cookieName ? (parsedCookie[cookieName] !== undefined ? parsedCookie[cookieName] : null) : parsedCookie;
     },
   };
 }
 
 
-async function parseCookie(header: string | undefined)
-  : Promise<Record<string, string>> {
+function parseCookie(header: string | undefined)
+  : Record<string, string> {
   const cookies: Record<string, string> = {};
   if (!header) return cookies;
 

@@ -4,11 +4,9 @@ import type { ContextType, corsT, DieselT, middlewareFunc, RouteHandlerT } from 
 
 export default async function handleRequest(req: Request, server: Server, url: URL, diesel: DieselT): Promise<Response> {
 
-
-
   // Try to find the route handler in the trie
   const routeHandler: RouteHandlerT | undefined = diesel.trie.search(url.pathname, req.method);
- 
+
   // Early return if route or method is not found
   if (!routeHandler || routeHandler.method !== req.method) {
     return new Response(routeHandler ? "Method not allowed" : `Route not found for ${url.pathname}`, {
@@ -24,7 +22,7 @@ export default async function handleRequest(req: Request, server: Server, url: U
 
   // cors execution
   if (diesel.corsConfig) {
-    const corsResult = await applyCors(req, ctx, diesel.corsConfig)
+    const corsResult = applyCors(req, ctx, diesel.corsConfig)
     if (corsResult) return corsResult;
   }
 
@@ -33,9 +31,10 @@ export default async function handleRequest(req: Request, server: Server, url: U
 
   // filter applying
   if (diesel.hasFilterEnabled) {
-
+    
     const path = req.routePattern ?? url.pathname
     const hasRoute = diesel.filters.includes(path)
+
     if (hasRoute === false) {
       if (diesel.filterFunction) {
         try {
@@ -57,13 +56,16 @@ export default async function handleRequest(req: Request, server: Server, url: U
 
   // middleware execution 
   if (diesel.hasMiddleware) {
-    const middlewares = [
-      ...diesel.globalMiddlewares,
-      ...diesel.middlewares.get(url.pathname) || []
-    ] as middlewareFunc[]
+    // first run global midl
+    for (const globalMiddleware of diesel.globalMiddlewares) {
+      const result = await globalMiddleware(ctx, server);
+      if (result) return result;
+    }
 
-    for (const middleware of middlewares) {
-      const result = await middleware(ctx, server);
+    // then path specific midl
+    const pathMiddlewares = diesel.middlewares.get(url.pathname) || [];
+    for (const pathMiddleware of pathMiddlewares) {
+      const result = await pathMiddleware(ctx, server);
       if (result) return result;
     }
 
@@ -100,7 +102,7 @@ export default async function handleRequest(req: Request, server: Server, url: U
 }
 
 
-async function applyCors(req: Request, ctx: ContextType, config: corsT = {}): Promise<Response | null> {
+function applyCors(req: Request, ctx: ContextType, config: corsT = {}): Response | null {
   const origin = req.headers.get('origin') ?? '*'
   const allowedOrigins = config?.origin
   const allowedHeaders = config?.allowedHeaders ?? ["Content-Type", "Authorization"]
