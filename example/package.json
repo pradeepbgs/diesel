@@ -10,8 +10,11 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@types/cors": "^2.8.17",
     "@types/jsonwebtoken": "^9.0.7",
+    "cors": "^2.8.5",
     "diesel-core": "^0.0.13",
+    "i": "^0.3.7",
     "jsonwebtoken": "^9.0.2",
     "jwt": "^0.2.0"
   }

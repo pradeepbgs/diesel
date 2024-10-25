@@ -1,7 +1,7 @@
 import { Server } from "bun";
 export type listenCalllBackType = () => void;
 export type handlerFunction = (ctx: ContextType, server?: Server) => Response | Promise<Response | null | void>;
-export type middlewareFunc = (ctx: ContextType, server?: Server | undefined) => void | Response | Promise<Response>;
+export type middlewareFunc = (ctx: ContextType, server?: Server | undefined) => null | void | Response | Promise<Response | void | null>;
 export type HookFunction = (ctx: ContextType, result?: Response | null | void, server?: Server) => Response | Promise<Response | null | void>;
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD";
 export declare enum HookType {
@@ -42,8 +42,8 @@ export interface ContextType {
     redirect: (path: string, status?: number) => Response;
     getParams: (props?: any) => any;
     getQuery: (props?: any) => any;
-    cookie: (name: string, value: string, options?: CookieOptions) => Promise<this>;
-    getCookie: (cookieName?: string) => Promise<any>;
+    cookie: (name: string, value: string, options?: CookieOptions) => this;
+    getCookie: (cookieName?: string) => any;
 }
 export interface CookieOptions {
     maxAge?: number;
@@ -79,7 +79,7 @@ export interface DieselT {
     };
     filters: string[];
     hasFilterEnabled: boolean;
-    filterFunction: (ctx: ContextType, serer?: Server) => void | Response | Promise<Response | void>;
+    filterFunction: (ctx: ContextType, serer?: Server) => void | Response | Promise<Response | void | null>;
     corsConfig: corsT | null;
     globalMiddlewares: Array<(ctx: ContextType, serer?: Server) => void | Promise<Response | null | void>>;
     middlewares: Map<string, Array<(ctx: ContextType, serer?: Server) => void | Promise<Response | null | void>>>;
