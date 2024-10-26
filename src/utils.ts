@@ -32,8 +32,6 @@ export default function rateLimit(props: { time?: number; max?: number; message?
             })
         }
 
-        ctx.next()
-
     }
 }
 
