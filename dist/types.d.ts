@@ -26,7 +26,6 @@ export interface ContextType {
     url: URL;
     setUser: (data?: any) => void;
     getUser: () => any;
-    set setStatus(status: number);
     status: (status: number) => this;
     getIP: () => any;
     body: () => Promise<any>;

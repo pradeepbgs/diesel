@@ -29,10 +29,6 @@ export default function createCtx(req: Request, server:Server ,url: URL): Contex
      }
     },
 
-    set setStatus(status: number) {
-      responseStatus = status;
-    },
-
     status(status: number): ContextType {
       responseStatus = status;
       return this;

@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import { ContextType, CookieOptions, middlewareFunc } from "../dist/types";
 
 const app = new Diesel();
-const secret = "pradeep";
+const secret = "linux";
 
 // app.cors({
 //   origin: ['http://localhost:5173','*'],
@@ -30,6 +30,8 @@ app
   .routeMatcher("/cookie")
   .permitAll()
   .require(authJwt as middlewareFunc);
+
+// app.use(authJwt)
 
 app.get("/", async (xl) => {
   const user = xl.getUser();

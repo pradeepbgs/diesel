@@ -26,10 +26,6 @@ const port = 3000
 
 app.get("/", async (ctx:ContextType) => {
  return ctx.status(200).text("Hello world...!")
-  // OR
-  // return xl.text("Hello world!")
-  // OR 
-  // return new Response("Hello world")
 })
 
 // Start the server
