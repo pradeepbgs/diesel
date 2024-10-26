@@ -16,10 +16,11 @@ export default function createCtx(req: Request, server:Server ,url: URL): Contex
     req,
     server,
     url,
-    next: () => { },
+   
+    // all methods starts from here
 
-    getUser(){
-      return user
+    getUser () {
+      return user;
     },
 
     setUser(data?:any){
@@ -28,7 +29,10 @@ export default function createCtx(req: Request, server:Server ,url: URL): Contex
      }
     },
 
-    // Set response status for chaining
+    set setStatus(status: number) {
+      responseStatus = status;
+    },
+
     status(status: number): ContextType {
       responseStatus = status;
       return this;
@@ -44,7 +48,7 @@ export default function createCtx(req: Request, server:Server ,url: URL): Contex
       }
       if (parsedBody.error) {
         return new Response(JSON.stringify({ error: parsedBody.error }), {
-          status: 400, // Bad Request
+          status: 400,
         });
       }
       return parsedBody;
@@ -75,6 +79,13 @@ export default function createCtx(req: Request, server:Server ,url: URL): Contex
 
     // Response methods with optional status
     text(data: string, status?: number) {
+      return new Response(data, {
+        status: status ?? responseStatus,
+        headers
+      });
+    },
+
+    send(data: string, status?: number) {
       return new Response(data, {
         status: status ?? responseStatus,
         headers

@@ -36,9 +36,21 @@ app.get("/", async (ctx:ContextType) => {
 app.listen(port, () => {
   console.log(`diesel is running on port ${port}`)
 })
-
 ```
-## Filter and Route Security
+
+# CORS
+
+### Diesel supports cors out of the box
+
+``` javascript
+app.cors({
+  origin: ['http://localhost:5173','*'],
+  methods: 'GET,POST,PUT,DELETE',
+  allowedHeaders: 'Content-Type,Authorization'
+})
+```
+
+# Filter and Route Security
 **Diesel** provides a simple way to manage public and protected routes by using a filter() method. You can define specific routes to be publicly accessible, while others will require authentication or custom middleware functions.
 
 ### How to Use the Filter
@@ -100,7 +112,7 @@ app.listen(port, () => {
 })
 
 ```
-## Filter Methods
+# Filter Methods
 1. **routeMatcher(...routes: string[])** : Passed endpoints in this routeMatcher will be ***Public*** means they don't need authentication, including those with dynamic parameters (e.g., /test/:id).
 
 ```javascript 
@@ -122,7 +134,7 @@ app.listen(port, () => {
 
  * **Protected Routes** : For other routes ***(like /api/user/profile)***, you'll want to require authentication or custom middleware. Use require(authJwt) to ensure that the user is authenticated before accessing these routes.
 
-## Using Hooks in DieselJS
+# Using Hooks in DieselJS
 
 DieselJS allows you to enhance your request handling by utilizing hooks at various stages of the request lifecycle. This gives you the flexibility to execute custom logic for logging, authentication, data manipulation, and more.
 
@@ -239,8 +251,15 @@ app.get("/redirect",(xl) => {
 })
 ```
 # get params
+
+**You can use set ***Multiparams***** , ***like this***
+
 ```javascript
-app.get("/hello/:id",(xl) => {
+app.get("/product/:productId/:productName)
+```
+
+```javascript
+app.get("/hello/:id/",(xl) => {
   const id = xl.getParams("id")
   const query = xl.getQuery() // you can pass query name also , you wanna get
   return xl.json({ msg: "Hello", id });
