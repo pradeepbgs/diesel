@@ -3,18 +3,20 @@ import { Server } from "bun";
 export type listenCalllBackType = () => void;
 export type handlerFunction = (ctx: ContextType, server?: Server) => Response | Promise<Response | null | void>;
 export type middlewareFunc = (ctx:ContextType,server?:Server | undefined) => null | void | Response | Promise<Response | void | null>
-export type HookFunction = (ctx: ContextType, result?: Response | null | void, server?: Server) => Response | Promise<Response | null | void>
+export type HookFunction = (ctx: ContextType, result?: Response | null | void, server?: Server) => Response | Promise<Response | null | void> | void
 // export type onSendHookFunc = (result?: Response | null | void, ctx?:ContextType) => Response | Promise<Response | null | void>
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD";
 
-export enum HookType {
-    onRequest = "onRequest",
-    preHandler = "preHandler",
-    postHandler = "postHandler",
-    onSend = "onSend",
-    onError = "onError",
-    onClose = "onClose",
-}
+// export enum HookType {
+//     onRequest = "onRequest",
+//     preHandler = "preHandler",
+//     postHandler = "postHandler",
+//     onSend = "onSend",
+//     onError = "onError",
+//     onClose = "onClose",
+// }
+export type HookType = 'onRequest' | 'preHandler' | 'postHandler' | 'onSend' | 'onError' | 'onClose';
+
 
 export interface Hooks {
     onRequest: HookFunction | null;
@@ -33,7 +35,7 @@ export interface ContextType {
     getUser: () => any
     status: (status: number) => this;
     getIP: () => any;
-    body: () => Promise<any>;
+    getBody: () => Promise<any>;
     setHeader: (key: string, value: any) => this;
     set: (key: string, value: any) => this;
     get: (key: string) => any
@@ -47,7 +49,7 @@ export interface ContextType {
     redirect: (path: string, status?: number) => Response;
     getParams: (props?: any) => any;
     getQuery: (props?: any) => any;
-    cookie: (name: string, value: string, options?: CookieOptions) => this;
+    setCookie: (name: string, value: string, options?: CookieOptions) => this;
     getCookie: (cookieName?: string) => any;
 }
 
@@ -82,10 +84,10 @@ export interface DieselT {
     hasPostHandlerHook: boolean;
     hasOnSendHook: boolean;
     hooks: {
-        onRequest: ((ctx: ContextType, serer?: Server) => void) | null
-        preHandler: ((ctx: ContextType, serer?: Server) => Promise<Response | void | null>) | null
-        postHandler: ((ctx: ContextType, serer?: Server) => Promise<Response | void | null>) | null; // Updated to include Response | null
-        onSend: ((ctx?: ContextType, result?: Response | null | void, serer?: Server) => Promise<Response | void | null>) | null;
+        onRequest: ((ctx: ContextType, serer?: Server) => void) | null 
+        preHandler: ((ctx: ContextType, serer?: Server) => Response | Promise<Response | void | null>) | null
+        postHandler: ((ctx: ContextType, serer?: Server) => Response | Promise<Response | void | null>) | null; // Updated to include Response | null
+        onSend: ((ctx?: ContextType, result?: Response | null | void, serer?: Server) => Response | Promise<Response | void | null>) | null;
     };
     filters: string[]
     hasFilterEnabled:boolean

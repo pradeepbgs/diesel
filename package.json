@@ -1,8 +1,8 @@
 {
   "name": "diesel-core",
-  "version": "0.0.17",
-  "main": "dist/main.js",
-  "types": "dist/main.d.ts",
+  "version": "0.0.18",
+  "main": "index.js",
+  "types": "index.d.ts",
   "scripts": {
     "build": "bun run build.js"
   },

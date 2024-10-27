@@ -3,7 +3,6 @@ import rateLimit from "./utils.js";
 import { corsT, FilterMethods, HookFunction, HookType, middlewareFunc, type handlerFunction, type Hooks, type HttpMethod, type listenCalllBackType } from "./types.js";
 import { Server } from "bun";
 export default class Diesel {
-    routes: string[] | undefined;
     globalMiddlewares: middlewareFunc[];
     middlewares: Map<string, middlewareFunc[]>;
     trie: Trie;
@@ -14,6 +13,7 @@ export default class Diesel {
     hasOnSendHook: boolean;
     hooks: Hooks;
     corsConfig: corsT;
+    FilterRoutes: string[] | undefined;
     filters: string[];
     filterFunction: middlewareFunc | null;
     hasFilterEnabled: boolean;

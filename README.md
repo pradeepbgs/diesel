@@ -19,7 +19,7 @@ bun add diesel-core
 
 ### Code Example
 ```javascript
-import Diesel  from "diesel-core"
+import {Diesel}  from "diesel-core"
 
 const app = new Diesel()
 const port = 3000
@@ -55,7 +55,7 @@ The **filter()** method allows you to secure certain endpoints while keeping oth
 
 ### Example Usage
 ```javascript
-import  Diesel  from "diesel-core";
+import  {Diesel}  from "diesel-core";
 import jwt from 'jsonwebtoken';
 
 
@@ -226,9 +226,9 @@ app.get("/set-cookie", async(xl) => {
     path: "/", 
   }
 
-  await xl.cookie("accessToken", accessToken, options)
+  await xl.setCookie("accessToken", accessToken, options)
 
-  await xl.cookie("refreshToken", refreshToken, options)
+  await xl.setCookie("refreshToken", refreshToken, options)
 
   return xl.json({msg:"setting cookies"})
 })

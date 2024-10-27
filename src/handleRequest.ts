@@ -1,6 +1,6 @@
 import { Server } from "bun";
 import createCtx from "./ctx";
-import type { ContextType, corsT, DieselT, middlewareFunc, RouteHandlerT } from "./types";
+import type { ContextType, corsT, DieselT, RouteHandlerT } from "./types";
 
 export default async function handleRequest(req: Request, server: Server, url: URL, diesel: DieselT): Promise<Response> {
 

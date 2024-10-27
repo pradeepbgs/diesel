@@ -18,8 +18,6 @@ import { Server } from "bun";
 
 
 export default class Diesel {
-
-  routes : string[] | undefined
   globalMiddlewares: middlewareFunc[]
   middlewares: Map<string, middlewareFunc[]>;
   trie: Trie
@@ -30,13 +28,13 @@ export default class Diesel {
   hasOnSendHook: boolean;
   hooks: Hooks
   corsConfig: corsT
+  FilterRoutes : string[] | undefined
   filters: string[]
   filterFunction : middlewareFunc | null
   hasFilterEnabled: boolean
   wss : WebSocket | null | undefined
 
   constructor() {
-    this.routes = []
     this.globalMiddlewares = [];
     this.middlewares = new Map();
     this.trie = new Trie();
@@ -54,6 +52,7 @@ export default class Diesel {
       onError: null,
       onClose: null
     }
+    this.FilterRoutes = []
     this.filters = []
     this.filterFunction = null
     this.hasFilterEnabled = false
@@ -66,12 +65,12 @@ export default class Diesel {
 
     return {
       routeMatcher: (...routes:string[]) => {
-        this.routes = routes.sort()
+        this.FilterRoutes = routes.sort()
         return this.filter();
       },
 
       permitAll: () => {
-        for(const route of this?.routes!){
+        for(const route of this?.FilterRoutes!){
           this.filters.push(route)
         }
         return this.filter()
