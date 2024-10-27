@@ -1,8 +1,8 @@
 import Diesel from "../dist/main";
 import jwt from "jsonwebtoken";
-import { ContextType, CookieOptions, middlewareFunc } from "../dist/types";
+import { ContextType, CookieOptions, HookType, middlewareFunc } from "../dist/types";
 
-const app = new Diesel();
+const app = new Diesel()
 const secret = "linux";
 
 // app.cors({
@@ -25,22 +25,31 @@ async function authJwt(ctx: ContextType): Promise<void | null | Response> {
   }
 }
 
-app
-  .filter()
-  .routeMatcher("/cookie")
-  .permitAll()
-  .require(authJwt as middlewareFunc);
+// app
+//   .filter()
+//   .routeMatcher("/cookie")
+//   .permitAll()
+//   .require(authJwt as middlewareFunc);
 
-// app.use(authJwt)
+app.use(authJwt)
+
+// app.addHooks('onRequest', (ctx ) => {
+//   // console.log(ctx.req.method, ctx.url);
+// });`
+
 
 app.get("/", async (xl) => {
   const user = xl.getUser();
 
   return xl.json({
-    success: true,
     user,
   });
 });
+
+// app.post("/",async (ctx) => {
+//   const body = await ctx.getBody()
+//   return ctx.json(body)
+// })
 
 app.get("/test/:id/:name", async (xl) => {
   const q = xl.getQuery();
@@ -69,7 +78,7 @@ app.get("/cookie", async (xl) => {
   };
   return (
     xl
-      .cookie("accessToken", accessToken, options)
+      .setCookie("accessToken", accessToken, options)
       // .cookie("refreshToken", refreshToken, options)
       .json({ msg: "setting cookies" })
   );

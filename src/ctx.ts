@@ -38,7 +38,7 @@ export default function createCtx(req: Request, server:Server ,url: URL): Contex
       return this.server.requestIP(this.req)
     },
 
-    async body(): Promise<any> {
+    async getBody(): Promise<any> {
       if (!parsedBody) {
         parsedBody = await parseBody(req);
       }
@@ -137,7 +137,7 @@ export default function createCtx(req: Request, server:Server ,url: URL): Contex
       }
     },
 
-    cookie(name: string, value: string, options: CookieOptions = {}) {
+    setCookie(name: string, value: string, options: CookieOptions = {}) {
       let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
 
       // Add options to cookie string (e.g., expiration, path, HttpOnly, etc.)
