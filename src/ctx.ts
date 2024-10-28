@@ -1,32 +1,32 @@
 import { Server } from "bun";
 import type { ContextType, CookieOptions, ParseBodyResult } from "./types";
 
-export default function createCtx(req: Request, server:Server ,url: URL): ContextType {
-  let headers: Headers = new Headers()
+export default function createCtx(req: Request, server: Server, url: URL): ContextType {
+
+  let headers: Headers = new Headers();
   let settedValue: Record<string, string> = {};
   let isAuthenticated: boolean = false;
-  let parsedQuery: any 
-  let parsedCookie: any = null
-  let parsedParams: any 
+  let parsedQuery: any;
+  let parsedCookie: any = null;
+  let parsedParams: any;
   let parsedBody: ParseBodyResult | null;
   let responseStatus: number = 200;
-  let user : any = {}
+  let user: any = {};
 
   return {
     req,
     server,
     url,
-   
-    // all methods starts from here
 
-    getUser () {
+    //
+    getUser() {
       return user;
     },
 
-    setUser(data?:any){
-     if (data) {
-       user = data
-     }
+    setUser(data?: any) : void {
+      if (data) {
+        user = data;
+      }
     },
 
     status(status: number): ContextType {
@@ -34,8 +34,8 @@ export default function createCtx(req: Request, server:Server ,url: URL): Contex
       return this;
     },
 
-    getIP(){
-      return this.server.requestIP(this.req)
+    getIP() {
+      return this.server.requestIP(this.req);
     },
 
     async getBody(): Promise<any> {
@@ -51,7 +51,7 @@ export default function createCtx(req: Request, server:Server ,url: URL): Contex
     },
 
     setHeader(key: string, value: any): ContextType {
-      headers.set(key, value)
+      headers.set(key, value);
       return this;
     },
 
@@ -77,118 +77,122 @@ export default function createCtx(req: Request, server:Server ,url: URL): Contex
     text(data: string, status?: number) {
       return new Response(data, {
         status: status ?? responseStatus,
-        headers
+        headers,
       });
     },
 
     send(data: string, status?: number) {
       return new Response(data, {
         status: status ?? responseStatus,
-        headers
+        headers,
       });
     },
 
     json(data: any, status?: number): Response {
       return new Response(JSON.stringify(data), {
         status: status ?? responseStatus,
-        headers
+        headers,
       });
     },
 
     html(filepath: string, status?: number): Response {
       return new Response(Bun.file(filepath), {
         status: status ?? responseStatus,
-        headers
+        headers,
       });
     },
 
     file(filePath: string, status?: number): Response {
       return new Response(Bun.file(filePath), {
         status: status ?? responseStatus,
-        headers
+        headers,
       });
     },
 
     redirect(path: string, status?: number): Response {
-      headers.set('Location', path);
+      headers.set("Location", path);
       return new Response(null, {
         status: status ?? 302,
-        headers
+        headers,
       });
     },
 
-    getParams(props: string)
-      : string | Record<string, string> | {} {
-      if (!parsedParams) {
-        parsedParams = extractDynamicParams(req?.routePattern, url?.pathname);
-      }
-      return props ? parsedParams[props] || {} : parsedParams;
-    },
-
-    getQuery(props?: any)
-      : string | Record<string, string> | {} {
-      try {
-        if (!parsedQuery) {
-          parsedQuery = Object.fromEntries(url.searchParams);
-        }
-        return props ? parsedQuery[props] || {} : parsedQuery;
-      } catch (error) {
-        return {}
-      }
-    },
-
-    setCookie(name: string, value: string, options: CookieOptions = {}) {
-      let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
+    setCookie(name: string, value: string, options: CookieOptions = {}) : ContextType {
+      let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(
+        value
+      )}`;
 
       // Add options to cookie string (e.g., expiration, path, HttpOnly, etc.)
       if (options.maxAge) cookieString += `; Max-Age=${options.maxAge}`;
-      if (options.expires) cookieString += `; Expires=${options.expires.toUTCString()}`;
+      if (options.expires)
+        cookieString += `; Expires=${options.expires.toUTCString()}`;
       if (options.path) cookieString += `; Path=${options.path}`;
       if (options.domain) cookieString += `; Domain=${options.domain}`;
       if (options.secure) cookieString += `; Secure`;
       if (options.httpOnly) cookieString += `; HttpOnly`;
       if (options.sameSite) cookieString += `; SameSite=${options.sameSite}`;
 
-      headers?.append('Set-Cookie', cookieString)
-      
+      headers?.append("Set-Cookie", cookieString);
+
       return this;
     },
 
-    getCookie(cookieName?: string){
-      if (!parsedCookie || Object.keys(parsedCookie).length === 0) {
-        const cookieHeader = req.headers?.get("cookie")
+    getParams(props: string)
+    : string | Record<string, string> | {} 
+    {
+      if (!parsedParams && req?.routePattern) {
+        parsedParams = extractDynamicParams(req?.routePattern, url?.pathname);
+      }
+      return props ? parsedParams[props] || {} : parsedParams;
+    },
+
+    getQuery(props?: any): string | Record<string, string> | {} {
+      try {
+        if (!parsedQuery) {
+          parsedQuery = Object.fromEntries(url.searchParams);
+        }
+        return props ? parsedQuery[props] || {} : parsedQuery;
+      } catch (error) {
+        return {};
+      }
+    },
+
+    getCookie(cookieName?: string) {
+      if (!parsedCookie) {
+        const cookieHeader = req.headers.get("cookie");
         if (cookieHeader) {
           parsedCookie = parseCookie(cookieHeader);
-        } else {
-          return null
         }
+        else return null;
       }
-      if (!parsedCookie) {
-        return null
+      if (!parsedCookie) return null;
+
+      if (cookieName) {
+        return parsedCookie[cookieName] ?? null;
+      } else {
+        return parsedCookie;
       }
-      return cookieName ? (parsedCookie[cookieName] !== undefined ? parsedCookie[cookieName] : null) : parsedCookie;
     },
   };
 }
 
-
-function parseCookie(header: string | undefined)
-  : Record<string, string> {
+function parseCookie(cookieHeader: string | undefined): Record<string, string> {
   const cookies: Record<string, string> = {};
-  if (!header) return cookies;
 
-  const cookieArray = header.split(";");
-  cookieArray.forEach((cookie) => {
-    const [cookieName, cookieValue] = cookie?.trim()?.split("=");
-    if (cookieName && cookieValue) {
-      cookies[cookieName.trim()] = cookieValue.split(' ')[0].trim()
-    }
-  });
+  cookieHeader
+    ?.split(";")
+    ?.forEach((cookie) => {
+      const [cookieName, cookieVale] = cookie?.trim()?.split("=");
+      if (cookieName)
+        cookies[cookieName.trim()] = cookieVale?.split(" ")[0]?.trim();
+    });
   return cookies;
 }
 
-function extractDynamicParams(routePattern: any, path: string)
-  : Record<string, string> | null {
+function extractDynamicParams(
+  routePattern: any,
+  path: string
+): Record<string, string> | null {
   const object: Record<string, string> = {};
   const routeSegments = routePattern.split("/");
   const [pathWithoutQuery] = path.split("?");
@@ -208,8 +212,7 @@ function extractDynamicParams(routePattern: any, path: string)
   return object;
 }
 
-async function parseBody(req: Request)
-  : Promise<ParseBodyResult> {
+async function parseBody(req: Request): Promise<ParseBodyResult> {
   const contentType: string = req.headers.get("Content-Type") || "";
 
   if (!contentType) return {};
@@ -225,8 +228,12 @@ async function parseBody(req: Request)
     }
 
     if (contentType.startsWith("multipart/form-data")) {
-      const formData = await req.formData();
-      return formDataToObject(formData);
+      const formData: any = await req.formData();
+      const obj: Record<string, string> = {};
+      for (const [key, value] of formData.entries()) {
+        obj[key] = value;
+      }
+      return obj;
     }
 
     return { error: "Unknown request body type" };
@@ -235,11 +242,3 @@ async function parseBody(req: Request)
   }
 }
 
-
-function formDataToObject(formData: any): Record<string, string> {
-  const obj: Record<string, string> = {};
-  for (const [key, value] of formData.entries()) {
-    obj[key] = value;
-  }
-  return obj;
-}

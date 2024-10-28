@@ -17,7 +17,6 @@ export default class Diesel {
     filters: string[];
     filterFunction: middlewareFunc | null;
     hasFilterEnabled: boolean;
-    wss: WebSocket | null | undefined;
     constructor();
     filter(): FilterMethods;
     cors(corsConfig: corsT): void;

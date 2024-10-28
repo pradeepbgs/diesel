@@ -32,7 +32,6 @@ export default class Diesel {
   filters: string[]
   filterFunction : middlewareFunc | null
   hasFilterEnabled: boolean
-  wss : WebSocket | null | undefined
 
   constructor() {
     this.globalMiddlewares = [];
@@ -56,7 +55,6 @@ export default class Diesel {
     this.filters = []
     this.filterFunction = null
     this.hasFilterEnabled = false
-    this.wss = null
   }
 
   
@@ -151,18 +149,15 @@ export default class Diesel {
           return new Response("Internal Server Error", { status: 500 });
         }
       },
-      onClose() {
-        console.log("Server is shutting down...");
-      },
     };
 
     if (sslCert && sslKey) {
       options.certFile = sslCert;
       options.keyFile = sslKey;
     }
-    const server = Bun.serve(options);
+    const server = Bun?.serve(options);
 
-    Bun?.gc(false)
+    // Bun?.gc(false)
 
     if (typeof callback === "function") {
       return callback();

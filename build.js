@@ -1,11 +1,11 @@
 import path from 'path';
 const entryPoints = [
-    './main/main.js',
-    './main/ctx.js',
-    './main/handleRequest.js',
-    './main/trie.js',
-    './main/router.js',
-    './main/utils.js'
+    './src/main.ts',
+    './src/ctx.ts',
+    './src/handleRequest.ts',
+    './src/trie.ts',
+    './src/router.ts',
+    './src/utils.ts'
 ];
 
 entryPoints.forEach(entry => {

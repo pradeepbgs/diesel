@@ -77,11 +77,7 @@ export default async function handleRequest(req: Request, server: Server, url: U
     if (Hookresult) return Hookresult;
   }
 
-  const preHandlerResult = diesel.hasPreHandlerHook ? await diesel.hooks.preHandler?.(ctx) : null;
-  if (preHandlerResult) return preHandlerResult;
-
-  // Finally, execute the route handler and return its result
-  try {
+   // Finally, execute the route handler and return its result
     const result = await routeHandler.handler(ctx) as Response | null | void;
 
     // 3. run the postHandler hooks 
@@ -95,10 +91,8 @@ export default async function handleRequest(req: Request, server: Server, url: U
       if (hookResponse) return hookResponse
     }
 
-    return result ?? new Response("No response from handler", { status: 204 })
-  } catch (error) {
-    return new Response("Internal Server Error", { status: 500 });
-  }
+  return result ?? new Response("No response from handler", { status: 204 })
+
 }
 
 

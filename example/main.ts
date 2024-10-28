@@ -1,6 +1,6 @@
-import Diesel from "../dist/main";
+import Diesel from "../src/main";
 import jwt from "jsonwebtoken";
-import { ContextType, CookieOptions, HookType, middlewareFunc } from "../dist/types";
+import { ContextType, CookieOptions, HookType, middlewareFunc } from "../src/types";
 
 const app = new Diesel()
 const secret = "linux";
@@ -13,7 +13,6 @@ const secret = "linux";
 
 async function authJwt(ctx: ContextType): Promise<void | null | Response> {
   const token = ctx.getCookie("accessToken");
-
   if (!token) {
     return ctx.status(401).json({ message: "Authentication token missing" });
   }
@@ -25,13 +24,13 @@ async function authJwt(ctx: ContextType): Promise<void | null | Response> {
   }
 }
 
-// app
-//   .filter()
-//   .routeMatcher("/cookie")
-//   .permitAll()
-//   .require(authJwt as middlewareFunc);
+app
+  .filter()
+  .routeMatcher("/cookie")
+  .permitAll()
+  .require(authJwt as middlewareFunc);
 
-app.use(authJwt)
+// app.use(authJwt)
 
 // app.addHooks('onRequest', (ctx ) => {
 //   // console.log(ctx.req.method, ctx.url);
@@ -68,7 +67,7 @@ app.get("/cookie", async (xl) => {
   };
 
   const accessToken = jwt.sign(user, secret, { expiresIn: "1d" });
-  // const refreshToken = jwt.sign(user, secret, { expiresIn: "10d" });
+  const refreshToken = jwt.sign(user, secret, { expiresIn: "10d" });
   const options: CookieOptions = {
     httpOnly: true, // Makes cookie accessible only by the web server (not JS)
     secure: true, // Ensures the cookie is sent over HTTPS
@@ -79,7 +78,7 @@ app.get("/cookie", async (xl) => {
   return (
     xl
       .setCookie("accessToken", accessToken, options)
-      // .cookie("refreshToken", refreshToken, options)
+      .setCookie("refreshToken", refreshToken, options)
       .json({ msg: "setting cookies" })
   );
 });
