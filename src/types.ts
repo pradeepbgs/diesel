@@ -15,15 +15,24 @@ export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS"
 //     onError = "onError",
 //     onClose = "onClose",
 // }
+
 export type HookType = 'onRequest' | 'preHandler' | 'postHandler' | 'onSend' | 'onError' | 'onClose';
 
 
+export interface onError {
+    (error: Error, req: Request, url: URL, server: Server): void | null | Response | Promise<Response | null | void>;
+}
+
+export interface onRequest {
+    (req: Request, url: URL, server: Server): void | null | Response | Promise<Response | null | void>;
+}
+
 export interface Hooks {
-    onRequest: HookFunction | null;
+    onRequest: onRequest | null;
     preHandler: HookFunction | null;
     postHandler: HookFunction | null;
     onSend: HookFunction | null;
-    onError: HookFunction | null;
+    onError: onError | null;
     onClose: HookFunction | null;
 }
 
@@ -84,10 +93,11 @@ export interface DieselT {
     hasPostHandlerHook: boolean;
     hasOnSendHook: boolean;
     hooks: {
-        onRequest: ((ctx: ContextType, serer?: Server) => void) | null 
+        onRequest: ((req:Request, url:URL,serer: Server) => void) | null 
         preHandler: ((ctx: ContextType, serer?: Server) => Response | Promise<Response | void | null>) | null
         postHandler: ((ctx: ContextType, serer?: Server) => Response | Promise<Response | void | null>) | null; // Updated to include Response | null
         onSend: ((ctx?: ContextType, result?: Response | null | void, serer?: Server) => Response | Promise<Response | void | null>) | null;
+        onError: ((error: Error, req: Request,url:URL, server?: Server) => void | Response | Promise<Response | null | void>) | null;
     };
     filters: string[]
     hasFilterEnabled:boolean

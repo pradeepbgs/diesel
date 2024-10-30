@@ -1,6 +1,7 @@
 import Diesel from "../src/main";
 import jwt from "jsonwebtoken";
 import { ContextType, CookieOptions, HookType, middlewareFunc } from "../src/types";
+import { Server } from "bun";
 
 const app = new Diesel()
 const secret = "linux";
@@ -32,14 +33,23 @@ app
 
 // app.use(authJwt)
 
-// app.addHooks('onRequest', (ctx ) => {
-//   // console.log(ctx.req.method, ctx.url);
-// });`
+app.addHooks('onRequest', (req:Request) => {
+  // console.log(req);
+});
 
+app.addHooks('onError', (error: any, req: Request, url: URL, server: Server) => {
+  console.error(`Error occurred: ${error.message}`);
+  console.error(`Request Method: ${req.method}, Request URL: ${url}`);
+  // return new Response('Internal Server Error', { status: 500 }); // You can customize the response as needed
+});
+
+
+app.get("/error", async () => {
+  throw new Error("This is a test error to demonstrate error handling");
+});
 
 app.get("/", async (xl) => {
   const user = xl.getUser();
-
   return xl.json({
     user,
   });
@@ -83,4 +93,4 @@ app.get("/cookie", async (xl) => {
   );
 });
 
-app.listen(3000);
+app.listen(4000);
