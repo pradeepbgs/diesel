@@ -141,6 +141,7 @@ DieselJS allows you to enhance your request handling by utilizing hooks at vario
 2. **preHandler**: Invoked just before the request handler executes.
 3. **postHandler**: Executed after the request handler completes but before sending the response.
 4. **onSend**: Called just before the response is sent to the client.
+5. **onError** : Executes if any error occurs
 
 ### How to Define Hooks
 
@@ -149,10 +150,19 @@ To define hooks in your DieselJS application, you can add them directly to your 
 ### Example Usage
 
 ```javascript
-// Define an onRequest hook
-app.addHooks("onRequest",(xl) =>{
-    console.log(`Request received: ${xl.req.method} ${xl.req.url}`);
+
+// define and onError hook
+
+app.addHooks("onError",(error,req,url,server) => {
+  console.log(`error occured ${error.message}`)
+  // retunr new Response(......)
 })
+
+// Define an onRequest hook
+app.addHooks("onRequest",(req,url,server) =>{
+    console.log(`Request received: ${req.method} ${url}`);
+})
+// you get req,url & server instance in onReq
 
 // Define a preHandler hook
 app.addHooks("preHandler",(xl) =>{
@@ -226,9 +236,9 @@ app.get("/set-cookie", async(xl) => {
     path: "/", 
   }
 
-  await xl.setCookie("accessToken", accessToken, options)
-
-  await xl.setCookie("refreshToken", refreshToken, options)
+  xl
+  .setCookie("accessToken", accessToken, options)
+  .setCookie("refreshToken", refreshToken, options)
 
   return xl.json({msg:"setting cookies"})
 })

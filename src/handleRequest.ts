@@ -9,9 +9,9 @@ export default async function handleRequest(req: Request, server: Server, url: U
 
   // Early return if route or method is not found
   if (!routeHandler || routeHandler.method !== req.method) {
-    return new Response(routeHandler ? "Method not allowed" : `Route not found for ${url.pathname}`, {
-      status: routeHandler ? 405 : 404,
-    });
+    const message = routeHandler ? "Method not allowed" : `Route not found for ${url.pathname}`;
+    const status = routeHandler ? 405 : 404;
+    return new Response(JSON.stringify({ message }), {status});
   }
 
   // If the route is dynamic, we only set routePattern if necessary
@@ -27,7 +27,9 @@ export default async function handleRequest(req: Request, server: Server, url: U
   }
 
   // OnReq hook 1
-  if (diesel.hasOnReqHook && diesel.hooks.onRequest) diesel.hooks.onRequest(ctx, server)
+  if (diesel.hasOnReqHook && diesel.hooks.onRequest){
+    diesel.hooks.onRequest(req,url,server)
+  }
 
   // filter applying
   if (diesel.hasFilterEnabled) {
@@ -40,16 +42,17 @@ export default async function handleRequest(req: Request, server: Server, url: U
         try {
           const filterResult = await diesel.filterFunction(ctx, server)
           if (filterResult) return filterResult
-        } catch (error) {
+        } catch (error:any) {
           console.error("Error in filterFunction:", error);
-          return new Response(JSON.stringify({
-            message: "Internal Server Error"
-          }), { status: 500 });
+          return ctx.status(500).json({
+            message: "Internal Server Error",
+            error: error.message
+          });
         }
       } else {
-        return new Response(JSON.stringify({
+        return ctx.status(400).json({
           message: "Authentication required"
-        }), { status: 400 })
+        })
       }
     }
   }
@@ -77,28 +80,24 @@ export default async function handleRequest(req: Request, server: Server, url: U
     if (Hookresult) return Hookresult;
   }
 
-  const preHandlerResult = diesel.hasPreHandlerHook ? await diesel.hooks.preHandler?.(ctx) : null;
-  if (preHandlerResult) return preHandlerResult;
-
-  // Finally, execute the route handler and return its result
-  try {
+   // Finally, execute the route handler and return its result
     const result = await routeHandler.handler(ctx) as Response | null | void;
 
     // 3. run the postHandler hooks 
     if (diesel.hasPostHandlerHook && diesel.hooks.postHandler) {
       await diesel.hooks.postHandler(ctx)
     }
-
+    
     // 4. Run onSend hooks before sending the response
     if (diesel.hasOnSendHook && diesel.hooks.onSend) {
       const hookResponse = await diesel.hooks.onSend(ctx, result);
       if (hookResponse) return hookResponse
     }
 
-    return result ?? new Response("No response from handler", { status: 204 })
-  } catch (error) {
-    return new Response("Internal Server Error", { status: 500 });
-  }
+  return result ?? ctx.status(204).json({
+    message:"No response from this handler"
+  })
+
 }
 
 

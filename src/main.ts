@@ -1,6 +1,5 @@
 import Trie from "./trie.js";
 import handleRequest from "./handleRequest.js";
-import rateLimit from "./utils.js";
 import {
   corsT,
   DieselT,
@@ -8,6 +7,8 @@ import {
   HookFunction,
   HookType,
   middlewareFunc,
+  onError,
+  onRequest,
   type handlerFunction,
   type Hooks,
   type HttpMethod,
@@ -26,13 +27,13 @@ export default class Diesel {
   hasPreHandlerHook: boolean;
   hasPostHandlerHook: boolean;
   hasOnSendHook: boolean;
+  hasOnError: boolean;
   hooks: Hooks
   corsConfig: corsT
-  FilterRoutes : string[] | undefined
+  FilterRoutes: string[] | undefined
   filters: string[]
-  filterFunction : middlewareFunc | null
+  filterFunction: middlewareFunc | null
   hasFilterEnabled: boolean
-  wss : WebSocket | null | undefined
 
   constructor() {
     this.globalMiddlewares = [];
@@ -44,6 +45,7 @@ export default class Diesel {
     this.hasPreHandlerHook = false;
     this.hasPostHandlerHook = false;
     this.hasOnSendHook = false;
+    this.hasOnError = false;
     this.hooks = {
       onRequest: null,
       preHandler: null,
@@ -56,27 +58,26 @@ export default class Diesel {
     this.filters = []
     this.filterFunction = null
     this.hasFilterEnabled = false
-    this.wss = null
   }
 
-  
-  filter() :FilterMethods {
+
+  filter(): FilterMethods {
     this.hasFilterEnabled = true
 
     return {
-      routeMatcher: (...routes:string[]) => {
+      routeMatcher: (...routes: string[]) => {
         this.FilterRoutes = routes.sort()
         return this.filter();
       },
 
       permitAll: () => {
-        for(const route of this?.FilterRoutes!){
+        for (const route of this?.FilterRoutes!) {
           this.filters.push(route)
         }
         return this.filter()
       },
 
-      require: (fnc?:middlewareFunc) => {
+      require: (fnc?: middlewareFunc) => {
         if (fnc) {
           this.filterFunction = fnc
         }
@@ -89,8 +90,8 @@ export default class Diesel {
   }
 
   addHooks(
-    typeOfHook: HookType, 
-    fnc: HookFunction
+    typeOfHook: HookType,
+    fnc: HookFunction | onError | onRequest
   ): void {
     if (typeof typeOfHook !== 'string') {
       throw new Error("hookName must be a string")
@@ -99,7 +100,14 @@ export default class Diesel {
       throw new Error("callback must be a instance of function")
     }
     if (this.hooks.hasOwnProperty(typeOfHook)) {
-      this.hooks[typeOfHook] = fnc;  // Overwrite or set the hook
+      if (typeOfHook === 'onError' && (fnc as onError)) {
+        this.hooks.onError = fnc as onError;
+      } else if (typeOfHook === 'onRequest' && (fnc as onRequest)) {
+        this.hooks.onRequest = fnc as onRequest;
+      }
+      else if (typeOfHook !== 'onError' && typeOfHook !== 'onRequest' && (fnc as HookFunction)) {
+        this.hooks[typeOfHook] = fnc as HookFunction;
+      }
     } else {
       throw new Error(`Unknown hook type: ${typeOfHook}`);  // Throw an error for invalid hook types
     }
@@ -121,14 +129,14 @@ export default class Diesel {
     if (this.hooks.preHandler) this.hasPreHandlerHook = true;
     if (this.hooks.postHandler) this.hasPostHandlerHook = true;
     if (this.hooks.onSend) this.hasOnSendHook = true;
-
+    if (this.hooks.onError) this.hasOnError = true;
   }
 
   listen(
-    port: number, 
-    callback?: listenCalllBackType, 
+    port: number,
+    callback?: listenCalllBackType,
     { sslCert = null, sslKey = null }: any = {}
-  ) : Server | void {
+  ): Server | void {
 
     if (typeof Bun === 'undefined')
       throw new Error(
@@ -144,15 +152,25 @@ export default class Diesel {
     const options: any = {
       port,
       fetch: async (req: Request, server: Server) => {
-        const url = new URL(req.url);
+        const url: URL = new URL(req.url);
         try {
           return await handleRequest(req, server, url, this as DieselT);
-        } catch (error) {
-          return new Response("Internal Server Error", { status: 500 });
+        } catch (error: any) {
+          if (this.hasOnError && this.hooks.onError) {
+            const onErrResponse = await this.hooks.onError(
+              error,
+              req,
+              url,
+              server
+            );
+
+            if (onErrResponse) return onErrResponse;
+          }
+          return new Response(JSON.stringify({
+            message:"Internal Server Error",
+            error: error.message
+          }), { status: 500 });
         }
-      },
-      onClose() {
-        console.log("Server is shutting down...");
       },
     };
 
@@ -160,9 +178,9 @@ export default class Diesel {
       options.certFile = sslCert;
       options.keyFile = sslKey;
     }
-    const server = Bun.serve(options);
+    const server = Bun?.serve(options);
 
-    Bun?.gc(false)
+    // Bun?.gc(false)
 
     if (typeof callback === "function") {
       return callback();
@@ -178,9 +196,9 @@ export default class Diesel {
   }
 
   register(
-    pathPrefix: string, 
+    pathPrefix: string,
     handlerInstance: any
-  ) : void {
+  ): void {
     if (typeof pathPrefix !== 'string') {
       throw new Error("path must be a string")
     }
@@ -188,7 +206,7 @@ export default class Diesel {
       throw new Error("handler parameter should be a instance of router object", handlerInstance)
     }
     const routeEntries: [string, RouteNodeType][] = Object.entries(handlerInstance.trie.root.children) as [string, RouteNodeType][];
-    
+
     handlerInstance.trie.root.subMiddlewares.forEach((middleware: middlewareFunc[], path: string) => {
       if (!this.middlewares.has(pathPrefix + path)) {
         this.middlewares.set(pathPrefix + path, []);
@@ -211,10 +229,10 @@ export default class Diesel {
   }
 
   addRoute(
-    method: HttpMethod, 
-    path: string, 
+    method: HttpMethod,
+    path: string,
     handlers: handlerFunction[]
-  ) : void {
+  ): void {
 
     if (typeof path !== "string") {
       throw new Error("Path must be a string type");
@@ -244,9 +262,9 @@ export default class Diesel {
   }
 
   use(
-    pathORHandler?: string | middlewareFunc, 
+    pathORHandler?: string | middlewareFunc,
     handler?: middlewareFunc
-  ) : void {
+  ): void {
 
     if (typeof pathORHandler === "function") {
       if (!this.globalMiddlewares.includes(pathORHandler)) {
@@ -254,7 +272,7 @@ export default class Diesel {
       }
       return
     }
-    
+
     const path: string = pathORHandler as string;
 
     if (!this.middlewares.has(path)) {
@@ -270,44 +288,39 @@ export default class Diesel {
 
 
   get(
-    path: string, 
+    path: string,
     ...handlers: handlerFunction[]
-  ) : this {
+  ): this {
     this.addRoute("GET", path, handlers);
     return this
   }
 
   post(
-    path: string, 
+    path: string,
     ...handlers: handlerFunction[]
   ): this {
     this.addRoute("POST", path, handlers);
     return this
   }
 
-  put(path: string, ...handlers: handlerFunction[]) : this{
+  put(path: string, ...handlers: handlerFunction[]): this {
     this.addRoute("PUT", path, handlers);
     return this
   }
 
   patch(
-    path: string, 
+    path: string,
     ...handlers: handlerFunction[]
-  ) : this {
+  ): this {
     this.addRoute("PATCH", path, handlers);
     return this
   }
 
   delete(
-    path: any, 
+    path: any,
     ...handlers: handlerFunction[]
-  ) : this {
+  ): this {
     this.addRoute("DELETE", path, handlers);
     return this;
   }
-}
-
-
-export {
-  rateLimit,
 }
