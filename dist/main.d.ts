@@ -1,6 +1,5 @@
 import Trie from "./trie.js";
-import rateLimit from "./utils.js";
-import { corsT, FilterMethods, HookFunction, HookType, middlewareFunc, type handlerFunction, type Hooks, type HttpMethod, type listenCalllBackType } from "./types.js";
+import { corsT, FilterMethods, HookFunction, HookType, middlewareFunc, onError, onRequest, type handlerFunction, type Hooks, type HttpMethod, type listenCalllBackType } from "./types.js";
 import { Server } from "bun";
 export default class Diesel {
     globalMiddlewares: middlewareFunc[];
@@ -11,6 +10,7 @@ export default class Diesel {
     hasPreHandlerHook: boolean;
     hasPostHandlerHook: boolean;
     hasOnSendHook: boolean;
+    hasOnError: boolean;
     hooks: Hooks;
     corsConfig: corsT;
     FilterRoutes: string[] | undefined;
@@ -20,7 +20,7 @@ export default class Diesel {
     constructor();
     filter(): FilterMethods;
     cors(corsConfig: corsT): void;
-    addHooks(typeOfHook: HookType, fnc: HookFunction): void;
+    addHooks(typeOfHook: HookType, fnc: HookFunction | onError | onRequest): void;
     compile(): void;
     listen(port: number, callback?: listenCalllBackType, { sslCert, sslKey }?: any): Server | void;
     register(pathPrefix: string, handlerInstance: any): void;
@@ -32,4 +32,3 @@ export default class Diesel {
     patch(path: string, ...handlers: handlerFunction[]): this;
     delete(path: any, ...handlers: handlerFunction[]): this;
 }
-export { rateLimit, };

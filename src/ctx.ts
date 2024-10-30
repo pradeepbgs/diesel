@@ -1,5 +1,8 @@
 import { Server } from "bun";
+import cookie from 'cookie'
+
 import type { ContextType, CookieOptions, ParseBodyResult } from "./types";
+
 
 export default function createCtx(req: Request, server: Server, url: URL): ContextType {
 
@@ -161,7 +164,7 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       if (!parsedCookie) {
         const cookieHeader = req.headers.get("cookie");
         if (cookieHeader) {
-          parsedCookie = parseCookie(cookieHeader);
+          parsedCookie = cookie.parse(cookieHeader)
         }
         else return null;
       }
@@ -182,9 +185,12 @@ function parseCookie(cookieHeader: string | undefined): Record<string, string> {
   cookieHeader
     ?.split(";")
     ?.forEach((cookie) => {
-      const [cookieName, cookieVale] = cookie?.trim()?.split("=");
-      if (cookieName)
-        cookies[cookieName.trim()] = cookieVale?.split(" ")[0]?.trim();
+      const [cookieName, ...cookieValeParts] = cookie?.trim()?.split("=");
+      const cookieVale = cookieValeParts?.join("=").trim()
+
+      if (cookieName){
+        cookies[cookieName.trim()] = decodeURIComponent(cookieVale)
+      }
     });
   return cookies;
 }

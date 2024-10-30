@@ -5,12 +5,18 @@ export type middlewareFunc = (ctx: ContextType, server?: Server | undefined) => 
 export type HookFunction = (ctx: ContextType, result?: Response | null | void, server?: Server) => Response | Promise<Response | null | void> | void;
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD";
 export type HookType = 'onRequest' | 'preHandler' | 'postHandler' | 'onSend' | 'onError' | 'onClose';
+export interface onError {
+    (error: Error, req: Request, url: URL, server: Server): void | null | Response | Promise<Response | null | void>;
+}
+export interface onRequest {
+    (req: Request, url: URL, server: Server): void | null | Response | Promise<Response | null | void>;
+}
 export interface Hooks {
-    onRequest: HookFunction | null;
+    onRequest: onRequest | null;
     preHandler: HookFunction | null;
     postHandler: HookFunction | null;
     onSend: HookFunction | null;
-    onError: HookFunction | null;
+    onError: onError | null;
     onClose: HookFunction | null;
 }
 export interface ContextType {
@@ -65,10 +71,11 @@ export interface DieselT {
     hasPostHandlerHook: boolean;
     hasOnSendHook: boolean;
     hooks: {
-        onRequest: ((ctx: ContextType, serer?: Server) => void) | null;
+        onRequest: ((req: Request, url: URL, serer: Server) => void) | null;
         preHandler: ((ctx: ContextType, serer?: Server) => Response | Promise<Response | void | null>) | null;
         postHandler: ((ctx: ContextType, serer?: Server) => Response | Promise<Response | void | null>) | null;
         onSend: ((ctx?: ContextType, result?: Response | null | void, serer?: Server) => Response | Promise<Response | void | null>) | null;
+        onError: ((error: Error, req: Request, url: URL, server?: Server) => void | Response | Promise<Response | null | void>) | null;
     };
     filters: string[];
     hasFilterEnabled: boolean;
