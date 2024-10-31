@@ -99,7 +99,7 @@ export interface DieselT {
         onSend: ((ctx?: ContextType, result?: Response | null | void, serer?: Server) => Response | Promise<Response | void | null>) | null;
         onError: ((error: Error, req: Request,url:URL, server?: Server) => void | Response | Promise<Response | null | void>) | null;
     };
-    filters: string[]
+    filters: Set<string> 
     hasFilterEnabled:boolean
     filterFunction: (ctx:ContextType,serer?:Server) => void | Response | Promise<Response | void | null>
     corsConfig: corsT | null

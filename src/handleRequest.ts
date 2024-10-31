@@ -35,9 +35,8 @@ export default async function handleRequest(req: Request, server: Server, url: U
   if (diesel.hasFilterEnabled) {
     
     const path = req.routePattern ?? url.pathname
-    const hasRoute = diesel.filters.includes(path)
-
-    if (hasRoute === false) {
+  
+    if (!diesel.filters.has(path)) {
       if (diesel.filterFunction) {
         try {
           const filterResult = await diesel.filterFunction(ctx, server)
@@ -60,15 +59,17 @@ export default async function handleRequest(req: Request, server: Server, url: U
   // middleware execution 
   if (diesel.hasMiddleware) {
     // first run global midl
-    for (const globalMiddleware of diesel.globalMiddlewares) {
-      const result = await globalMiddleware(ctx, server);
+    const globalMiddleware = diesel.globalMiddlewares
+
+    for (let i = 0; i < globalMiddleware.length; i++) {
+      const result = await globalMiddleware[i](ctx, server);
       if (result) return result;
     }
 
     // then path specific midl
     const pathMiddlewares = diesel.middlewares.get(url.pathname) || [];
-    for (const pathMiddleware of pathMiddlewares) {
-      const result = await pathMiddleware(ctx, server);
+    for (let i =0 ; i<pathMiddlewares.length;i++) {
+      const result = await pathMiddlewares[i](ctx, server);
       if (result) return result;
     }
 
