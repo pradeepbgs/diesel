@@ -30,8 +30,8 @@ export default class Diesel {
   hasOnError: boolean;
   hooks: Hooks
   corsConfig: corsT
-  FilterRoutes: string[] | undefined
-  filters: string[]
+  FilterRoutes: string[] | null| undefined
+  filters: Set<string>
   filterFunction: middlewareFunc | null
   hasFilterEnabled: boolean
 
@@ -55,7 +55,7 @@ export default class Diesel {
       onClose: null
     }
     this.FilterRoutes = []
-    this.filters = []
+    this.filters = new Set<string>
     this.filterFunction = null
     this.hasFilterEnabled = false
   }
@@ -66,14 +66,15 @@ export default class Diesel {
 
     return {
       routeMatcher: (...routes: string[]) => {
-        this.FilterRoutes = routes.sort()
+        this.FilterRoutes = routes
         return this.filter();
       },
 
       permitAll: () => {
         for (const route of this?.FilterRoutes!) {
-          this.filters.push(route)
+          this.filters.add(route)
         }
+        this.FilterRoutes = null
         return this.filter()
       },
 
@@ -99,18 +100,35 @@ export default class Diesel {
     if (typeof fnc !== 'function') {
       throw new Error("callback must be a instance of function")
     }
-    if (this.hooks.hasOwnProperty(typeOfHook)) {
-      if (typeOfHook === 'onError' && (fnc as onError)) {
-        this.hooks.onError = fnc as onError;
-      } else if (typeOfHook === 'onRequest' && (fnc as onRequest)) {
+
+    switch(typeOfHook){
+      case 'onRequest':
         this.hooks.onRequest = fnc as onRequest;
-      }
-      else if (typeOfHook !== 'onError' && typeOfHook !== 'onRequest' && (fnc as HookFunction)) {
-        this.hooks[typeOfHook] = fnc as HookFunction;
-      }
-    } else {
-      throw new Error(`Unknown hook type: ${typeOfHook}`);  // Throw an error for invalid hook types
+        this.hasOnReqHook = true;
+        break;
+      case 'preHandler':
+        this.hooks.preHandler = fnc as HookFunction;
+        this.hasPreHandlerHook = true;
+        break;
+      case 'postHandler':
+        this.hooks.postHandler = fnc as HookFunction;
+        this.hasPostHandlerHook = true;
+        break;
+      case  'onSend':
+        this.hooks.onSend = fnc as HookFunction;
+        this.hasOnSendHook = true;
+        break;
+      case 'onError':
+        this.hooks.onError = fnc as onError;
+        this.hasOnError = true;
+        break;
+      case 'onClose':
+        this.hooks.onClose = fnc as HookFunction;
+        break;
+      default:
+        throw new Error(`Unknown hook type: ${typeOfHook}`);
     }
+
   }
 
   compile(): void {
@@ -248,9 +266,7 @@ export default class Diesel {
     }
     middlewareHandlers.forEach((middleware: middlewareFunc) => {
       if (path === '/') {
-        if (!this.globalMiddlewares.includes(middleware)) {
-          this.globalMiddlewares.push(middleware);
-        }
+        this.globalMiddlewares = [...new Set([...this.globalMiddlewares, ...middlewareHandlers])];
       } else {
         if (!this.middlewares.get(path)?.includes(middleware)) {
           this.middlewares.get(path)?.push(middleware)

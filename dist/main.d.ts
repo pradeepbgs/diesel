@@ -13,8 +13,8 @@ export default class Diesel {
     hasOnError: boolean;
     hooks: Hooks;
     corsConfig: corsT;
-    FilterRoutes: string[] | undefined;
-    filters: string[];
+    FilterRoutes: string[] | null | undefined;
+    filters: Set<string>;
     filterFunction: middlewareFunc | null;
     hasFilterEnabled: boolean;
     constructor();

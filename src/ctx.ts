@@ -1,5 +1,5 @@
 import { Server } from "bun";
-import cookie from 'cookie'
+// import cookie from 'cookie'
 
 import type { ContextType, CookieOptions, ParseBodyResult } from "./types";
 
@@ -164,7 +164,7 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       if (!parsedCookie) {
         const cookieHeader = req.headers.get("cookie");
         if (cookieHeader) {
-          parsedCookie = cookie.parse(cookieHeader)
+          parsedCookie = parseCookie(cookieHeader)
         }
         else return null;
       }
@@ -182,16 +182,17 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
 function parseCookie(cookieHeader: string | undefined): Record<string, string> {
   const cookies: Record<string, string> = {};
 
-  cookieHeader
-    ?.split(";")
-    ?.forEach((cookie) => {
-      const [cookieName, ...cookieValeParts] = cookie?.trim()?.split("=");
-      const cookieVale = cookieValeParts?.join("=").trim()
 
-      if (cookieName){
-        cookies[cookieName.trim()] = decodeURIComponent(cookieVale)
-      }
-    });
+  const cookiesArray = cookieHeader?.split(";")!
+
+  for(let i =0; i < cookiesArray?.length!; i++){
+    const [cookieName, ...cookieValeParts] = cookiesArray[i].trim().split("=");
+    const cookieVale = cookieValeParts?.join("=").trim()
+    if (cookieName){
+      cookies[cookieName.trim()] = decodeURIComponent(cookieVale)
+    }
+  }
+
   return cookies;
 }
 
@@ -208,12 +209,14 @@ function extractDynamicParams(
     return null;
   }
 
-  routeSegments.forEach((segment: string, index: number) => {
-    if (segment.startsWith(":")) {
-      const dynamicKey = segment.slice(1);
-      object[dynamicKey] = pathSegments[index];
+  for (let i =0; i<routeSegments.length; i++){
+    if (routeSegments[i].startsWith(":")) {
+      // const dynamicKey = routeSegments[i].slice(1);
+      // object[dynamicKey] = pathSegments[i];
+      // OR
+      object[routeSegments[i].slice(1)] = pathSegments[i];
     }
-  });
+  }
 
   return object;
 }

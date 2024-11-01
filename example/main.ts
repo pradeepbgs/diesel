@@ -18,7 +18,7 @@ async function authJwt(ctx: ContextType): Promise<void | null | Response> {
     return ctx.status(401).json({ message: "Authentication token missing" });
   }
   try {
-    const user = jwt.verify(token, secret); // Replace with your JWT secret
+    const user = await jwt.verify(token, secret); // Replace with your JWT secret
     ctx.setUser(user);
   } catch (error) {
     return ctx.status(403).json({ message: "Invalid token" });
@@ -33,9 +33,9 @@ app
 
 // app.use(authJwt)
 
-app.addHooks('onRequest', (req:Request) => {
-  // console.log(req);
-});
+// app.addHooks('onRequest', (req:Request) => {
+//   // console.log(req);
+// });
 
 app.addHooks('onError', (error: any, req: Request, url: URL, server: Server) => {
   console.error(`Error occurred: ${error.message}`);
@@ -85,12 +85,14 @@ app.get("/cookie", async (xl) => {
     sameSite: "Strict", // Prevents CSRF (strict origin policy)
     path: "/", // Cookie available for all routes
   };
+  
   return (
     xl
       .setCookie("accessToken", accessToken, options)
       .setCookie("refreshToken", refreshToken, options)
       .json({ msg: "setting cookies" })
   );
+
 });
 
 app.listen(3000);
