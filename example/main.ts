@@ -12,7 +12,8 @@ const secret = "linux";
 //   allowedHeaders: 'Content-Type,Authorization'
 // })
 
-async function authJwt(ctx: ContextType): Promise<void | null | Response> {
+export async function authJwt(ctx: ContextType): Promise<void | null | Response> {
+  
   const token = ctx.getCookie("accessToken");
   if (!token) {
     return ctx.status(401).json({ message: "Authentication token missing" });
@@ -31,11 +32,6 @@ app
   .permitAll()
   .require(authJwt as middlewareFunc);
 
-// app.use(authJwt)
-
-// app.addHooks('onRequest', (req:Request) => {
-//   // console.log(req);
-// });
 
 app.addHooks('onError', (error: any, req: Request, url: URL, server: Server) => {
   console.error(`Error occurred: ${error.message}`);
@@ -94,5 +90,9 @@ app.get("/cookie", async (xl) => {
   );
 
 });
+
+import {newRoute} from './route'
+
+app.route("/api/user",newRoute)
 
 app.listen(3000);
