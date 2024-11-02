@@ -30,26 +30,28 @@ class TrieNode {
       this.root = new TrieNode();
     }
   
-    insert(path:string, route:RouteT) : void {
+    insert(path: string, route: RouteT): void {
       let node = this.root;
-      const pathSegments = path.split('/').filter(Boolean); // Split path by segments
+      const pathSegments = path.split('/').filter(Boolean);
     
-      // If it's the root path '/', treat it separately
+      // Special handling for root path
       if (path === '/') {
         node.isEndOfWord = true;
-        node.handler.push(route.handler)
+        node.handler = [route.handler];
         node.path = path;
-        node.method.push(route.method)
+        node.method = [route.method];
         return;
       }
     
-      for (const segment of pathSegments) {
+      for (let i = 0; i < pathSegments.length; i++) {
+        const segment = pathSegments[i];
         let isDynamic = false;
         let key = segment;
     
+        // Handle dynamic segments
         if (segment.startsWith(':')) {
           isDynamic = true;
-          key = ':';  // Store dynamic routes under the key ':'
+          key = ':'; // Dynamic segments are stored under ':'
         }
     
         if (!node.children[key]) {
@@ -57,19 +59,19 @@ class TrieNode {
         }
     
         node = node.children[key];
-        // Set dynamic route information if applicable
         node.isDynamic = isDynamic;
         node.pattern = segment;
-        node.method.push(route.method)
-        node.handler.push(route.handler)
-        node.path = path;  // Store the actual pattern like ':id'
+    
+        // Only assign handlers and methods at the last segment
+        if (i === pathSegments.length - 1) {
+          node.handler = [route.handler];
+          node.method = [route.method];
+          node.isEndOfWord = true;
+          node.path = path; // Store the full path at the endpoint
+        }
       }
-      // After looping through the entire path, assign route details
-      node.isEndOfWord = true;
-      node.method.push(route.method);    
-      node.handler.push(route.handler)
-      node.path = path;  // Store the original path
     }
+    
     
     // insertMidl(midl:handlerFunction): void {
     //   if (!this.root.subMiddlewares.has(midl)) {
@@ -78,29 +80,29 @@ class TrieNode {
     // }
     
   
-    search(path:string, method:HttpMethod) {
+    search(path: string, method: HttpMethod) {
       let node = this.root;
-      const pathSegments = path.split('/').filter(Boolean); // Split path into segments
+      const pathSegments = path.split('/').filter(Boolean);
     
       for (const segment of pathSegments) {
         let key = segment;
     
-        // Check for exact match first (static)
+        // Check for an exact match
         if (!node.children[key]) {
-          // Try dynamic match (e.g., ':id')
+          // Attempt a dynamic match
           if (node.children[':']) {
             node = node.children[':'];
           } else {
-            return null; // No match
+            return null; // No match found
           }
         } else {
           node = node.children[key];
         }
       }
-      
-      // Method matching
-      let routeMethodIndex = node.method.indexOf(method); // More efficient method match
-      if (routeMethodIndex !== -1) {
+    
+      // Verify the endpoint and method match
+      const routeMethodIndex = node.method.indexOf(method);
+      if (node.isEndOfWord && routeMethodIndex !== -1) {
         return {
           path: node.path,
           handler: node.handler[routeMethodIndex],
@@ -110,15 +112,10 @@ class TrieNode {
         };
       }
     
-      // Fallback if method is not found
-      return {
-        path: node.path,
-        handler: node.handler,
-        isDynamic: node.isDynamic,
-        pattern: node.pattern,
-        method: node.method[routeMethodIndex]
-      };
+      // No match found
+      return null;
     }
+    
     
     
   

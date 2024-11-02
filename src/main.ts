@@ -19,6 +19,10 @@ import { Server } from "bun";
 
 
 export default class Diesel {
+  // tempRoutes is used , so we can implement route method. 
+  // although we have router class and register method for subrouting , still i wanna add a route method.
+  // in future we can also remove it, well see
+  tempRoutes:Map<string,any>
   globalMiddlewares: middlewareFunc[]
   middlewares: Map<string, middlewareFunc[]>;
   trie: Trie
@@ -30,12 +34,13 @@ export default class Diesel {
   hasOnError: boolean;
   hooks: Hooks
   corsConfig: corsT
-  FilterRoutes: string[] | null| undefined
+  FilterRoutes: string[] | null | undefined
   filters: Set<string>
   filterFunction: middlewareFunc | null
   hasFilterEnabled: boolean
 
   constructor() {
+    this.tempRoutes = new Map
     this.globalMiddlewares = [];
     this.middlewares = new Map();
     this.trie = new Trie();
@@ -101,7 +106,7 @@ export default class Diesel {
       throw new Error("callback must be a instance of function")
     }
 
-    switch(typeOfHook){
+    switch (typeOfHook) {
       case 'onRequest':
         this.hooks.onRequest = fnc as onRequest;
         this.hasOnReqHook = true;
@@ -114,7 +119,7 @@ export default class Diesel {
         this.hooks.postHandler = fnc as HookFunction;
         this.hasPostHandlerHook = true;
         break;
-      case  'onSend':
+      case 'onSend':
         this.hooks.onSend = fnc as HookFunction;
         this.hasOnSendHook = true;
         break;
@@ -131,11 +136,13 @@ export default class Diesel {
 
   }
 
+
   compile(): void {
     if (this.globalMiddlewares.length > 0) {
       this.hasMiddleware = true;
     }
     for (const [path, middlewares] of this.middlewares.entries()) {
+      
       if (middlewares.length > 0) {
         this.hasMiddleware = true;
         break;
@@ -148,6 +155,8 @@ export default class Diesel {
     if (this.hooks.postHandler) this.hasPostHandlerHook = true;
     if (this.hooks.onSend) this.hasOnSendHook = true;
     if (this.hooks.onError) this.hasOnError = true;
+    this.tempRoutes = new Map()
+    // console.log(this.trie)
   }
 
   listen(
@@ -185,7 +194,7 @@ export default class Diesel {
             if (onErrResponse) return onErrResponse;
           }
           return new Response(JSON.stringify({
-            message:"Internal Server Error",
+            message: "Internal Server Error",
             error: error.message
           }), { status: 500 });
         }
@@ -213,37 +222,66 @@ export default class Diesel {
     return server;
   }
 
+  route(basePath:string,routerInstance:any): void {
+    if (!basePath || typeof basePath !== 'string') throw new Error("Path must be a string");
+
+    const routes = Object.fromEntries(routerInstance.tempRoutes)
+    const routesArray = Object.entries(routes)
+    for(let i =0; i<routesArray.length; i++){
+      const [path,args] = routesArray[i] 
+      const fullpath = `${basePath}${path}`;
+      if (!this.middlewares.has(fullpath)) {
+        this.middlewares.set(fullpath, []);
+      }
+      const middlewareHandlers : middlewareFunc[] = args.handlers.slice(0, -1) 
+      middlewareHandlers.forEach((middleware: middlewareFunc) => {
+          if (!this.middlewares.get(fullpath)?.includes(middleware)) {
+            this.middlewares.get(fullpath)?.push(middleware)
+          }
+      });
+      const handler = args.handlers[args.handlers.length-1]
+      const method = args.method
+      try {
+        this.trie.insert(fullpath, { handler: handler as handlerFunction, method:method })
+        } catch (error) {
+        console.error(`Error inserting ${fullpath}:`, error);      
+      }
+    }
+    routerInstance = null
+  }
+
   register(
     pathPrefix: string,
     handlerInstance: any
   ): void {
-    if (typeof pathPrefix !== 'string') {
-      throw new Error("path must be a string")
-    }
-    if (typeof handlerInstance !== 'object') {
-      throw new Error("handler parameter should be a instance of router object", handlerInstance)
-    }
-    const routeEntries: [string, RouteNodeType][] = Object.entries(handlerInstance.trie.root.children) as [string, RouteNodeType][];
+    this.route(pathPrefix, handlerInstance)
+    // if (typeof pathPrefix !== 'string') throw new Error("Path prefix must be a string");
+    // if (typeof handlerInstance !== 'object') throw new Error("Handler must be an object");
 
-    handlerInstance.trie.root.subMiddlewares.forEach((middleware: middlewareFunc[], path: string) => {
-      if (!this.middlewares.has(pathPrefix + path)) {
-        this.middlewares.set(pathPrefix + path, []);
-      }
+    // const routeEntries: [string, RouteNodeType][] = Object.entries(handlerInstance.trie.root.children) as [string, RouteNodeType][];
 
-      middleware?.forEach((midl: middlewareFunc) => {
-        if (!this.middlewares.get(pathPrefix + path)?.includes(midl)) {
-          this.middlewares.get(pathPrefix + path)?.push(midl)
-        }
-      })
+    // handlerInstance.trie.root.subMiddlewares.forEach((middleware: middlewareFunc[], path: string) => {
+    //   if (!this.middlewares.has(pathPrefix + path)) {
+    //     this.middlewares.set(pathPrefix + path, []);
+    //   }
 
-    });
-    for (const [routeKey, routeNode] of routeEntries) {
-      const fullpath = pathPrefix + routeNode?.path;
-      const routeHandler = routeNode.handler[0];
-      const httpMethod = routeNode.method[0];
-      this.trie.insert(fullpath, { handler: routeHandler as handlerFunction, method: httpMethod });
-    }
-    handlerInstance.trie = new Trie();
+    //   middleware?.forEach((midl: middlewareFunc) => {
+    //     if (!this.middlewares.get(pathPrefix + path)?.includes(midl)) {
+    //       this.middlewares.get(pathPrefix + path)?.push(midl)
+    //     }
+    //   })
+
+    // });
+    // for (const [routeKey, routeNode] of routeEntries) {
+    //   const fullpath = `${pathPrefix}${routeNode?.path}`;
+    //   const routeHandler = routeNode.handler[0];
+    //   const method = routeNode.method[0];
+    //     try {
+    //       this.trie.insert(fullpath, { handler: routeHandler as handlerFunction, method: method });
+    //     } catch (error) {
+    //       console.error(`Error inserting ${fullpath}:`, error);
+    //   }
+    // }
   }
 
   addRoute(
@@ -252,12 +290,10 @@ export default class Diesel {
     handlers: handlerFunction[]
   ): void {
 
-    if (typeof path !== "string") {
-      throw new Error("Path must be a string type");
-    }
-    if (typeof method !== "string") {
-      throw new Error("method must be a string type");
-    }
+    if (typeof path !== 'string') throw new Error("Path must be a string");
+    if (typeof method !== 'string') throw new Error("Method must be a string");
+
+    this.tempRoutes.set(path,{method,handlers})
     const middlewareHandlers = handlers.slice(0, -1) as middlewareFunc[]
     const handler = handlers[handlers.length - 1];
 
@@ -274,7 +310,11 @@ export default class Diesel {
       }
     });
 
-    this.trie.insert(path, { handler, method });
+    try {
+      this.trie.insert(path, { handler, method });
+    } catch (error) {
+      console.error(`Error inserting ${path}:`, error);
+    }
   }
 
   use(

@@ -6,8 +6,8 @@ export default async function handleRequest(req: Request, server: Server, url: U
 
   // Try to find the route handler in the trie
   const routeHandler: RouteHandlerT | undefined = diesel.trie.search(url.pathname, req.method);
-
   // Early return if route or method is not found
+ 
   if (!routeHandler || routeHandler.method !== req.method) {
     const message = routeHandler ? "Method not allowed" : `Route not found for ${url.pathname}`;
     const status = routeHandler ? 405 : 404;
