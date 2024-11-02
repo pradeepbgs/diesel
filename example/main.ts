@@ -28,7 +28,7 @@ export async function authJwt(ctx: ContextType): Promise<void | null | Response>
 
 app
   .filter()
-  .routeMatcher("/cookie")
+  .routeMatcher("/cookie",'/api/user/login','api/user/register')
   .permitAll()
   .require(authJwt as middlewareFunc);
 
@@ -50,6 +50,10 @@ app.get("/", async (xl) => {
     user,
   });
 });
+
+app.get("/api/user/u",(ctx) => {
+  return ctx.text("j")
+})
 
 // app.post("/",async (ctx) => {
 //   const body = await ctx.getBody()
@@ -91,8 +95,8 @@ app.get("/cookie", async (xl) => {
 
 });
 
-import {newRoute} from './route'
+import {userRoute} from './route'
 
-app.route("/api/user",newRoute)
+app.register("/api/user",userRoute)
 
 app.listen(3000);

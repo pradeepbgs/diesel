@@ -19,8 +19,8 @@ import { Server } from "bun";
 
 
 export default class Diesel {
-  // tempRoutes is just used for so we can implement route method. 
-  // although we have router class and register method for subrouting still i wanna add a route method
+  // tempRoutes is used , so we can implement route method. 
+  // although we have router class and register method for subrouting , still i wanna add a route method.
   // in future we can also remove it, well see
   tempRoutes:Map<string,any>
   globalMiddlewares: middlewareFunc[]
@@ -156,6 +156,7 @@ export default class Diesel {
     if (this.hooks.onSend) this.hasOnSendHook = true;
     if (this.hooks.onError) this.hasOnError = true;
     this.tempRoutes = new Map()
+    // console.log(this.trie)
   }
 
   listen(
@@ -226,25 +227,23 @@ export default class Diesel {
 
     const routes = Object.fromEntries(routerInstance.tempRoutes)
     const routesArray = Object.entries(routes)
-    for(let i =0; i<routesArray.length;i++){
-      const [path,args] = routesArray[i] as [string,any]
-      const fullpath = basePath+path
-
+    for(let i =0; i<routesArray.length; i++){
+      const [path,args] = routesArray[i] 
+      const fullpath = `${basePath}${path}`;
       if (!this.middlewares.has(fullpath)) {
         this.middlewares.set(fullpath, []);
       }
-      const middlewareHandlers = args.handlers.slice(0, -1) as middlewareFunc[]
+      const middlewareHandlers : middlewareFunc[] = args.handlers.slice(0, -1) 
       middlewareHandlers.forEach((middleware: middlewareFunc) => {
           if (!this.middlewares.get(fullpath)?.includes(middleware)) {
             this.middlewares.get(fullpath)?.push(middleware)
           }
       });
-      
-      const handlers = args.handlers[args.handlers.length-1]
+      const handler = args.handlers[args.handlers.length-1]
       const method = args.method
       try {
-        this.trie.insert(fullpath, { handler: handlers as handlerFunction, method: method })
-      } catch (error) {
+        this.trie.insert(fullpath, { handler: handler as handlerFunction, method:method })
+        } catch (error) {
         console.error(`Error inserting ${fullpath}:`, error);      
       }
     }
@@ -255,35 +254,34 @@ export default class Diesel {
     pathPrefix: string,
     handlerInstance: any
   ): void {
+    this.route(pathPrefix, handlerInstance)
+    // if (typeof pathPrefix !== 'string') throw new Error("Path prefix must be a string");
+    // if (typeof handlerInstance !== 'object') throw new Error("Handler must be an object");
 
-    if (typeof pathPrefix !== 'string') throw new Error("Path prefix must be a string");
-    if (typeof handlerInstance !== 'object') throw new Error("Handler must be an object");
+    // const routeEntries: [string, RouteNodeType][] = Object.entries(handlerInstance.trie.root.children) as [string, RouteNodeType][];
 
-    const routeEntries: [string, RouteNodeType][] = Object.entries(handlerInstance.trie.root.children) as [string, RouteNodeType][];
+    // handlerInstance.trie.root.subMiddlewares.forEach((middleware: middlewareFunc[], path: string) => {
+    //   if (!this.middlewares.has(pathPrefix + path)) {
+    //     this.middlewares.set(pathPrefix + path, []);
+    //   }
 
-    handlerInstance.trie.root.subMiddlewares.forEach((middleware: middlewareFunc[], path: string) => {
-      if (!this.middlewares.has(pathPrefix + path)) {
-        this.middlewares.set(pathPrefix + path, []);
-      }
+    //   middleware?.forEach((midl: middlewareFunc) => {
+    //     if (!this.middlewares.get(pathPrefix + path)?.includes(midl)) {
+    //       this.middlewares.get(pathPrefix + path)?.push(midl)
+    //     }
+    //   })
 
-      middleware?.forEach((midl: middlewareFunc) => {
-        if (!this.middlewares.get(pathPrefix + path)?.includes(midl)) {
-          this.middlewares.get(pathPrefix + path)?.push(midl)
-        }
-      })
-
-    });
-    for (const [routeKey, routeNode] of routeEntries) {
-      const fullpath = pathPrefix + routeNode?.path;
-      const routeHandler = routeNode.handler[0];
-      const httpMethod = routeNode.method[0];
-      try {
-        this.trie.insert(fullpath, { handler: routeHandler as handlerFunction, method: httpMethod });
-      } catch (error) {
-        console.error(`Error inserting ${fullpath}:`, error);      
-      }
-    }
-    handlerInstance = null
+    // });
+    // for (const [routeKey, routeNode] of routeEntries) {
+    //   const fullpath = `${pathPrefix}${routeNode?.path}`;
+    //   const routeHandler = routeNode.handler[0];
+    //   const method = routeNode.method[0];
+    //     try {
+    //       this.trie.insert(fullpath, { handler: routeHandler as handlerFunction, method: method });
+    //     } catch (error) {
+    //       console.error(`Error inserting ${fullpath}:`, error);
+    //   }
+    // }
   }
 
   addRoute(
