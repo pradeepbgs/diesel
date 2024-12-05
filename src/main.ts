@@ -13,7 +13,6 @@ import {
   type Hooks,
   type HttpMethod,
   type listenCalllBackType,
-  type RouteNodeType
 } from "./types.js";
 import { Server } from "bun";
 
@@ -22,7 +21,7 @@ export default class Diesel {
   // tempRoutes is used , so we can implement route method. 
   // although we have router class and register method for subrouting , still i wanna add a route method.
   // in future we can also remove it, well see
-  tempRoutes:Map<string,any>
+  tempRoutes: Map<string, any>
   globalMiddlewares: middlewareFunc[]
   middlewares: Map<string, middlewareFunc[]>;
   trie: Trie
@@ -95,10 +94,7 @@ export default class Diesel {
     this.corsConfig = corsConfig
   }
 
-  addHooks(
-    typeOfHook: HookType,
-    fnc: HookFunction | onError | onRequest
-  ): void {
+  addHooks( typeOfHook: HookType, fnc: HookFunction | onError | onRequest ): void {
     if (typeof typeOfHook !== 'string') {
       throw new Error("hookName must be a string")
     }
@@ -142,7 +138,6 @@ export default class Diesel {
       this.hasMiddleware = true;
     }
     for (const [path, middlewares] of this.middlewares.entries()) {
-      
       if (middlewares.length > 0) {
         this.hasMiddleware = true;
         break;
@@ -156,14 +151,9 @@ export default class Diesel {
     if (this.hooks.onSend) this.hasOnSendHook = true;
     if (this.hooks.onError) this.hasOnError = true;
     this.tempRoutes = new Map()
-    // console.log(this.trie)
   }
 
-  listen(
-    port: number,
-    callback?: listenCalllBackType,
-    { sslCert = null, sslKey = null }: any = {}
-  ): Server | void {
+  listen( port: number, callback?: listenCalllBackType,{ sslCert = null, sslKey = null }: any = {} ): Server | void {
 
     if (typeof Bun === 'undefined')
       throw new Error(
@@ -222,38 +212,40 @@ export default class Diesel {
     return server;
   }
 
-  route(basePath:string,routerInstance:any): void {
+  route(basePath: string, routerInstance: any): void {
     if (!basePath || typeof basePath !== 'string') throw new Error("Path must be a string");
 
-    const routes = Object.fromEntries(routerInstance.tempRoutes)
-    const routesArray = Object.entries(routes)
-    for(let i =0; i<routesArray.length; i++){
-      const [path,args] = routesArray[i] 
+    const routes = Object.fromEntries(routerInstance.tempRoutes);
+    const routesArray = Object.entries(routes);
+
+    routesArray.forEach(([path, args]) => {
       const fullpath = `${basePath}${path}`;
       if (!this.middlewares.has(fullpath)) {
         this.middlewares.set(fullpath, []);
       }
-      const middlewareHandlers : middlewareFunc[] = args.handlers.slice(0, -1) 
+
+      const middlewareHandlers: middlewareFunc[] = args.handlers.slice(0, -1);
       middlewareHandlers.forEach((middleware: middlewareFunc) => {
-          if (!this.middlewares.get(fullpath)?.includes(middleware)) {
-            this.middlewares.get(fullpath)?.push(middleware)
-          }
+        if (!this.middlewares.get(fullpath)?.includes(middleware)) {
+          this.middlewares.get(fullpath)?.push(middleware);
+        }
       });
-      const handler = args.handlers[args.handlers.length-1]
-      const method = args.method
+
+      const handler = args.handlers[args.handlers.length - 1];
+      const method = args.method;
+
       try {
-        this.trie.insert(fullpath, { handler: handler as handlerFunction, method:method })
-        } catch (error) {
-        console.error(`Error inserting ${fullpath}:`, error);      
+        this.trie.insert(fullpath, { handler: handler as handlerFunction, method });
+      } catch (error) {
+        console.error(`Error inserting ${fullpath}:`, error);
       }
-    }
-    routerInstance = null
+    });
+
+    routerInstance = null;
   }
 
-  register(
-    pathPrefix: string,
-    handlerInstance: any
-  ): void {
+
+  register( pathPrefix: string, handlerInstance: any ): void {
     this.route(pathPrefix, handlerInstance)
     // if (typeof pathPrefix !== 'string') throw new Error("Path prefix must be a string");
     // if (typeof handlerInstance !== 'object') throw new Error("Handler must be an object");
@@ -284,16 +276,12 @@ export default class Diesel {
     // }
   }
 
-  addRoute(
-    method: HttpMethod,
-    path: string,
-    handlers: handlerFunction[]
-  ): void {
+  addRoute( method: HttpMethod, path: string, handlers: handlerFunction[] ): void {
 
     if (typeof path !== 'string') throw new Error("Path must be a string");
     if (typeof method !== 'string') throw new Error("Method must be a string");
 
-    this.tempRoutes.set(path,{method,handlers})
+    this.tempRoutes.set(path, { method, handlers })
     const middlewareHandlers = handlers.slice(0, -1) as middlewareFunc[]
     const handler = handlers[handlers.length - 1];
 
@@ -317,15 +305,17 @@ export default class Diesel {
     }
   }
 
-  use(
-    pathORHandler?: string | middlewareFunc,
-    handler?: middlewareFunc
-  ): void {
+  use( pathORHandler?: string | middlewareFunc, ...handlers: middlewareFunc[] ): void {
 
     if (typeof pathORHandler === "function") {
       if (!this.globalMiddlewares.includes(pathORHandler)) {
         this.globalMiddlewares.push(pathORHandler);
       }
+      handlers.forEach((handler:middlewareFunc) =>{
+        if (!this.globalMiddlewares.includes(handler)) {
+          this.globalMiddlewares.push(handler);
+        }
+      })
       return
     }
 
@@ -335,26 +325,22 @@ export default class Diesel {
       this.middlewares.set(path, []);
     }
 
-    if (handler) {
-      if (!this.middlewares.get(path)?.includes(handler)) {
-        this.middlewares.get(path)?.push(handler);
-      }
+    if (handlers) {
+      handlers.forEach((handler:middlewareFunc) =>{
+        if (!this.middlewares.get(path)?.includes(handler)) {
+          this.middlewares.get(path)?.push(handler);
+        }
+      })
     }
   }
 
 
-  get(
-    path: string,
-    ...handlers: handlerFunction[]
-  ): this {
+  get( path: string, ...handlers: handlerFunction[] ): this {
     this.addRoute("GET", path, handlers);
     return this
   }
 
-  post(
-    path: string,
-    ...handlers: handlerFunction[]
-  ): this {
+  post( path: string, ...handlers: handlerFunction[] ): this {
     this.addRoute("POST", path, handlers);
     return this
   }
@@ -364,18 +350,12 @@ export default class Diesel {
     return this
   }
 
-  patch(
-    path: string,
-    ...handlers: handlerFunction[]
-  ): this {
+  patch(path: string, ...handlers: handlerFunction[] ): this {
     this.addRoute("PATCH", path, handlers);
     return this
   }
 
-  delete(
-    path: any,
-    ...handlers: handlerFunction[]
-  ): this {
+  delete( path: any, ...handlers: handlerFunction[] ): this {
     this.addRoute("DELETE", path, handlers);
     return this;
   }

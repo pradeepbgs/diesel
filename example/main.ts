@@ -12,6 +12,18 @@ const secret = "linux";
 //   allowedHeaders: 'Content-Type,Authorization'
 // })
 
+const hello = async () => {
+  console.log('hello',Math.random())
+}
+const hello2 = async () => {
+  console.log('hello2', Math.random())
+}
+const hello3 = async () => {
+  console.log('hello3', Math.random())
+}
+
+
+
 export async function authJwt(ctx: ContextType): Promise<void | null | Response> {
   
   const token = ctx.getCookie("accessToken");
@@ -26,11 +38,13 @@ export async function authJwt(ctx: ContextType): Promise<void | null | Response>
   }
 }
 
-app
-  .filter()
-  .routeMatcher("/cookie",'/api/user/login','api/user/register')
-  .permitAll()
-  .require(authJwt as middlewareFunc);
+app.use('/ttt',hello,hello2,hello3)
+
+// app
+//   .filter()
+//   .routeMatcher("/cookie",'/api/user/login','api/user/register')
+//   .permitAll()
+//   .require(authJwt as middlewareFunc);
 
 
 app.addHooks('onError', (error: any, req: Request, url: URL, server: Server) => {
@@ -90,13 +104,13 @@ app.get("/cookie", async (xl) => {
     xl
       .setCookie("accessToken", accessToken, options)
       .setCookie("refreshToken", refreshToken, options)
-      .json({ msg: "setting cookies" })
+      .json({ msg: "setted cookies" })
   );
 
 });
 
 import {userRoute} from './route'
 
-app.register("/api/user",userRoute)
+app.route("/api/user",userRoute)
 
 app.listen(3000);
