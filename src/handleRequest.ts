@@ -8,14 +8,10 @@ export default async function handleRequest(req: Request, server: Server, url: U
   const routeHandler: RouteHandlerT | undefined = diesel.trie.search(url.pathname, req.method);
   // Early return if route or method is not found
  
-  if (!routeHandler || routeHandler.method !== req.method) {
-    const message = routeHandler ? "Method not allowed" : `Route not found for ${url.pathname}`;
-    const status = routeHandler ? 405 : 404;
-    return new Response(JSON.stringify({ message }), {status});
-  }
+ 
 
   // If the route is dynamic, we only set routePattern if necessary
-  if (routeHandler.isDynamic) req.routePattern = routeHandler.path;
+  if (routeHandler?.isDynamic) req.routePattern = routeHandler.path;
 
   // create the context which contains the methods Req,Res, many more
   const ctx: ContextType = createCtx(req, server, url);
@@ -49,9 +45,7 @@ export default async function handleRequest(req: Request, server: Server, url: U
           });
         }
       } else {
-        return ctx.status(400).json({
-          message: "Authentication required"
-        })
+        return ctx.status(400).json({ message: "Authentication required" })
       }
     }
   }
@@ -75,6 +69,12 @@ export default async function handleRequest(req: Request, server: Server, url: U
 
   }
 
+  if (!routeHandler || routeHandler.method !== req.method) {
+    const message = routeHandler ? "Method not allowed" : `Route not found for ${url.pathname}`;
+    const status = routeHandler ? 405 : 404;
+    return new Response(JSON.stringify({ message }), {status});
+  }
+
   // Run preHandler hooks 2
   if (diesel.hasPreHandlerHook && diesel.hooks.preHandler) {
     const Hookresult = await diesel.hooks.preHandler(ctx);
@@ -95,9 +95,8 @@ export default async function handleRequest(req: Request, server: Server, url: U
       if (hookResponse) return hookResponse
     }
 
-  return result ?? ctx.status(204).json({
-    message:"No response from this handler"
-  })
+    // Default Response if Handler is Void
+    return result ?? ctx.status(204).json({ message:"No response from this handler" })
 
 }
 
@@ -113,9 +112,8 @@ function applyCors(req: Request, ctx: ContextType, config: corsT = {}): Response
   ctx.setHeader('Access-Control-Allow-Methods', allowedMethods)
   ctx.setHeader("Access-Control-Allow-Headers", allowedHeaders);
   ctx.setHeader("Access-Control-Allow-Credentials", allowedCredentials);
-  if (exposedHeaders.length) {
-    ctx.setHeader("Access-Control-Expose-Headers", exposedHeaders);
-  }
+  
+  if (exposedHeaders.length) ctx.setHeader("Access-Control-Expose-Headers", exposedHeaders);
 
   if (allowedOrigins === '*') {
     ctx.setHeader("Access-Control-Allow-Origin", "*")
