@@ -6,9 +6,6 @@ export default async function handleRequest(req: Request, server: Server, url: U
 
   // Try to find the route handler in the trie
   const routeHandler: RouteHandlerT | undefined = diesel.trie.search(url.pathname, req.method);
-  // Early return if route or method is not found
- 
- 
 
   // If the route is dynamic, we only set routePattern if necessary
   if (routeHandler?.isDynamic) req.routePattern = routeHandler.path;

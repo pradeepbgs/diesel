@@ -247,33 +247,6 @@ export default class Diesel {
 
   register( pathPrefix: string, handlerInstance: any ): void {
     this.route(pathPrefix, handlerInstance)
-    // if (typeof pathPrefix !== 'string') throw new Error("Path prefix must be a string");
-    // if (typeof handlerInstance !== 'object') throw new Error("Handler must be an object");
-
-    // const routeEntries: [string, RouteNodeType][] = Object.entries(handlerInstance.trie.root.children) as [string, RouteNodeType][];
-
-    // handlerInstance.trie.root.subMiddlewares.forEach((middleware: middlewareFunc[], path: string) => {
-    //   if (!this.middlewares.has(pathPrefix + path)) {
-    //     this.middlewares.set(pathPrefix + path, []);
-    //   }
-
-    //   middleware?.forEach((midl: middlewareFunc) => {
-    //     if (!this.middlewares.get(pathPrefix + path)?.includes(midl)) {
-    //       this.middlewares.get(pathPrefix + path)?.push(midl)
-    //     }
-    //   })
-
-    // });
-    // for (const [routeKey, routeNode] of routeEntries) {
-    //   const fullpath = `${pathPrefix}${routeNode?.path}`;
-    //   const routeHandler = routeNode.handler[0];
-    //   const method = routeNode.method[0];
-    //     try {
-    //       this.trie.insert(fullpath, { handler: routeHandler as handlerFunction, method: method });
-    //     } catch (error) {
-    //       console.error(`Error inserting ${fullpath}:`, error);
-    //   }
-    // }
   }
 
   addRoute( method: HttpMethod, path: string, handlers: handlerFunction[] ): void {
