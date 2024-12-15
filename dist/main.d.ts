@@ -27,7 +27,7 @@ export default class Diesel {
     route(basePath: string, routerInstance: any): void;
     register(pathPrefix: string, handlerInstance: any): void;
     addRoute(method: HttpMethod, path: string, handlers: handlerFunction[]): void;
-    use(pathORHandler?: string | middlewareFunc, handler?: middlewareFunc): void;
+    use(pathORHandler?: string | middlewareFunc, ...handlers: middlewareFunc[]): void;
     get(path: string, ...handlers: handlerFunction[]): this;
     post(path: string, ...handlers: handlerFunction[]): this;
     put(path: string, ...handlers: handlerFunction[]): this;

@@ -140,8 +140,7 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       return this;
     },
 
-    getParams(props: string)
-    : string | Record<string, string> | {} 
+    getParams(props: string) : string | Record<string, string> | {} 
     {
       if (!parsedParams && req?.routePattern) {
         parsedParams = extractDynamicParams(req?.routePattern, url?.pathname);
@@ -222,7 +221,7 @@ function extractDynamicParams(
 }
 
 async function parseBody(req: Request): Promise<ParseBodyResult> {
-  const contentType: string = req.headers.get("Content-Type") || "";
+  const contentType: string = req.headers.get("Content-Type")!
 
   if (!contentType) return {};
 

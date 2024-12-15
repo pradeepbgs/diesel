@@ -38,7 +38,7 @@ export async function authJwt(ctx: ContextType): Promise<void | null | Response>
   }
 }
 
-app.use('/ttt',hello,hello2,hello3)
+// app.use('/ttt',hello,hello2,hello3)
 
 // app
 //   .filter()
