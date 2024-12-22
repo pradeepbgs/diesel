@@ -1,116 +1,75 @@
 import Diesel from "../src/main";
 import jwt from "jsonwebtoken";
-import { ContextType, CookieOptions, HookType, middlewareFunc } from "../src/types";
+import { ContextType, CookieOptions, middlewareFunc } from "../src/types";
 import { Server } from "bun";
+import { userRoute } from "./route";
 
-const app = new Diesel()
-const secret = "linux";
+const app = new Diesel();
+const SECRET_KEY = "linux";
 
-// app.cors({
-//   origin: ['http://localhost:5173','*'],
-//   methods: 'GET,POST,PUT,DELETE',
-//   allowedHeaders: 'Content-Type,Authorization'
-// })
-
-const hello = async () => {
-  console.log('hello',Math.random())
-}
-const hello2 = async () => {
-  console.log('hello2', Math.random())
-}
-const hello3 = async () => {
-  console.log('hello3', Math.random())
-}
-
-
-
+// Authentication Middleware
 export async function authJwt(ctx: ContextType): Promise<void | null | Response> {
-  
   const token = ctx.getCookie("accessToken");
   if (!token) {
     return ctx.status(401).json({ message: "Authentication token missing" });
   }
   try {
-    const user = await jwt.verify(token, secret); // Replace with your JWT secret
+    const user = jwt.verify(token, SECRET_KEY);
     ctx.setUser(user);
   } catch (error) {
     return ctx.status(403).json({ message: "Invalid token" });
   }
 }
 
-// app.use('/ttt',hello,hello2,hello3)
-
-// app
-//   .filter()
-//   .routeMatcher("/cookie",'/api/user/login','api/user/register')
-//   .permitAll()
-//   .require(authJwt as middlewareFunc);
-
-
-app.addHooks('onError', (error: any, req: Request, url: URL, server: Server) => {
+// Error Handling Hook
+app.addHooks("onError", (error: any, req: Request, url: URL) => {
   console.error(`Error occurred: ${error.message}`);
   console.error(`Request Method: ${req.method}, Request URL: ${url}`);
-  // return new Response('Internal Server Error', { status: 500 }); // You can customize the response as needed
+  return new Response("Internal Server Error", { status: 500 });
 });
 
+// Routes
+app
+  .get("/", async (ctx) => {
+    const user = ctx.getUser();
+    return ctx.json({
+      msg: "Hello World",
+      user,
+    });
+  })
+  .get("/error", async () => {
+    throw new Error("This is a test error to demonstrate error handling");
+  })
+  .get("/test/:id/:name", async (ctx) => {
+    const query = ctx.getQuery();
+    const params = ctx.getParams();
+    return ctx.json({ msg: "Hello World", query, params });
+  })
+  .get("/ok", (ctx) => {
+    return ctx.status(200).text("How are you?");
+  })
+  .get("/cookie", async (ctx) => {
+    const user = { name: "pk", age: 22 };
 
-app.get("/error", async () => {
-  throw new Error("This is a test error to demonstrate error handling");
-});
+    const accessToken = jwt.sign(user, SECRET_KEY, { expiresIn: "1d" });
+    const refreshToken = jwt.sign(user, SECRET_KEY, { expiresIn: "10d" });
 
-app.get("/", async (xl) => {
-  const user = xl.getUser();
-  return xl.json({
-    user,
+    const cookieOptions: CookieOptions = {
+      httpOnly: true,
+      secure: true,
+      maxAge: 24 * 60 * 60 * 1000, 
+      sameSite: "Strict",
+      path: "/",
+    };
+
+    return ctx
+      .setCookie("accessToken", accessToken, cookieOptions)
+      .setCookie("refreshToken", refreshToken, cookieOptions)
+      .json({ msg: "Cookies set successfully" });
   });
-});
 
-app.get("/api/user/u",(ctx) => {
-  return ctx.text("j")
-})
+// Register Additional Routes
+app.register("/api/user", userRoute);
 
-// app.post("/",async (ctx) => {
-//   const body = await ctx.getBody()
-//   return ctx.json(body)
-// })
-
-app.get("/test/:id/:name", async (xl) => {
-  const q = xl.getQuery();
-  const params = xl.getParams();
-  return new Response(JSON.stringify({ msg: "hello world", q, params }));
-});
-
-app.get("/ok", (xl) => {
-  return xl.status(200).text("kaise ho??");
-});
-
-app.get("/cookie", async (xl) => {
-  const user = {
-    name: "pk",
-    age: 22,
-  };
-
-  const accessToken = jwt.sign(user, secret, { expiresIn: "1d" });
-  const refreshToken = jwt.sign(user, secret, { expiresIn: "10d" });
-  const options: CookieOptions = {
-    httpOnly: true, // Makes cookie accessible only by the web server (not JS)
-    secure: true, // Ensures the cookie is sent over HTTPS
-    maxAge: 24 * 60 * 60 * 1000, // 1 day in milliseconds
-    sameSite: "Strict", // Prevents CSRF (strict origin policy)
-    path: "/", // Cookie available for all routes
-  };
-  
-  return (
-    xl
-      .setCookie("accessToken", accessToken, options)
-      .setCookie("refreshToken", refreshToken, options)
-      .json({ msg: "setted cookies" })
-  );
-
-});
-
-import {userRoute} from './route'
-
-app.route("/api/user",userRoute)
-
-app.listen(3000);
+// Start the Server
+app.listen(3000)

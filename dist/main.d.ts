@@ -1,5 +1,5 @@
 import Trie from "./trie.js";
-import { corsT, FilterMethods, HookFunction, HookType, middlewareFunc, onError, onRequest, type handlerFunction, type Hooks, type HttpMethod, type listenCalllBackType } from "./types.js";
+import { corsT, FilterMethods, HookFunction, HookType, middlewareFunc, onError, onRequest, type handlerFunction, type Hooks, type HttpMethod } from "./types.js";
 import { Server } from "bun";
 export default class Diesel {
     tempRoutes: Map<string, any>;
@@ -20,14 +20,14 @@ export default class Diesel {
     hasFilterEnabled: boolean;
     constructor();
     filter(): FilterMethods;
-    cors(corsConfig: corsT): void;
-    addHooks(typeOfHook: HookType, fnc: HookFunction | onError | onRequest): void;
+    cors(corsConfig: corsT): this;
+    addHooks(typeOfHook: HookType, fnc: HookFunction | onError | onRequest): this;
     compile(): void;
-    listen(port: number, callback?: listenCalllBackType, { sslCert, sslKey }?: any): Server | void;
-    route(basePath: string, routerInstance: any): void;
-    register(pathPrefix: string, handlerInstance: any): void;
+    listen(...args: any): Server | void;
+    route(basePath: string, routerInstance: any): this;
+    register(basePath: string, routerInstance: any): this;
     addRoute(method: HttpMethod, path: string, handlers: handlerFunction[]): void;
-    use(pathORHandler?: string | middlewareFunc, ...handlers: middlewareFunc[]): void;
+    use(pathORHandler?: string | middlewareFunc, ...handlers: middlewareFunc[]): this | void;
     get(path: string, ...handlers: handlerFunction[]): this;
     post(path: string, ...handlers: handlerFunction[]): this;
     put(path: string, ...handlers: handlerFunction[]): this;
