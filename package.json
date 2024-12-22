@@ -1,6 +1,6 @@
 {
   "name": "diesel-core",
-  "version": "0.0.19",
+  "version": "0.0.21",
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {

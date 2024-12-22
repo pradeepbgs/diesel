@@ -12,7 +12,7 @@ const s = () =>{
   console.log('s')
 }
 
-userRoute.get("/register/:id",(xl) => {
+userRoute.get("/register",(xl) => {
   return xl.text("from register user");
 })
 
