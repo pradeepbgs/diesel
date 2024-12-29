@@ -4,7 +4,7 @@ const entryPoints = [
     './src/ctx.ts',
     './src/handleRequest.ts',
     './src/trie.ts',
-    './src/router.ts',
+    // './src/router.ts',
     './src/utils.ts'
 ];
 

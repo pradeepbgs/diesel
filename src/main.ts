@@ -270,8 +270,9 @@ export default class Diesel {
     path: string,
     handlers: handlerFunction[]
   ): void {
-    if (typeof path !== "string") throw new Error("Path must be a string");
-    if (typeof method !== "string") throw new Error("Method must be a string");
+    // console.log('hiiii')
+    if (typeof path !== "string") throw new Error(`Error in ${handlers[handlers.length-1]}: Path must be a string. Received: ${typeof path}`);
+    if (typeof method !== "string") throw new Error(`Error in addRoute: Method must be a string. Received: ${typeof method}`);
 
     this.tempRoutes.set(path, { method, handlers });
     const middlewareHandlers = handlers.slice(0, -1) as middlewareFunc[];

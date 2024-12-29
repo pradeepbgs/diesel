@@ -1,8 +1,8 @@
-import Diesel from "../src/main";
+import {Diesel} from "../index.js";
 import jwt from "jsonwebtoken";
 import { ContextType, CookieOptions, middlewareFunc } from "../src/types";
 import { Server } from "bun";
-import { userRoute } from "./route";
+import { newRoute, userRoute } from "./route";
 
 const app = new Diesel();
 const SECRET_KEY = "linux";
@@ -70,6 +70,8 @@ app
 
 // Register Additional Routes
 app.register("/api/user", userRoute);
+
+app.route('/api/route', newRoute)
 
 // Start the Server
 app.listen(3000)
