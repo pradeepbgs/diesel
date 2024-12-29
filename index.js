@@ -1,10 +1,9 @@
-import Diesel from './src/main'
-import Router from './src/route'
-import rateLimit from './src/utils'
+import Diesel from './dist/main'
+// import Router from './src/route'
+import rateLimit from './dist/utils'
 
 
 export {
     Diesel,
-    Router,
     rateLimit
 }

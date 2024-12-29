@@ -1,8 +1,8 @@
 import Diesel from "../src/main";
-import Router from "../src/route";
+// import Router from "../src/route";
 import { authJwt } from "./main";
 
- const userRoute = new Router();
+ const userRoute = new Diesel();
 
 const h = () => {
   console.log('object');
