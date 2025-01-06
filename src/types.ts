@@ -156,3 +156,10 @@ export interface FilterMethods {
     permitAll: () => FilterMethods;
     require: (fnc?: middlewareFunc) => Response | void;
   }
+
+  export type listenArgsT = string | (() => void) | { sslCert?: string; sslKey?: string };
+
+  interface ListenType {
+    port: number;
+    args?: listenArgsT
+  }

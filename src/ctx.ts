@@ -3,9 +3,11 @@ import { Server } from "bun";
 
 import type { ContextType, CookieOptions, ParseBodyResult } from "./types";
 
-
-export default function createCtx(req: Request, server: Server, url: URL): ContextType {
-
+export default function createCtx(
+  req: Request,
+  server: Server,
+  url: URL
+): ContextType {
   let headers: Headers = new Headers();
   let settedValue: Record<string, string> = {};
   let isAuthenticated: boolean = false;
@@ -26,7 +28,7 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       return user;
     },
 
-    setUser(data?: any) : void {
+    setUser(data?: any): void {
       if (data) {
         user = data;
       }
@@ -59,8 +61,9 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
     },
 
     set(key: string, value: any): ContextType {
-      if(typeof key !== 'string') throw new Error("Key must be string type!")
-      if(!value) throw new Error("value paramter is missing pls pass value after key")
+      if (typeof key !== "string") throw new Error("Key must be string type!");
+      if (!value)
+        throw new Error("value paramter is missing pls pass value after key");
       settedValue[key] = value;
       return this;
     },
@@ -122,7 +125,11 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       });
     },
 
-    setCookie(name: string, value: string, options: CookieOptions = {}) : ContextType {
+    setCookie(
+      name: string,
+      value: string,
+      options: CookieOptions = {}
+    ): ContextType {
       let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(
         value
       )}`;
@@ -142,12 +149,14 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       return this;
     },
 
-    getParams(props: string) : string | Record<string, string> | {} 
-    {
+    getParams(props: string): string | Record<string, string> | {} {
       if (!parsedParams && req?.routePattern) {
         parsedParams = extractDynamicParams(req?.routePattern, url?.pathname);
       }
-      return props ? parsedParams[props] || {} : parsedParams;
+      if (props) {
+        return parsedParams[props] ?? {};
+      }
+      return props;
     },
 
     getQuery(props?: any): string | Record<string, string> | {} {
@@ -165,9 +174,8 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       if (!parsedCookie) {
         const cookieHeader = req.headers.get("cookie");
         if (cookieHeader) {
-          parsedCookie = parseCookie(cookieHeader)
-        }
-        else return null;
+          parsedCookie = parseCookie(cookieHeader);
+        } else return null;
       }
       if (!parsedCookie) return null;
 
@@ -183,21 +191,23 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
 function parseCookie(cookieHeader: string | undefined): Record<string, string> {
   const cookies: Record<string, string> = {};
 
+  const cookiesArray = cookieHeader?.split(";")!;
 
-  const cookiesArray = cookieHeader?.split(";")!
-
-  for(let i =0; i < cookiesArray?.length!; i++){
+  for (let i = 0; i < cookiesArray?.length!; i++) {
     const [cookieName, ...cookieValeParts] = cookiesArray[i].trim().split("=");
-    const cookieVale = cookieValeParts?.join("=").trim()
-    if (cookieName){
-      cookies[cookieName.trim()] = decodeURIComponent(cookieVale)
+    const cookieVale = cookieValeParts?.join("=").trim();
+    if (cookieName) {
+      cookies[cookieName.trim()] = decodeURIComponent(cookieVale);
     }
   }
 
   return cookies;
 }
 
-function extractDynamicParams( routePattern: any, path: string ): Record<string, string> | null {
+function extractDynamicParams(
+  routePattern: any,
+  path: string
+): Record<string, string> | null {
   const object: Record<string, string> = {};
   const routeSegments = routePattern.split("/");
   const [pathWithoutQuery] = path.split("?");
@@ -207,7 +217,7 @@ function extractDynamicParams( routePattern: any, path: string ): Record<string,
     return null;
   }
 
-  for (let i =0; i<routeSegments.length; i++){
+  for (let i = 0; i < routeSegments.length; i++) {
     if (routeSegments[i].startsWith(":")) {
       // const dynamicKey = routeSegments[i].slice(1);
       // object[dynamicKey] = pathSegments[i];
@@ -220,7 +230,7 @@ function extractDynamicParams( routePattern: any, path: string ): Record<string,
 }
 
 async function parseBody(req: Request): Promise<ParseBodyResult> {
-  const contentType: string = req.headers.get("Content-Type")!
+  const contentType: string = req.headers.get("Content-Type")!;
 
   if (!contentType) return {};
 
@@ -248,4 +258,3 @@ async function parseBody(req: Request): Promise<ParseBodyResult> {
     return { error: "Invalid request body format" };
   }
 }
-
