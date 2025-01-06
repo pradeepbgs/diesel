@@ -7,7 +7,7 @@ const secret = "secret";
 // app.filter().permitAll().require()
 
 app.get("/r", (xl) => {
-  return xl.html(`${import.meta.dir}/index.html`);
+  return xl.file(`${import.meta.dir}/index.html`);
 });
 
 // app.use((xl) => {
@@ -39,7 +39,7 @@ app.get("/r", (xl) => {
 // app.filter()
 
 app.get("/", async (xl) => {
-  return xl.status(200).text("hello d")
+  return xl.text("hello d")
 })
 
 app.post("/", async (xl) => {

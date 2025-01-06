@@ -1,3 +1,4 @@
+/// <reference types="bun-types" />
 import { Server } from "bun";
 export type listenCalllBackType = () => void;
 export type handlerFunction = (ctx: ContextType, server?: Server) => Response | Promise<Response | null | void>;
@@ -25,7 +26,6 @@ export interface ContextType {
     url: URL;
     setUser: (data?: any) => void;
     getUser: () => any;
-    status: (status: number) => this;
     getIP: () => any;
     getBody: () => Promise<any>;
     setHeader: (key: string, value: any) => this;
@@ -35,8 +35,6 @@ export interface ContextType {
     getAuth: () => boolean;
     json: (data: Object, status?: number) => Response;
     text: (data: string, status?: number) => Response;
-    send: (data: string, status?: number) => Response;
-    html: (filePath: string, status?: number) => Response;
     file: (filePath: string, status?: number) => Response;
     redirect: (path: string, status?: number) => Response;
     getParams: (props?: any) => any;

@@ -27,9 +27,9 @@ export default function rateLimit(props: { time?: number; max?: number; message?
         }
 
         if (requestInfo && requestInfo.count > max) {
-            return ctx.status(429).json({
+            return ctx.json({
                 error: message
-            })
+            },429)
         }
 
     }

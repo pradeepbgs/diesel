@@ -13,7 +13,7 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
   let parsedCookie: any = null;
   let parsedParams: any;
   let parsedBody: ParseBodyResult | null;
-  let responseStatus: number = 200;
+  // let responseStatus: number = 200;
   let user: any = {};
 
   return {
@@ -32,10 +32,10 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       }
     },
 
-    status(status: number): ContextType {
-      responseStatus = status;
-      return this;
-    },
+    // status(status: number): ContextType {
+    //   responseStatus = status;
+    //   return this;
+    // },
 
     getIP() {
       return this.server.requestIP(this.req);
@@ -59,12 +59,14 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
     },
 
     set(key: string, value: any): ContextType {
+      if(typeof key !== 'string') throw new Error("Key must be string type!")
+      if(!value) throw new Error("value paramter is missing pls pass value after key")
       settedValue[key] = value;
       return this;
     },
 
     get(key: string): any | null {
-      return settedValue[key] || null;
+      return key ? settedValue[key] : null;
     },
 
     setAuth(authStatus: boolean): ContextType {
@@ -79,35 +81,35 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
     // Response methods with optional status
     text(data: string, status?: number) {
       return new Response(data, {
-        status: status ?? responseStatus,
+        status,
         headers,
       });
     },
 
-    send(data: string, status?: number) {
-      return new Response(data, {
-        status: status ?? responseStatus,
-        headers,
-      });
-    },
+    // send(data: string, status?: number) {
+    //   return new Response(data, {
+    //     status: status ?? responseStatus,
+    //     headers,
+    //   });
+    // },
 
     json(data: any, status?: number): Response {
       return new Response(JSON.stringify(data), {
-        status: status ?? responseStatus,
+        status,
         headers,
       });
     },
 
-    html(filepath: string, status?: number): Response {
-      return new Response(Bun.file(filepath), {
-        status: status ?? responseStatus,
-        headers,
-      });
-    },
+    // html(filepath: string, status?: number): Response {
+    //   return new Response(Bun.file(filepath), {
+    //     status: status ?? responseStatus,
+    //     headers,
+    //   });
+    // },
 
     file(filePath: string, status?: number): Response {
       return new Response(Bun.file(filePath), {
-        status: status ?? responseStatus,
+        status,
         headers,
       });
     },
@@ -195,10 +197,7 @@ function parseCookie(cookieHeader: string | undefined): Record<string, string> {
   return cookies;
 }
 
-function extractDynamicParams(
-  routePattern: any,
-  path: string
-): Record<string, string> | null {
+function extractDynamicParams( routePattern: any, path: string ): Record<string, string> | null {
   const object: Record<string, string> = {};
   const routeSegments = routePattern.split("/");
   const [pathWithoutQuery] = path.split("?");

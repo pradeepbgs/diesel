@@ -25,7 +25,8 @@ const app = new Diesel()
 const port = 3000
 
 app.get("/", async (ctx:ContextType) => {
- return ctx.status(200).text("Hello world...!")
+ return ctx.text("Hello world...!",200)
+ // Note :- passing statusCode is optional
 })
 
 // Start the server
@@ -61,21 +62,21 @@ import jwt from 'jsonwebtoken';
 
 const app = new Diesel();
 
-async function authJwt (xl:ContextType, server?:Server): Promise<void | Response> {
-  const token = await xl.getCookie("accessToken");  // Retrieve the JWT token from cookies
+async function authJwt (ctx:ContextType, server?:Server): Promise<void | Response> {
+  const token = await ctx.getCookie("accessToken");  // Retrieve the JWT token from cookies
   if (!token) {
-    return xl.status(401).json({ message: "Authentication token missing" });
+    return ctx.json({ message: "Authentication token missing" },401);
   }
   try {
     // Verify the JWT token using a secret key
     const user = jwt.verify(token, secret);  // Replace with your JWT secret
     // Set the user data in context
-    xl.setUser(user);
+    ctx.setUser(user);
 
     // Proceed to the next middleware/route handler
-    return xl.next();
+    return ctx.next();
   } catch (error) {
-    return xl.status(403).json({ message: "Invalid token" });
+    return ctx.json({ message: "Invalid token" },403);
   }
 }
 
@@ -87,15 +88,15 @@ app
   .require(authJwt); // Apply the authJwt middleware to all other routes
 
 // Example public route (no auth required)
-app.get("/api/user/register", async (xl) => {
-  return xl.json({ msg: "This is a public route. No authentication needed." });
+app.get("/api/user/register", async (ctx:ContextType) => {
+  return ctx.json({ msg: "This is a public route. No authentication needed." });
 });
 
 // Example protected route (requires auth)
-app.get("/api/user/profile", async (xl) => {
+app.get("/api/user/profile", async (ctx:ContextType) => {
   // This route is protected, so the auth middleware will run before this handler
-  const user = xl.getUser()
-  return xl.json({ 
+  const user = ctx.getUser()
+  return ctx.json({ 
     msg: "You are authenticated!" ,
     user
     });
@@ -165,21 +166,21 @@ app.addHooks("onRequest",(req,url,server) =>{
 // you get req,url & server instance in onReq
 
 // Define a preHandler hook
-app.addHooks("preHandler",(xl) =>{
+app.addHooks("preHandler",(ctx:ContextType) =>{
     // Check for authentication token
-  const authToken = xl.req.headers.get("Authorization");
+  const authToken = ctx.req.headers.get("Authorization");
   if (!authToken) {
     return new Response("Unauthorized", { status: 401 });
   }
 })
 
 // Define a postHandler hook
-app.addHooks('postHandler', async (xl) => {
-  console.log(`Response sent for: ${xl.req.url}`);
+app.addHooks('postHandler', async (ctx:ContextType) => {
+  console.log(`Response sent for: ${ctx.req.url}`);
 });
 
 // Define an onSend hook
-app.addHooks('onSend',async (xl, result) => {
+app.addHooks('onSend',async (ctx, result) => {
   console.log(`Sending response with status: ${result.status}`);
   return result; // You can modify the response here if needed
 });
@@ -197,13 +198,13 @@ async function authJwt (ctx:ContextType, server?:Server): Promise<void | Respons
   try {
     const token = ctx?.getCookie("accessToken"); 
     if (!token) {
-      return ctx.status(401).json({ message: "Authentication token missing" });
+      return ctx.json({ message: "Authentication token missing" },401);
     }
     // Verify the JWT token using a secret key
     const user = jwt.verify(token, secret);
     ctx.set('user',user);
   } catch (error) {
-    return ctx.status(403).json({ message: "Invalid token" });
+    return ctx.json({ message: "Invalid token" },403);
   }
 }
 
@@ -218,7 +219,7 @@ app.use("/user",authJWT)
 # set cookies
 
 ```javascript
-app.get("/set-cookie", async(xl) => {
+app.get("/set-cookie", async(ctx:ContextType) => {
   const user = {
     name: "pk",
     age: 22,
@@ -236,24 +237,24 @@ app.get("/set-cookie", async(xl) => {
     path: "/", 
   }
 
-  xl
+  ctx
   .setCookie("accessToken", accessToken, options)
   .setCookie("refreshToken", refreshToken, options)
 
-  return xl.json({msg:"setting cookies"})
+  return ctx.json({msg:"setting cookies"})
 })
 ```
 
 # Render a HTML page
 ```javascript
-app.get("/render",async (xl) => {
-  return xl.html(`${import.meta.dir}/index.html`)
+app.get("/render",async (ctx) => {
+  return ctx.file(`${import.meta.dir}/index.html`)
 })
 ```
 # redirect
 ```javascript
-app.get("/redirect",(xl) => {
-  return xl.redirect("/");
+app.get("/redirect",(ctx:ContextType) => {
+  return ctx.redirect("/");
 })
 ```
 # get params
@@ -265,10 +266,10 @@ app.get("/product/:productId/:productName)
 ```
 
 ```javascript
-app.get("/hello/:id/",(xl) => {
-  const id = xl.getParams("id")
-  const query = xl.getQuery() // you can pass query name also , you wanna get
-  return xl.json({ msg: "Hello", id });
+app.get("/hello/:id/",(ctx:ContextType) => {
+  const id = ctx.getParams("id")
+  const query = ctx.getQuery() // you can pass query name also , you wanna get
+  return ctx.json({ msg: "Hello", id });
 })
 ```
 

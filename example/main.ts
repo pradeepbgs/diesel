@@ -11,15 +11,21 @@ const SECRET_KEY = "linux";
 export async function authJwt(ctx: ContextType): Promise<void | null | Response> {
   const token = ctx.getCookie("accessToken");
   if (!token) {
-    return ctx.status(401).json({ message: "Authentication token missing" });
+    return ctx.json({ message: "Authentication token missing" },401);
   }
   try {
     const user = jwt.verify(token, SECRET_KEY);
     ctx.setUser(user);
   } catch (error) {
-    return ctx.status(403).json({ message: "Invalid token" });
+    return ctx.json({ message: "Invalid token" },403);
   }
 }
+
+app
+.filter()
+  .routeMatcher("/cookie")
+  .permitAll()
+  .require(authJwt as middlewareFunc)
 
 // Error Handling Hook
 app.addHooks("onError", (error: any, req: Request, url: URL) => {
@@ -40,13 +46,16 @@ app
   .get("/error", async () => {
     throw new Error("This is a test error to demonstrate error handling");
   })
+  .get("/redirect",async(ctx:ContextType) => {
+    return ctx.redirect("/")
+  })
   .get("/test/:id/:name", async (ctx) => {
     const query = ctx.getQuery();
     const params = ctx.getParams();
     return ctx.json({ msg: "Hello World", query, params });
   })
-  .get("/ok", (ctx) => {
-    return ctx.status(200).text("How are you?");
+  .get("/ok", (ctx:ContextType) => {
+    return ctx.text("How are you?");
   })
   .get("/cookie", async (ctx) => {
     const user = { name: "pk", age: 22 };

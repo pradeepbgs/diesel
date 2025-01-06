@@ -1,3 +1,4 @@
+/// <reference types="bun-types" />
 import Trie from "./trie.js";
 import { corsT, FilterMethods, HookFunction, HookType, middlewareFunc, onError, onRequest, type handlerFunction, type Hooks, type HttpMethod } from "./types.js";
 import { Server } from "bun";

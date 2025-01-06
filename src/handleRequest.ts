@@ -36,13 +36,13 @@ export default async function handleRequest(req: Request, server: Server, url: U
           if (filterResult) return filterResult
         } catch (error:any) {
           console.error("Error in filterFunction:", error);
-          return ctx.status(500).json({
+          return ctx.json({
             message: "Internal Server Error",
             error: error.message
-          });
+          },500);
         }
       } else {
-        return ctx.status(400).json({ message: "Authentication required" })
+        return ctx.json({ message: "Authentication required" },400)
       }
     }
   }
@@ -93,7 +93,7 @@ export default async function handleRequest(req: Request, server: Server, url: U
     }
 
     // Default Response if Handler is Void
-    return result ?? ctx.status(204).json({ message:"No response from this handler" })
+    return result ?? ctx.json({ message:"No response from this handler" },204)
 
 }
 
@@ -121,24 +121,24 @@ function applyCors(req: Request, ctx: ContextType, config: corsT = {}): Response
       ctx.setHeader("Access-Control-Allow-Origin", '*')
     }
     else {
-      return ctx.status(403).json({ message: "CORS not allowed" })
+      return ctx.json({ message: "CORS not allowed" },403)
     }
   } else if (typeof allowedOrigins === 'string') {
     if (origin === allowedOrigins) {
       ctx.setHeader("Access-Control-Allow-Origin", origin)
     }
     else {
-      return ctx.status(403).json({ message: "CORS not allowed" });
+      return ctx.json({ message: "CORS not allowed" },403);
     }
   } else {
-    return ctx.status(403).json({ message: "CORS not allowed" })
+    return ctx.json({ message: "CORS not allowed" },403)
   }
 
   ctx.setHeader("Access-Control-Allow-Origin", origin)
 
   if (req.method === 'OPTIONS') {
     ctx.setHeader('Access-Control-Max-Age', '86400')
-    return ctx.status(204).text('')
+    return ctx.text('',204)
   }
 
   return null

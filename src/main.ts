@@ -12,8 +12,10 @@ import {
   type handlerFunction,
   type Hooks,
   type HttpMethod,
+  
 } from "./types.js";
-import { Server } from "bun";
+import { Server, } from "bun";
+
 
 export default class Diesel {
   tempRoutes: Map<string, any>;
