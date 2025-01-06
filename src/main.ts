@@ -6,16 +6,15 @@ import {
   FilterMethods,
   HookFunction,
   HookType,
+  listenArgsT,
   middlewareFunc,
   onError,
   onRequest,
   type handlerFunction,
   type Hooks,
   type HttpMethod,
-  
 } from "./types.js";
-import { Server, } from "bun";
-
+import { Server } from "bun";
 
 export default class Diesel {
   tempRoutes: Map<string, any>;
@@ -86,9 +85,9 @@ export default class Diesel {
     };
   }
 
-  cors(corsConfig: corsT) : this {
+  cors(corsConfig: corsT): this {
     this.corsConfig = corsConfig;
-    return this
+    return this;
   }
 
   addHooks(
@@ -132,7 +131,7 @@ export default class Diesel {
     return this;
   }
 
-  compile(): void {
+  private compile(): void {
     if (this.globalMiddlewares.length > 0) {
       this.hasMiddleware = true;
     }
@@ -152,23 +151,22 @@ export default class Diesel {
     this.tempRoutes = new Map();
   }
 
-  listen(...args: any): Server | void {
+  listen(port:number = 3000, ...args: listenArgsT[]): Server | void {
     if (typeof Bun === "undefined")
       throw new Error(".listen() is designed to run on Bun only...");
+    
+    if(!port || typeof port !== "number") throw new Error("port is required and should be a number type")
 
-    let port = 3000;
     let hostname = "0.0.0.0";
     let callback: (() => void) | undefined = undefined;
     let options: { sslCert?: string; sslKey?: string } = {};
 
     for (const arg of args) {
-      if (typeof arg === 'number') {
-        port = arg;
-      } else if (typeof arg === 'string') {
+      if (typeof arg === "string") {
         hostname = arg;
-      } else if (typeof arg === 'function') {
+      } else if (typeof arg === "function") {
         callback = arg;
-      } else if (typeof arg === 'object' && arg !== null) {
+      } else if (typeof arg === "object" && arg !== null) {
         options = arg;
       }
     }
@@ -259,22 +257,29 @@ export default class Diesel {
     });
 
     routerInstance = null;
-    return this
+    return this;
   }
 
   register(basePath: string, routerInstance: any): this {
     this.route(basePath, routerInstance);
-    return this
+    return this;
   }
 
-  addRoute(
+  private addRoute(
     method: HttpMethod,
     path: string,
     handlers: handlerFunction[]
   ): void {
-    // console.log('hiiii')
-    if (typeof path !== "string") throw new Error(`Error in ${handlers[handlers.length-1]}: Path must be a string. Received: ${typeof path}`);
-    if (typeof method !== "string") throw new Error(`Error in addRoute: Method must be a string. Received: ${typeof method}`);
+    if (typeof path !== "string")
+      throw new Error(
+        `Error in ${
+          handlers[handlers.length - 1]
+        }: Path must be a string. Received: ${typeof path}`
+      );
+    if (typeof method !== "string")
+      throw new Error(
+        `Error in addRoute: Method must be a string. Received: ${typeof method}`
+      );
 
     this.tempRoutes.set(path, { method, handlers });
     const middlewareHandlers = handlers.slice(0, -1) as middlewareFunc[];
@@ -303,35 +308,42 @@ export default class Diesel {
   }
 
   use(
-    pathORHandler?: string | middlewareFunc,
-    ...handlers: middlewareFunc[]
+    pathORHandler?: string | string[] | middlewareFunc,
+    handlers?: middlewareFunc | middlewareFunc[]
   ): this | void {
+
     if (typeof pathORHandler === "function") {
       if (!this.globalMiddlewares.includes(pathORHandler)) {
         this.globalMiddlewares.push(pathORHandler);
       }
-      handlers.forEach((handler: middlewareFunc) => {
-        if (!this.globalMiddlewares.includes(handler)) {
-          this.globalMiddlewares.push(handler);
-        }
-      });
+      if (Array.isArray(handlers)) {
+        handlers.forEach((handler: middlewareFunc) => {
+          if (!this.globalMiddlewares.includes(handler)) {
+            this.globalMiddlewares.push(handler);
+          }
+        });
+      }
       return;
     }
 
-    const path: string = pathORHandler as string;
+    const paths: string[] = Array.isArray(pathORHandler) 
+    ? pathORHandler.filter((path: string) => typeof path === "string")
+    : [pathORHandler].filter((path): path is string => typeof path === "string");
 
-    if (!this.middlewares.has(path)) {
-      this.middlewares.set(path, []);
-    }
-
-    if (handlers) {
-      handlers.forEach((handler: middlewareFunc) => {
-        if (!this.middlewares.get(path)?.includes(handler)) {
-          this.middlewares.get(path)?.push(handler);
-        }
-      });
-    }
-    return this
+    paths.forEach((path: string) => {
+      if (!this.middlewares.has(path)) {
+        this.middlewares.set(path, []);
+      }
+      if (handlers) {
+        const handlerArray = Array.isArray(handlers) ? handlers : [handlers];
+        handlerArray.forEach((handler: middlewareFunc) => {
+          if (!this.middlewares.get(path)?.includes(handler)) {
+            this.middlewares.get(path)?.push(handler);
+          }
+        });
+      }
+    });
+    return this;
   }
 
   get(path: string, ...handlers: handlerFunction[]): this {
