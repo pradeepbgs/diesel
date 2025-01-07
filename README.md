@@ -210,9 +210,15 @@ async function authJwt (ctx:ContextType, server?:Server): Promise<void | Respons
 
 // this is a global middleware
 app.use(authJwt)
+OR 
+app.use([authJwt,middleware2 , ...])
 
 // path middleware example
 app.use("/user",authJWT)
+OR
+app.use(["/user","/home"],[authJWT,middleware2])
+//means /user and /home has two middlewares
+
 
 ```
 
