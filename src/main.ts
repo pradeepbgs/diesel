@@ -151,11 +151,12 @@ export default class Diesel {
     this.tempRoutes = new Map();
   }
 
-  listen(port:number = 3000, ...args: listenArgsT[]): Server | void {
+  listen(port: number = 3000, ...args: listenArgsT[]): Server | void {
     if (typeof Bun === "undefined")
       throw new Error(".listen() is designed to run on Bun only...");
-    
-    if(!port || typeof port !== "number") throw new Error("port is required and should be a number type")
+
+    if (!port || typeof port !== "number")
+      throw new Error("port is required and should be a number type");
 
     let hostname = "0.0.0.0";
     let callback: (() => void) | undefined = undefined;
@@ -170,9 +171,6 @@ export default class Diesel {
         options = arg;
       }
     }
-
-    this.compile();
-
     const ServerOptions: any = {
       port,
       hostname,
@@ -206,6 +204,8 @@ export default class Diesel {
       ServerOptions.keyFile = options.sslKey;
     }
 
+    this.compile();
+
     const server = Bun?.serve(ServerOptions);
 
     // Bun?.gc(false)
@@ -223,19 +223,29 @@ export default class Diesel {
     return server;
   }
 
+  /**
+   * Registers a router instance for subrouting.
+   * Allows defining subroutes like:
+   *   const userRoute = new Diesel();
+   *   app.route("/api/v1/user", userRoute);
+   */
   route(basePath: string, routerInstance: any): this {
     if (!basePath || typeof basePath !== "string")
       throw new Error("Path must be a string");
 
+    // Extract routes and convert them into an array of entries.
     const routes = Object.fromEntries(routerInstance.tempRoutes);
     const routesArray = Object.entries(routes);
 
     routesArray.forEach(([path, args]) => {
-      const fullpath = `${basePath}${path}`;
+      const fullpath = `${basePath}${path}`; // Construct the full path.
+
+      // Ensure the middleware array is initialized for the path.
       if (!this.middlewares.has(fullpath)) {
         this.middlewares.set(fullpath, []);
       }
 
+      // Add all middleware functions for the route, preserving user-defined order.
       const middlewareHandlers: middlewareFunc[] = args.handlers.slice(0, -1);
       middlewareHandlers.forEach((middleware: middlewareFunc) => {
         if (!this.middlewares.get(fullpath)?.includes(middleware)) {
@@ -243,7 +253,10 @@ export default class Diesel {
         }
       });
 
+      // Retrieve the final handler for the route (last in the array).
       const handler = args.handlers[args.handlers.length - 1];
+
+      // Register the handler and method in the trie.
       const method = args.method;
 
       try {
@@ -255,14 +268,22 @@ export default class Diesel {
         console.error(`Error inserting ${fullpath}:`, error);
       }
     });
-
+    // Nullify the router instance to prevent accidental reuse.
+    // and to prevent memory leak
     routerInstance = null;
     return this;
   }
-
+  /**
+   * Registers a router instance for subrouting.
+   * Allows defining subroutes like:
+   *   const userRoute = new Diesel();
+   *   userRoute.post("/login",handlerFunction)
+   *   userRoute.post("/register", handlerFunction)
+   *   app.register("/api/v1/user", userRoute);
+   */
   register(basePath: string, routerInstance: any): this {
-    this.route(basePath, routerInstance);
-    return this;
+    // Simply delegate to the `route` method.
+    return this.route(basePath, routerInstance);
   }
 
   private addRoute(
@@ -307,42 +328,105 @@ export default class Diesel {
     }
   }
 
+  /**
+   * Adds middleware to the application.
+   * - Middlewares are executed in the order they are added.
+   * - Duplicate middleware functions will run multiple times if explicitly included.
+   *
+   * Examples:
+   * - app.use(h1) -> Adds a single global middleware.
+   * - app.use([h1, h2]) -> Adds multiple global middlewares.
+   * - app.use("/home", h1) -> Adds `h1` middleware to the `/home` path.
+   * - app.use(["/home", "/user"], [h1, h2]) -> Adds `h1` and `h2` to `/home` and `/user`.
+   * - app.use(h1, [h2, h1]) -> Runs `h1`, then `h2`, and `h1` again as specified.
+   */
+
   use(
-    pathORHandler?: string | string[] | middlewareFunc,
+    pathORHandler?: string | string[] | middlewareFunc | middlewareFunc[],
     handlers?: middlewareFunc | middlewareFunc[]
   ): this | void {
+    /**
+     * First, we check if the user has passed an array of global middlewares.
+     * Example: app.use([h1, h2])
+     */
+    if (Array.isArray(pathORHandler)) {
+      pathORHandler.forEach((handler) => {
+        /**
+         * Check if the array contains middleware functions (e.g., app.use([h1, h2]))
+         * and ensure they are not already added to globalMiddlewares.
+         */
+        if (typeof handler === "function") {
+          /**
+           * this algorithm was for removing duplicates midl but now user has freedom...
+           * if thet wanna run same middleware multilple times
+           * if (!this.globalMiddlewares.includes(handler as middlewareFunc)) {
+           * this.globalMiddlewares.push(handler as middlewareFunc) }
+           */
 
+          this.globalMiddlewares.push(handler);
+        }
+      });
+    }
+
+    /**
+     *  Next, check if the user has passed a single middleware function as a global middleware.
+     * Example: app.use(h1)
+     */
     if (typeof pathORHandler === "function") {
-      if (!this.globalMiddlewares.includes(pathORHandler)) {
-        this.globalMiddlewares.push(pathORHandler);
-      }
+      /**
+       * this algorithm was for removing duplicates midl but now user has freedom...
+       * if thet wanna run same middleware multilple times
+       * if (!this.globalMiddlewares.includes(handler as middlewareFunc)) {
+       * this.globalMiddlewares.push(handler as middlewareFunc) }
+       */
+      this.globalMiddlewares.push(pathORHandler);
+
+      /**
+       * Additionally, check if there are multiple handlers passed as the second parameter.
+       * Example: app.use(h1, [h2, h3])
+       */
+
       if (Array.isArray(handlers)) {
         handlers.forEach((handler: middlewareFunc) => {
-          if (!this.globalMiddlewares.includes(handler)) {
-            this.globalMiddlewares.push(handler);
-          }
+          // if (!this.globalMiddlewares.includes(handler)) {
+          this.globalMiddlewares.push(handler);
+          // }
         });
       }
       return;
     }
 
-    const paths: string[] = Array.isArray(pathORHandler) 
-    ? pathORHandler.filter((path: string) => typeof path === "string")
-    : [pathORHandler].filter((path): path is string => typeof path === "string");
+    /**
+     * If the user has passed one or more paths along with a middleware or multiple middlewares:
+     * Example 1: app.use("/home", h1) - single path with a single middleware.
+     * Example 2: app.use(["/home", "/user"], [h1, h2]) - multiple paths with multiple middlewares.
+     */
+    const paths: string[] = Array.isArray(pathORHandler)
+      ? pathORHandler.filter((path): path is string => typeof path === "string")
+      : [pathORHandler].filter(
+          (path): path is string => typeof path === "string"
+        );
 
     paths.forEach((path: string) => {
+      // Initialize the middleware array for the given path if it doesn't already exist.
       if (!this.middlewares.has(path)) {
         this.middlewares.set(path, []);
       }
       if (handlers) {
+        // Convert a single middleware into an array for consistency.
+        // Example: app.use('/home', h1) -> handlers becomes [h1].
         const handlerArray = Array.isArray(handlers) ? handlers : [handlers];
+
+        // Add each handler to the middleware list for the path, avoiding duplicates.
         handlerArray.forEach((handler: middlewareFunc) => {
-          if (!this.middlewares.get(path)?.includes(handler)) {
-            this.middlewares.get(path)?.push(handler);
-          }
+          // if (!this.middlewares.get(path)?.includes(handler)) {
+          this.middlewares.get(path)?.push(handler);
+          // }
         });
       }
     });
+
+    // Finally, return `this` to allow method chaining.
     return this;
   }
 

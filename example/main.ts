@@ -43,8 +43,9 @@ app.addHooks("onError", (error: any, req: Request, url: URL) => {
 
 // app.use("/home",h1)
 // app.use(["/home","/user"],[h1,h2])
-// app.use(['/home','/user'],[h1,h2])
-
+// app.use([h1,h2])
+// app.use(h1)
+app.use(h1,[h2,h1])
 // Routes
 app
   .get("/", async (ctx) => {
@@ -93,7 +94,8 @@ app
   // });
 
 // Register Additional Routes
-// app.register("/api/user", userRoute);
+app
+.register("/api/user", userRoute)
 
 // app.route('/api/route', newRoute)
 
