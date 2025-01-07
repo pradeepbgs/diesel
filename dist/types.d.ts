@@ -1,4 +1,3 @@
-/// <reference types="bun-types" />
 import { Server } from "bun";
 export type listenCalllBackType = () => void;
 export type handlerFunction = (ctx: ContextType, server?: Server) => Response | Promise<Response | null | void>;
@@ -117,3 +116,7 @@ export interface FilterMethods {
     permitAll: () => FilterMethods;
     require: (fnc?: middlewareFunc) => Response | void;
 }
+export type listenArgsT = string | (() => void) | {
+    sslCert?: string;
+    sslKey?: string;
+};
