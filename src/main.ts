@@ -17,7 +17,7 @@ import {
 import { Server } from "bun";
 
 export default class Diesel {
-  tempRoutes: Map<string, any>;
+  private tempRoutes: Map<string, any>;
   globalMiddlewares: middlewareFunc[];
   middlewares: Map<string, middlewareFunc[]>;
   trie: Trie;
@@ -33,6 +33,7 @@ export default class Diesel {
   filters: Set<string>;
   filterFunction: middlewareFunc | null;
   hasFilterEnabled: boolean;
+  private serverInstance: Server | null 
 
   constructor() {
     this.tempRoutes = new Map();
@@ -58,6 +59,7 @@ export default class Diesel {
     this.filters = new Set<string>();
     this.filterFunction = null;
     this.hasFilterEnabled = false;
+    this.serverInstance = null
   }
 
   filter(): FilterMethods {
@@ -192,6 +194,7 @@ export default class Diesel {
             JSON.stringify({
               message: "Internal Server Error",
               error: error.message,
+              staus: 500
             }),
             { status: 500 }
           );
@@ -206,7 +209,7 @@ export default class Diesel {
 
     this.compile();
 
-    const server = Bun?.serve(ServerOptions);
+    this.serverInstance = Bun?.serve(ServerOptions);
 
     // Bun?.gc(false)
 
@@ -220,7 +223,17 @@ export default class Diesel {
       console.log(`HTTP server is running on http://localhost:${port}`);
     }
 
-    return server;
+    return this.serverInstance;
+  }
+
+  close(): void {
+    if (this.serverInstance) {
+      this.serverInstance.stop(true);
+      this.serverInstance = null;
+      console.log("Server has been stopped.");
+    } else {
+      console.warn("Server is not running.");
+    }
   }
 
   /**

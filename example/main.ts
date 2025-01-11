@@ -7,6 +7,14 @@ import { newRoute, userRoute } from "./route";
 const app = new Diesel();
 const SECRET_KEY = "linux";
 const port = 3000
+
+app.cors({
+  origin: "http://localhost:3000",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+});
+
 // Authentication Middleware
 export async function authJwt(ctx: ContextType): Promise<void | null | Response> {
   const token = ctx.getCookie("accessToken");
@@ -48,7 +56,7 @@ app.addHooks("onError", (error: any, req: Request, url: URL) => {
 app.use(h1,[h2,h1])
 // Routes
 app
-  .get("/", async (ctx) => {
+  .get("/",async (ctx) => {
     // const user = ctx.getUser();
     return ctx.json({msg:"Hello world"})
   })
@@ -101,3 +109,4 @@ app
 
 // Start the Server
 app.listen(port)
+app.close()

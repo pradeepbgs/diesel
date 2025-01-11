@@ -2,7 +2,7 @@ import Trie from "./trie.js";
 import { corsT, FilterMethods, HookFunction, HookType, listenArgsT, middlewareFunc, onError, onRequest, type handlerFunction, type Hooks } from "./types.js";
 import { Server } from "bun";
 export default class Diesel {
-    tempRoutes: Map<string, any>;
+    private tempRoutes;
     globalMiddlewares: middlewareFunc[];
     middlewares: Map<string, middlewareFunc[]>;
     trie: Trie;
@@ -18,12 +18,14 @@ export default class Diesel {
     filters: Set<string>;
     filterFunction: middlewareFunc | null;
     hasFilterEnabled: boolean;
+    private serverInstance;
     constructor();
     filter(): FilterMethods;
     cors(corsConfig: corsT): this;
     addHooks(typeOfHook: HookType, fnc: HookFunction | onError | onRequest): this;
     private compile;
     listen(port?: number, ...args: listenArgsT[]): Server | void;
+    close(): void;
     /**
      * Registers a router instance for subrouting.
      * Allows defining subroutes like:

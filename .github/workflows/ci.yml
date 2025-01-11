@@ -41,3 +41,9 @@ jobs:
 
       - name: Minify our code
         run: bun run build
+
+      - name: Run server and Test Application
+        env:
+          PORT: 3000
+        run: bun test
+        

@@ -4,7 +4,8 @@
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
-    "build": "bun run build.js"
+    "build": "bun run build.js",
+    "test": "bun run test/index.test.ts"
   },
   "keywords": [],
   "author": "",

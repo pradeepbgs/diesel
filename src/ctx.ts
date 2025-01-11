@@ -3,11 +3,7 @@ import { Server } from "bun";
 
 import type { ContextType, CookieOptions, ParseBodyResult } from "./types";
 
-export default function createCtx(
-  req: Request,
-  server: Server,
-  url: URL
-): ContextType {
+export default function createCtx( req: Request, server: Server, url: URL): ContextType {
   let headers: Headers = new Headers();
   let settedValue: Record<string, string> = {};
   let isAuthenticated: boolean = false;

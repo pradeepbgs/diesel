@@ -31,16 +31,8 @@ export default async function handleRequest(req: Request, server: Server, url: U
   
     if (!diesel.filters.has(path)) {
       if (diesel.filterFunction) {
-        try {
           const filterResult = await diesel.filterFunction(ctx, server)
           if (filterResult) return filterResult
-        } catch (error:any) {
-          console.error("Error in filterFunction:", error);
-          return ctx.json({
-            message: "Internal Server Error",
-            error: error.message
-          },500);
-        }
       } else {
         return ctx.json({ message: "Authentication required" },400)
       }
@@ -108,10 +100,10 @@ function applyCors(req: Request, ctx: ContextType, config: corsT = {}): Response
   ctx.setHeader('Access-Control-Allow-Methods', allowedMethods)
   ctx.setHeader("Access-Control-Allow-Headers", allowedHeaders);
   ctx.setHeader("Access-Control-Allow-Credentials", allowedCredentials);
-  
+
   if (exposedHeaders.length) ctx.setHeader("Access-Control-Expose-Headers", exposedHeaders);
 
-  if (allowedOrigins === '*') {
+  if (allowedOrigins === '*' || origin === '*') {
     ctx.setHeader("Access-Control-Allow-Origin", "*")
   } else if (Array.isArray(allowedOrigins)) {
     if (origin && allowedOrigins.includes(origin)) {
