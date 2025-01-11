@@ -14,19 +14,29 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      # Cache Bun installation
+      - name: Cache Bun
+        id: cache-bun
+        uses: actions/cache@v3
+        with:
+          path: ~/.bun
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bunfig.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+      
+      # Install Bun if it's not cached
       - name: Install Bun
-        run: | 
+        run: |
+          if [ ! -d "$HOME/.bun" ]; then
           curl -fsSL https://bun.sh/install | bash
-          echo "export PATH=\"$HOME/.bun/bin:\$PATH\"" >> $GITHUB_ENV
-          source $GITHUB_ENV
+          fi
+        continue-on-error: true # Allows the workflow to continue even if Bun is already installed
 
       - name: Install dependencies
-        working-directory: diesel
         run: Bun install
       
       - name: Run TypeScript Compiler
         run: tsc
 
       - name: Minify our code
-        working-directory: diesel
         run: Bun run build
