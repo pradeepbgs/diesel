@@ -454,4 +454,8 @@ export default class Diesel {
     this.addRoute("DELETE", path, handlers);
     return this;
   }
+  options(path: string, ...handlers: handlerFunction[]): this {
+    this.addRoute("OPTIONS", path, handlers);
+    return this;
+  }
 }

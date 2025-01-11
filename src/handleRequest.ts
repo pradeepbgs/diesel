@@ -51,7 +51,6 @@ export default async function handleRequest(req: Request, server: Server, url: U
   if (diesel.hasMiddleware) {
     // first run global midl
     const globalMiddleware = diesel.globalMiddlewares
-
     for (let i = 0; i < globalMiddleware.length; i++) {
       const result = await globalMiddleware[i](ctx, server);
       if (result) return result;
