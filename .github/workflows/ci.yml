@@ -1,0 +1,32 @@
+name: Ci of Diesel-project
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build our Diesel-core
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install Bun
+        run: | 
+          curl -fsSL https://bun.sh/install | bash
+          echo "export PATH=\"$HOME/.bun/bin:\$PATH\"" >> $GITHUB_ENV
+          source $GITHUB_ENV
+
+      - name: Install dependencies
+        working-directory: diesel
+        run: Bun install
+      
+      - name: Run TypeScript Compiler
+        run: tsc
+
+      - name: Minify our code
+        working-directory: diesel
+        run: Bun run build
