@@ -5,7 +5,7 @@ import type { ContextType } from '../dist/types'
 export const app = new Diesel()
 
 
-async function authJwt(ctx:ContextType, server:Server) {
+async function authJwt(ctx:ContextType, server:Server):Promise<void | null | Response> {
   
   try {
     const token = await ctx.getCookie('accessToken')
@@ -30,15 +30,23 @@ app.cors({
   allowedHeaders: 'Content-Type,Authorization'
 })
 
-app.get("/api/hello", async (ctx) => {
+app
+.get("/api/hello", async (ctx) => {
   return ctx.json({ msg: "Hello world!" })
+})
+.post("/api/hello",(ctx) =>{
+  return ctx.json({msg:"Hello world from post"})
 })
 
 app.get("/error", (ctx) => {
   return ctx.json({ message: "Something went wrong!" }, 500);
 });
 
-app.get('/api/protected', authJwt, async (ctx) => {
+app
+.get('/api/protected', authJwt, async (ctx) => {
+  return ctx.json({ msg: 'Authenticated user' })
+})
+.post('/api/protected', authJwt, async (ctx) => {
   return ctx.json({ msg: 'Authenticated user' })
 })
 
@@ -46,6 +54,16 @@ app.get("/api/user/register", async (ctx) => {
   return ctx.json({ msg: "This is a public route. No authentication needed." })
 })
 
+app.get("/api/param/:id/:username", async (ctx) => {
+  const id = ctx.getParams('id')
+  return ctx.json({ msg: `This is a public route. No authentication needed. User id: ${id}` })
+})
+
+app.get("/query",async(ctx) =>{
+  const name = ctx.getQuery('name')
+  const age = ctx.getQuery('age')
+  return ctx.json({ name , age })
+})
 
 
-
+// app.listen(3000)

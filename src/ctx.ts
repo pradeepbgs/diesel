@@ -4,12 +4,16 @@ import { Server } from "bun";
 import type { ContextType, CookieOptions, ParseBodyResult } from "./types";
 
 export default function createCtx( req: Request, server: Server, url: URL): ContextType {
-  let headers: Headers = new Headers();
+  const headers: Headers = new Headers({
+    "X-Powered-By": "DieselJS", // Branding header
+    "Cache-Control": "no-cache", // Prevent caching for dynamic responses
+  });
+  headers.set("X-Powered-By", "DieselJS")
   let settedValue: Record<string, string> = {};
   let isAuthenticated: boolean = false;
   let parsedQuery: any;
   let parsedCookie: any = null;
-  let parsedParams: any;
+  let parsedParams: any ;
   let parsedBody: ParseBodyResult | null;
   // let responseStatus: number = 200;
   let user: any = {};
@@ -18,8 +22,12 @@ export default function createCtx( req: Request, server: Server, url: URL): Cont
     req,
     server,
     url,
-
-    //
+    
+    setHeader(key: string, value: any): ContextType {
+      headers.set(key, value);
+      return this;
+    },
+    
     getUser() {
       return user;
     },
@@ -51,11 +59,6 @@ export default function createCtx( req: Request, server: Server, url: URL): Cont
       return parsedBody;
     },
 
-    setHeader(key: string, value: any): ContextType {
-      headers.set(key, value);
-      return this;
-    },
-
     set(key: string, value: any): ContextType {
       if (typeof key !== "string") throw new Error("Key must be string type!");
       if (!value)
@@ -79,23 +82,43 @@ export default function createCtx( req: Request, server: Server, url: URL): Cont
 
     // Response methods with optional status
     text(data: string, status?: number) {
+      if (!headers.has("Content-Type")) {
+        headers.set("Content-Type", "text/plain; charset=utf-8")
+      }
+      return new Response(data, {
+        status,
+        headers
+      });
+    },
+
+    send(data: any, status?: number): Response {
+      if (typeof data === "string") {
+        if (!headers.has("Content-Type")) {
+          headers.set("Content-Type", "text/plain; charset=utf-8");
+        }
+      } else if (typeof data === "object") {
+        if (!headers.has("Content-Type")) { 
+          headers.set("Content-Type", "application/json; charset=utf-8");
+        }
+        data = JSON.stringify(data);
+      } else if (data instanceof Uint8Array || data instanceof ArrayBuffer) {
+        if (!headers.has("Content-Type")) {
+          headers.set("Content-Type", "application/octet-stream");
+        }
+      }
       return new Response(data, {
         status,
         headers,
       });
-    },
-
-    // send(data: string, status?: number) {
-    //   return new Response(data, {
-    //     status: status ?? responseStatus,
-    //     headers,
-    //   });
-    // },
+    },    
 
     json(data: any, status?: number): Response {
+      if (!headers.has("Content-Type")) {
+        headers.set("Content-Type", "application/json; charset=utf-8");
+      }
       return new Response(JSON.stringify(data), {
         status,
-        headers,
+        headers
       });
     },
 
@@ -107,6 +130,10 @@ export default function createCtx( req: Request, server: Server, url: URL): Cont
     // },
 
     file(filePath: string, status?: number): Response {
+      const mimeType = Bun.file(filePath).type || "application/octet-stream";
+      if (!headers.has("Content-Type")) {
+        headers.set("Content-Type", mimeType);
+      }
       return new Response(Bun.file(filePath), {
         status,
         headers,
@@ -145,38 +172,49 @@ export default function createCtx( req: Request, server: Server, url: URL): Cont
       return this;
     },
 
-    getParams(props: string): string | Record<string, string> | {} {
+    getParams(props: string): string | Record<string, string> | undefined {
       if (!parsedParams && req?.routePattern) {
         parsedParams = extractDynamicParams(req?.routePattern, url?.pathname);
       }
       if (props) {
-        return parsedParams[props] ?? {};
+        if (parsedParams) {
+          return parsedParams[props]
+        }else{
+          return undefined;
+        }
       }
-      return props;
+      if (parsedParams) {
+        return props
+      } else{
+        return undefined;
+      }
     },
 
-    getQuery(props?: any): string | Record<string, string> | {} {
+    getQuery(props?: any): string | Record<string, string> | undefined {
       try {
         if (!parsedQuery) {
           parsedQuery = Object.fromEntries(url.searchParams);
         }
-        return props ? parsedQuery[props] || {} : parsedQuery;
+        if (props) {
+          return parsedQuery[props] ?? undefined;
+        }
+        return parsedQuery;
       } catch (error) {
-        return {};
+        return undefined;
       }
     },
 
-    getCookie(cookieName?: string) {
+    getCookie(cookieName?: string): string | null | undefined {
       if (!parsedCookie) {
         const cookieHeader = req.headers.get("cookie");
         if (cookieHeader) {
           parsedCookie = parseCookie(cookieHeader);
-        } else return null;
+        } else return undefined;
       }
-      if (!parsedCookie) return null;
+      if (!parsedCookie) return undefined;
 
       if (cookieName) {
-        return parsedCookie[cookieName] ?? null;
+        return parsedCookie[cookieName] ?? undefined;
       } else {
         return parsedCookie;
       }

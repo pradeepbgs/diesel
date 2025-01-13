@@ -20,6 +20,12 @@ export default class Trie {
         isDynamic: boolean;
         pattern: string;
         method: string;
+    } | {
+        path: string;
+        handler: handlerFunction[];
+        isDynamic: boolean;
+        pattern: string;
+        method: string;
     } | null;
 }
 export {};

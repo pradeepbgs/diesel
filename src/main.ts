@@ -33,7 +33,7 @@ export default class Diesel {
   filters: Set<string>;
   filterFunction: middlewareFunc | null;
   hasFilterEnabled: boolean;
-  private serverInstance: Server | null 
+  private serverInstance: Server | null;
 
   constructor() {
     this.tempRoutes = new Map();
@@ -59,7 +59,7 @@ export default class Diesel {
     this.filters = new Set<string>();
     this.filterFunction = null;
     this.hasFilterEnabled = false;
-    this.serverInstance = null
+    this.serverInstance = null;
   }
 
   filter(): FilterMethods {
@@ -194,7 +194,7 @@ export default class Diesel {
             JSON.stringify({
               message: "Internal Server Error",
               error: error.message,
-              staus: 500
+              staus: 500,
             }),
             { status: 500 }
           );
@@ -208,7 +208,6 @@ export default class Diesel {
     }
 
     this.compile();
-
     this.serverInstance = Bun?.serve(ServerOptions);
 
     // Bun?.gc(false)
