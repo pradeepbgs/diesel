@@ -44,6 +44,6 @@ jobs:
 
       - name: Run server and Test Application
         env:
-          PORT: 3000
+          PORT: 3001
         run: bun test
         
