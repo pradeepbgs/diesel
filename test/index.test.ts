@@ -1,14 +1,16 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test'
 import {app} from './server'
-const port = process.env.PORT || 3000
+const port = process.env.PORT || 3001
 beforeAll(async () => {
+  console.log('this is our port:'+port)
+  await Bun.sleep(1000)
   app.listen( port as number, () => {
     console.log('Server running on http://localhost:3000')
   })
-  
   await Bun.sleep(1000)
 })
 afterAll(async () => {
+  console.log('closing the server')
   app.close()
   console.log("Server closed.");
 })
