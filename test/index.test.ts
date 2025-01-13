@@ -17,7 +17,6 @@ describe("GET /api/user/register", () => {
   it("should return a message", async () => {
     const response = await fetch("http://localhost:3000/api/user/register");
     const data = await response.json();
-    
     expect(response.status).toBe(200);
     expect(data.msg).toBe("This is a public route. No authentication needed.");
   });
