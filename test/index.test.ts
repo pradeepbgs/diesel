@@ -131,10 +131,10 @@ describe("Testing Dynamic routes - /api/param/:id/:username", () => {
     expect(response.status).toBe(404);
   });
 
-  // it("it should return 404 as we have give only /id in param", async () => {
-  //   const response = await fetch("http://localhost:3000/api/param/99");
-  //   expect(response.status).toBe(404);
-  // });
+  it("it should return 404 as we have give only /id in param", async () => {
+    const response = await fetch("http://localhost:3000/api/param/99");
+    expect(response.status).toBe(404);
+  });
   it("it should return 200 as we have give only /id/username also in param", async () => {
     const response = await fetch("http://localhost:3000/api/param/99/pradeep");
     expect(response.status).toBe(200);
