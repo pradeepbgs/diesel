@@ -30,28 +30,26 @@ class TrieNode {
       this.root = new TrieNode();
     }
   
-    insert(path: string, route: RouteT): void {
+    insert(path:string, route:RouteT) : void {
       let node = this.root;
-      const pathSegments = path.split('/').filter(Boolean);
+      const pathSegments = path.split('/').filter(Boolean); // Split path by segments
     
-      // Special handling for root path
+      // If it's the root path '/', treat it separately
       if (path === '/') {
         node.isEndOfWord = true;
-        node.handler = [route.handler];
+        node.handler.push(route.handler)
         node.path = path;
-        node.method = [route.method];
+        node.method.push(route.method)
         return;
       }
     
-      for (let i = 0; i < pathSegments.length; i++) {
-        const segment = pathSegments[i];
+      for (const segment of pathSegments) {
         let isDynamic = false;
         let key = segment;
     
-        // Handle dynamic segments
         if (segment.startsWith(':')) {
           isDynamic = true;
-          key = ':'; // Dynamic segments are stored under ':'
+          key = ':';  // Store dynamic routes under the key ':'
         }
     
         if (!node.children[key]) {
@@ -59,19 +57,19 @@ class TrieNode {
         }
     
         node = node.children[key];
+        // Set dynamic route information if applicable
         node.isDynamic = isDynamic;
         node.pattern = segment;
-    
-        // Only assign handlers and methods at the last segment
-        if (i === pathSegments.length - 1) {
-          node.handler = [route.handler];
-          node.method = [route.method];
-          node.isEndOfWord = true;
-          node.path = path; // Store the full path at the endpoint
-        }
+        node.method.push(route.method)
+        node.handler.push(route.handler)
+        node.path = path;  // Store the actual pattern like ':id'
       }
+      // After looping through the entire path, assign route details
+      node.isEndOfWord = true;
+      node.method.push(route.method);    
+      node.handler.push(route.handler)
+      node.path = path;  // Store the original path
     }
-    
     
     // insertMidl(midl:handlerFunction): void {
     //   if (!this.root.subMiddlewares.has(midl)) {
@@ -83,26 +81,33 @@ class TrieNode {
     search(path: string, method: HttpMethod) {
       let node = this.root;
       const pathSegments = path.split('/').filter(Boolean);
+      const totalSegments = pathSegments.length;
     
       for (const segment of pathSegments) {
         let key = segment;
     
-        // Check for an exact match
+        // Check for exact match first (static)
         if (!node.children[key]) {
-          // Attempt a dynamic match
+          // Try dynamic match (e.g., ':id')
           if (node.children[':']) {
             node = node.children[':'];
           } else {
-            return null; // No match found
+            return null; // No match
           }
         } else {
           node = node.children[key];
         }
       }
     
-      // Verify the endpoint and method match
+      // Check if the number of segments matches the number of dynamic segments
+      const routeSegments = node.path.split('/').filter(Boolean);
+      if (totalSegments !== routeSegments.length) {
+        return null; 
+      }
+    
+      // Method matching
       const routeMethodIndex = node.method.indexOf(method);
-      if (node.isEndOfWord && routeMethodIndex !== -1) {
+      if (routeMethodIndex !== -1) {
         return {
           path: node.path,
           handler: node.handler[routeMethodIndex],
@@ -112,37 +117,13 @@ class TrieNode {
         };
       }
     
-      // No match found
-      return null;
+      return {
+        path: node.path,
+        handler: node.handler,
+        isDynamic: node.isDynamic,
+        pattern: node.pattern,
+        method: node.method[routeMethodIndex]
+      };
     }
     
-    
-    
-  
-      // New getAllRoutes method
-  
-    // getAllRoutes() {
-    //   const routes = [];
-    //   // Helper function to recursively collect all routes
-    //   const traverse = (node, currentPath) => {
-    //     if (node.isEndOfWord) {
-    //       routes.push({
-    //         path: currentPath,
-    //         handler: node.handler,
-    //         isImportant: node.isImportant,
-    //         isDynamic: node.isDynamic,
-    //         pattern: node.pattern,
-    //       });
-    //     }
-    //     // Recursively traverse all children
-    //     for (const key in node.children) {
-    //       const child = node.children[key];
-    //       const newPath = currentPath + (key === ':' ? '/:' + child.pattern : '/' + key); // Reconstruct the full path
-    //       traverse(child, newPath);
-    //     }
-    //   };
-    //   // Start traversal from the root
-    //   traverse(this.root, "");
-    //   return routes;
-    // }
   }

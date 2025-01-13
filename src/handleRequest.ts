@@ -3,13 +3,10 @@ import createCtx from "./ctx";
 import type { ContextType, corsT, DieselT, RouteHandlerT } from "./types";
 
 export default async function handleRequest(req: Request, server: Server, url: URL, diesel: DieselT): Promise<Response> {
-
   // Try to find the route handler in the trie
   const routeHandler: RouteHandlerT | undefined = diesel.trie.search(url.pathname, req.method);
-
   // If the route is dynamic, we only set routePattern if necessary
   if (routeHandler?.isDynamic) req.routePattern = routeHandler.path;
-
   // create the context which contains the methods Req,Res, many more
   const ctx: ContextType = createCtx(req, server, url);
 
@@ -34,7 +31,11 @@ export default async function handleRequest(req: Request, server: Server, url: U
           const filterResult = await diesel.filterFunction(ctx, server)
           if (filterResult) return filterResult
       } else {
-        return ctx.json({ message: "Authentication required" },400)
+        return ctx.json({ 
+          error:true,
+          message: "Protected route,authentication required",
+          status:400
+        },400)
       }
     }
   }
@@ -58,10 +59,24 @@ export default async function handleRequest(req: Request, server: Server, url: U
   }
 
   if (!routeHandler || routeHandler.method !== req.method) {
-    const message = routeHandler ? "Method not allowed" : `Route not found for ${url.pathname}`;
     const status = routeHandler ? 405 : 404;
-    return new Response(JSON.stringify({ message }), {status});
+    const message = routeHandler 
+      ? "Method not allowed" 
+      : `Route not found for ${url.pathname}`;
+    
+    return new Response(
+      JSON.stringify({ 
+        error: true, 
+        message, 
+        status 
+      }), 
+      {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   }
+  
 
   // Run preHandler hooks 2
   if (diesel.hasPreHandlerHook && diesel.hooks.preHandler) {
@@ -71,7 +86,6 @@ export default async function handleRequest(req: Request, server: Server, url: U
 
    // Finally, execute the route handler and return its result
     const result = await routeHandler.handler(ctx) as Response | null | void;
-
     // 3. run the postHandler hooks 
     if (diesel.hasPostHandlerHook && diesel.hooks.postHandler) {
       await diesel.hooks.postHandler(ctx)
@@ -84,7 +98,11 @@ export default async function handleRequest(req: Request, server: Server, url: U
     }
 
     // Default Response if Handler is Void
-    return result ?? ctx.json({ message:"No response from this handler" },204)
+    return result ?? ctx.json({ 
+      error:true,
+      message:"No response from this handler",
+      status:204
+    },204)
 
 }
 

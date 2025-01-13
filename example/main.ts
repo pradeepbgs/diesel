@@ -8,12 +8,12 @@ const app = new Diesel();
 const SECRET_KEY = "linux";
 const port = 3000
 
-app.cors({
-  origin: "http://localhost:3000",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
-});
+// app.cors({
+//   origin: "http://localhost:3000",
+//   methods: ["GET", "POST", "PUT", "DELETE"],
+//   allowedHeaders: ["Content-Type", "Authorization"],
+//   credentials: true,
+// });
 
 // Authentication Middleware
 export async function authJwt(ctx: ContextType): Promise<void | null | Response> {
@@ -40,7 +40,7 @@ const h2 = () => {
 // .filter()
 //   .routeMatcher("/cookie")
 //   .permitAll()
-//   .require(authJwt as middlewareFunc)
+//   .require()
 
 // Error Handling Hook
 app.addHooks("onError", (error: any, req: Request, url: URL) => {
@@ -53,17 +53,30 @@ app.addHooks("onError", (error: any, req: Request, url: URL) => {
 // app.use(["/home","/user"],[h1,h2])
 // app.use([h1,h2])
 // app.use(h1)
-app.use(h1,[h2,h1])
+// app.use(h1,[h2,h1])
 // Routes
+
+// app.use(authJwt)
 app
-  .get("/",async (ctx) => {
-    // const user = ctx.getUser();
-    return ctx.json({msg:"Hello world"})
-  })
+  // .get("/",async (ctx) => {
+  //   return ctx.json({msg:"where is john?"})
+  // })
   // .get("/:id",async (ctx) => {
   //   const id= ctx.getParams("id")
   //   return ctx.json({id})
   // })
+  // .get("/api/param/:id/:username",(ctx) =>{
+  //   const id = ctx.getParams("id")
+  //   const username = ctx.getParams("username")
+  //   return ctx.json({id,username})
+  // })
+  app
+  .get("/post",(ctx) =>{
+    return ctx.json({msg:"get"})
+  })
+  .post("/post",(ctx) =>{
+    return ctx.json({msg:"post"})
+  })
   // .get("/:name?",(ctx:ContextType) =>{
   //   return ctx.text("hello world")
   // })
@@ -74,13 +87,15 @@ app
   //   return ctx.redirect("/")
   // })
   // .get("/test/:id/:name", async (ctx) => {
-  //   const query = ctx.getQuery();
-  //   const params = ctx.getParams();
-  //   return ctx.json({ msg: "Hello World", query, params });
+  //   // const query = ctx.getQuery();
+  //   // const params = ctx.getParams();
+  //   return ctx.json({ msg: "Hello World" });
   // })
-  // .get("/ok", (ctx:ContextType) => {
-  //   return ctx.text("How are you?");
-  // })
+  .get("/test/:id/:name", (ctx:ContextType) => {
+    const id  = ctx.getParams("id")
+    const name = ctx.getParams("name")
+    return ctx.text("How are you?"+id+name);
+  })
   // .get("/cookie", async (ctx) => {
   //   const user = { name: "pk", age: 22 };
 
@@ -109,4 +124,4 @@ app
 
 // Start the Server
 app.listen(port)
-app.close()
+// app.close()

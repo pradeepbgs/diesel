@@ -61,4 +61,5 @@ export default class Diesel {
     put(path: string, ...handlers: handlerFunction[]): this;
     patch(path: string, ...handlers: handlerFunction[]): this;
     delete(path: any, ...handlers: handlerFunction[]): this;
+    options(path: string, ...handlers: handlerFunction[]): this;
 }

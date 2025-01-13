@@ -52,7 +52,7 @@ export interface ContextType {
     getAuth: () => boolean;
     json: (data: Object, status?: number) => Response;
     text: (data: string, status?: number) => Response;
-    // send: (data: string, status?: number) => Response;
+    send: (data: string, status?: number) => Response;
     // html: (filePath: string, status?: number) => Response;
     file: (filePath: string, status?: number) => Response;
     redirect: (path: string, status?: number) => Response;
