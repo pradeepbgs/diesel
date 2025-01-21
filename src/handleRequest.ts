@@ -1,49 +1,48 @@
 import { Server } from "bun";
 import createCtx from "./ctx";
 import type { ContextType, corsT, DieselT, RouteHandlerT } from "./types";
+import { getMimeType } from "./utils";
 
-export default async function handleRequest(req: Request, server: Server, url: URL, diesel: DieselT): Promise<Response> {
-  // Try to find the route handler in the trie
-  const routeHandler: RouteHandlerT | undefined = diesel.trie.search(url.pathname, req.method);
-  // If the route is dynamic, we only set routePattern if necessary
+export default async function handleRequest(
+  req: Request,
+  server: Server,
+  url: URL,
+  diesel: DieselT
+): Promise<Response> {
+
+  const routeHandler: RouteHandlerT | undefined = diesel.trie.search(
+    url.pathname,
+    req.method
+  );
+
   if (routeHandler?.isDynamic) req.routePattern = routeHandler.path;
+  
   // create the context which contains the methods Req,Res, many more
   const ctx: ContextType = createCtx(req, server, url);
 
   // cors execution
   if (diesel.corsConfig) {
-    const corsResult = applyCors(req, ctx, diesel.corsConfig)
+    const corsResult = applyCors(req, ctx, diesel.corsConfig);
     if (corsResult) return corsResult;
   }
 
   // OnReq hook 1
-  if (diesel.hasOnReqHook && diesel.hooks.onRequest){
-    diesel.hooks.onRequest(req,url,server)
+  if (diesel.hasOnReqHook && diesel.hooks.onRequest) {
+    diesel.hooks.onRequest(req, url, server);
   }
 
   // filter applying
   if (diesel.hasFilterEnabled) {
-    
-    const path = req.routePattern ?? url.pathname
-  
-    if (!diesel.filters.has(path)) {
-      if (diesel.filterFunction) {
-          const filterResult = await diesel.filterFunction(ctx, server)
-          if (filterResult) return filterResult
-      } else {
-        return ctx.json({ 
-          error:true,
-          message: "Protected route,authentication required",
-          status:400
-        },400)
-      }
-    }
+    const path = req.routePattern ?? url.pathname;
+
+    const result = await handleFilterRequest(diesel, path, ctx, server);
+    if (result) return result;
   }
 
-  // middleware execution 
+  // middleware execution
   if (diesel.hasMiddleware) {
     // first run global midl
-    const globalMiddleware = diesel.globalMiddlewares
+    const globalMiddleware = diesel.globalMiddlewares;
     for (let i = 0; i < globalMiddleware.length; i++) {
       const result = await globalMiddleware[i](ctx, server);
       if (result) return result;
@@ -51,32 +50,52 @@ export default async function handleRequest(req: Request, server: Server, url: U
 
     // then path specific midl
     const pathMiddlewares = diesel.middlewares.get(url.pathname) || [];
-    for (let i =0 ; i<pathMiddlewares.length;i++) {
+    for (let i = 0; i < pathMiddlewares.length; i++) {
       const result = await pathMiddlewares[i](ctx, server);
       if (result) return result;
     }
-
   }
 
   if (!routeHandler || routeHandler.method !== req.method) {
+
+    const wildCard = diesel.trie.search("*", req.method)
+    if (wildCard) {
+
+      if (!diesel.staticFiles) {
+        throw new Error("Static files directory is not configured.");
+      }
+  
+      if (url.pathname.endsWith(".js") || url.pathname.endsWith(".css") || url.pathname.endsWith(".html")) {
+        const filePath = `${diesel.staticFiles}${url.pathname}`;
+        const mimeType = getMimeType(filePath);
+  
+        // Serve static file with appropriate MIME type
+        // console.log(`Serving static file: ${filePath}, MIME type: ${mimeType}`);
+        return ctx.file(filePath, 200, mimeType);
+      }
+  
+
+      const result = await wildCard.handler(ctx);
+      return result as Response
+    }
+
     const status = routeHandler ? 405 : 404;
-    const message = routeHandler 
-      ? "Method not allowed" 
+    const message = routeHandler
+      ? "Method not allowed"
       : `Route not found for ${url.pathname}`;
-    
+
     return new Response(
-      JSON.stringify({ 
-        error: true, 
-        message, 
-        status 
-      }), 
+      JSON.stringify({
+        error: true,
+        message,
+        status,
+      }),
       {
         status,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
       }
     );
   }
-  
 
   // Run preHandler hooks 2
   if (diesel.hasPreHandlerHook && diesel.hooks.preHandler) {
@@ -84,71 +103,112 @@ export default async function handleRequest(req: Request, server: Server, url: U
     if (Hookresult) return Hookresult;
   }
 
-   // Finally, execute the route handler and return its result
-    const result = await routeHandler.handler(ctx) as Response | null | void;
-    // 3. run the postHandler hooks 
-    if (diesel.hasPostHandlerHook && diesel.hooks.postHandler) {
-      await diesel.hooks.postHandler(ctx)
-    }
-    
-    // 4. Run onSend hooks before sending the response
-    if (diesel.hasOnSendHook && diesel.hooks.onSend) {
-      const hookResponse = await diesel.hooks.onSend(ctx, result);
-      if (hookResponse) return hookResponse
-    }
+  // Finally, execute the route handler and return its result
+  const result = (await routeHandler.handler(ctx)) as Response | null | void;
+  // 3. run the postHandler hooks
+  if (diesel.hasPostHandlerHook && diesel.hooks.postHandler) {
+    await diesel.hooks.postHandler(ctx);
+  }
 
-    // Default Response if Handler is Void
-    return result ?? ctx.json({ 
-      error:true,
-      message:"No response from this handler",
-      status:204
-    },204)
+  // 4. Run onSend hooks before sending the response
+  if (diesel.hasOnSendHook && diesel.hooks.onSend) {
+    const hookResponse = await diesel.hooks.onSend(ctx, result);
+    if (hookResponse) return hookResponse;
+  }
 
+  // Default Response if Handler is Void
+  return (
+    result ??
+    ctx.json(
+      {
+        error: true,
+        message: "No response from this handler",
+        status: 204,
+      },
+      204
+    )
+  );
 }
 
+function applyCors(
+  req: Request,
+  ctx: ContextType,
+  config: corsT = {}
+): Response | null {
+  const origin = req.headers.get("origin") ?? "*";
+  const allowedOrigins = config?.origin;
+  const allowedHeaders = config?.allowedHeaders ?? [
+    "Content-Type",
+    "Authorization",
+  ];
+  const allowedMethods = config?.methods ?? [
+    "GET",
+    "POST",
+    "PUT",
+    "DELETE",
+    "OPTIONS",
+  ];
+  const allowedCredentials = config?.credentials ?? false;
+  const exposedHeaders = config?.exposedHeaders ?? [];
 
-function applyCors(req: Request, ctx: ContextType, config: corsT = {}): Response | null {
-  const origin = req.headers.get('origin') ?? '*'
-  const allowedOrigins = config?.origin
-  const allowedHeaders = config?.allowedHeaders ?? ["Content-Type", "Authorization"]
-  const allowedMethods = config?.methods ?? ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-  const allowedCredentials = config?.credentials ?? false
-  const exposedHeaders = config?.exposedHeaders ?? []
-
-  ctx.setHeader('Access-Control-Allow-Methods', allowedMethods)
+  ctx.setHeader("Access-Control-Allow-Methods", allowedMethods);
   ctx.setHeader("Access-Control-Allow-Headers", allowedHeaders);
   ctx.setHeader("Access-Control-Allow-Credentials", allowedCredentials);
 
-  if (exposedHeaders.length) ctx.setHeader("Access-Control-Expose-Headers", exposedHeaders);
+  if (exposedHeaders.length)
+    ctx.setHeader("Access-Control-Expose-Headers", exposedHeaders);
 
-  if (allowedOrigins === '*' || origin === '*') {
-    ctx.setHeader("Access-Control-Allow-Origin", "*")
+  if (allowedOrigins === "*" || origin === "*") {
+    ctx.setHeader("Access-Control-Allow-Origin", "*");
   } else if (Array.isArray(allowedOrigins)) {
     if (origin && allowedOrigins.includes(origin)) {
-      ctx.setHeader("Access-Control-Allow-Origin", origin)
-    } else if (allowedOrigins.includes('*')) {
-      ctx.setHeader("Access-Control-Allow-Origin", '*')
+      ctx.setHeader("Access-Control-Allow-Origin", origin);
+    } else if (allowedOrigins.includes("*")) {
+      ctx.setHeader("Access-Control-Allow-Origin", "*");
+    } else {
+      return ctx.json({ message: "CORS not allowed" }, 403);
     }
-    else {
-      return ctx.json({ message: "CORS not allowed" },403)
-    }
-  } else if (typeof allowedOrigins === 'string') {
+  } else if (typeof allowedOrigins === "string") {
     if (origin === allowedOrigins) {
-      ctx.setHeader("Access-Control-Allow-Origin", origin)
-    }
-    else {
-      return ctx.json({ message: "CORS not allowed" },403);
+      ctx.setHeader("Access-Control-Allow-Origin", origin);
+    } else {
+      return ctx.json({ message: "CORS not allowed" }, 403);
     }
   } else {
-    return ctx.json({ message: "CORS not allowed" },403)
+    return ctx.json({ message: "CORS not allowed" }, 403);
   }
 
-  ctx.setHeader("Access-Control-Allow-Origin", origin)
+  ctx.setHeader("Access-Control-Allow-Origin", origin);
 
-  if (req.method === 'OPTIONS') {
-    ctx.setHeader('Access-Control-Max-Age', '86400')
-    return ctx.text('',204)
+  if (req.method === "OPTIONS") {
+    ctx.setHeader("Access-Control-Max-Age", "86400");
+    return ctx.text("", 204);
   }
 
-  return null
+  return null;
+}
+
+async function handleFilterRequest(
+  diesel: DieselT,
+  path: string,
+  ctx: ContextType,
+  server: Server
+) {
+  if (!diesel.filters.has(path)) {
+    if (diesel.filterFunction.length) {
+      for (const filterFunction of diesel.filterFunction) {
+        const filterResult = await filterFunction(ctx, server);
+        if (filterResult) return filterResult;
+      }
+    } else {
+      return ctx.json(
+        {
+          error: true,
+          message: "Protected route,authentication required",
+          status: 401,
+        },
+        401
+      );
+    }
+  }
 }

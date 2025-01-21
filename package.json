@@ -1,6 +1,6 @@
 {
   "name": "diesel-core",
-  "version": "0.0.24",
+  "version": "1.0.0",
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
@@ -16,8 +16,5 @@
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
-  },
-  "dependencies": {
-    "cookie": "^1.0.1"
   }
 }

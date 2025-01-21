@@ -31,10 +31,10 @@ export default class Diesel {
   corsConfig: corsT;
   FilterRoutes: string[] | null | undefined;
   filters: Set<string>;
-  filterFunction: middlewareFunc | null;
+  filterFunction: middlewareFunc[];
   hasFilterEnabled: boolean;
   private serverInstance: Server | null;
-
+  staticFiles :any
   constructor() {
     this.tempRoutes = new Map();
     this.globalMiddlewares = [];
@@ -57,18 +57,19 @@ export default class Diesel {
     };
     this.FilterRoutes = [];
     this.filters = new Set<string>();
-    this.filterFunction = null;
+    this.filterFunction = [];
     this.hasFilterEnabled = false;
     this.serverInstance = null;
+    this.staticFiles = null
   }
 
-  filter(): FilterMethods {
+  setupFilter(): FilterMethods {
     this.hasFilterEnabled = true;
 
     return {
       routeMatcher: (...routes: string[]) => {
         this.FilterRoutes = routes;
-        return this.filter();
+        return this.setupFilter();
       },
 
       permitAll: () => {
@@ -76,12 +77,14 @@ export default class Diesel {
           this.filters.add(route);
         }
         this.FilterRoutes = null;
-        return this.filter();
+        return this.setupFilter();
       },
 
-      require: (fnc?: middlewareFunc) => {
-        if (fnc) {
-          this.filterFunction = fnc;
+      authenticate: (fnc?: middlewareFunc[]) => {
+        if (fnc?.length) {
+          for(const fn of fnc){
+            this.filterFunction.push(fn)
+          }
         }
       },
     };
@@ -90,6 +93,10 @@ export default class Diesel {
   cors(corsConfig: corsT): this {
     this.corsConfig = corsConfig;
     return this;
+  }
+
+  static(filePath:string){
+    this.staticFiles=filePath
   }
 
   addHooks(
@@ -334,6 +341,14 @@ export default class Diesel {
     });
 
     try {
+
+      if (method === 'ANY') {
+        const allMethods: HttpMethod[] = ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS","HEAD"];
+        for (const m of allMethods) {
+          this.trie.insert(path, { handler, method: m });
+        }
+      }
+
       this.trie.insert(path, { handler, method });
     } catch (error) {
       console.error(`Error inserting ${path}:`, error);
@@ -462,12 +477,24 @@ export default class Diesel {
     return this;
   }
 
-  delete(path: any, ...handlers: handlerFunction[]): this {
+  delete(path: string, ...handlers: handlerFunction[]): this {
     this.addRoute("DELETE", path, handlers);
     return this;
   }
+
+  any(path:string, ...handlers:handlerFunction[]) {
+    this.addRoute("ANY", path, handlers);
+    return this;
+  }
+
+  head(path:string,...handlers:handlerFunction[]){
+    this.addRoute("HEAD", path, handlers);
+    return this;
+  }
+
   options(path: string, ...handlers: handlerFunction[]): this {
     this.addRoute("OPTIONS", path, handlers);
     return this;
   }
+
 }

@@ -2,6 +2,7 @@ import { Server } from "bun";
 // import cookie from 'cookie'
 
 import type { ContextType, CookieOptions, ParseBodyResult } from "./types";
+import { getMimeType } from "./utils";
 
 export default function createCtx( req: Request, server: Server, url: URL): ContextType {
   const headers: Headers = new Headers({
@@ -129,16 +130,20 @@ export default function createCtx( req: Request, server: Server, url: URL): Cont
     //   });
     // },
 
-    file(filePath: string, status?: number): Response {
-      const mimeType = Bun.file(filePath).type || "application/octet-stream";
+    file(filePath: string, status: number = 200,mime_Type?:string): Response{
+      const mimeType = getMimeType(filePath);
+      const file = Bun.file(filePath);
+    
+      const headers = new Headers();
       if (!headers.has("Content-Type")) {
-        headers.set("Content-Type", mimeType);
+        headers.set("Content-Type", mime_Type ?? mimeType);
       }
-      return new Response(Bun.file(filePath), {
+    
+      return new Response(file, {
         status,
         headers,
       });
-    },
+    },    
 
     redirect(path: string, status?: number): Response {
       headers.set("Location", path);

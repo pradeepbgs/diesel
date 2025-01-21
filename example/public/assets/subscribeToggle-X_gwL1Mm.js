@@ -1,0 +1,1 @@
+import{b as t,w as r}from"./index-g6IK7Mpq.js";const o=async(a,e)=>{try{const s=await t.post(`/api/v1/subscriptions/c/${a}`,null,{withCredentials:!0});s.data.message==="subscribed successfully"?e(r(!0)):s.data.message==="unsubscribed successfully"&&e(r(!1))}catch(s){console.error("Error:",s)}};export{o as t};
