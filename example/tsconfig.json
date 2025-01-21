@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES6",                   // Specify ECMAScript target version
     "module": "commonjs",              // Specify module code generation
-    "outDir": "./dist",                // Redirect output structure to the 'dist' directory
+    "outDir": "public",                // Redirect output structure to the 'dist' directory
     "rootDir": ".", 
     "declaration": true, 
     // "emitDeclarationOnly": true,              // Specify the root directory of input files

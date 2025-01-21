@@ -47,7 +47,6 @@ describe("GET /api/user/register", () => {
 
   it("should set Content-Type to application/json for JSON responses", async () => {
     const response = await fetch("http://localhost:3000/api/user/register");
-    console.log(response.headers)
     expect(response.headers.get("Content-Type")).toBe("application/json; charset=utf-8");
   });
   

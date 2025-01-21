@@ -1,0 +1,3 @@
+tsc
+
+bun run build

@@ -5,7 +5,7 @@ export type handlerFunction = (ctx: ContextType, server?: Server) => Response | 
 export type middlewareFunc = (ctx:ContextType,server?:Server | undefined) => null | void | Response | Promise<Response | void | null>
 export type HookFunction = (ctx: ContextType, result?: Response | null | void, server?: Server) => Response | Promise<Response | null | void> | void
 // export type onSendHookFunc = (result?: Response | null | void, ctx?:ContextType) => Response | Promise<Response | null | void>
-export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD";
+export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD" | "ANY";
 
 // export enum HookType {
 //     onRequest = "onRequest",
@@ -54,7 +54,7 @@ export interface ContextType {
     text: (data: string, status?: number) => Response;
     send: (data: string, status?: number) => Response;
     // html: (filePath: string, status?: number) => Response;
-    file: (filePath: string, status?: number) => Response;
+    file: (filePath: string, status?: number,mimeType?:string) => Response
     redirect: (path: string, status?: number) => Response;
     getParams: (props?: any) => any;
     getQuery: (props?: any) => any;
@@ -101,13 +101,14 @@ export interface DieselT {
     };
     filters: Set<string> 
     hasFilterEnabled:boolean
-    filterFunction: (ctx:ContextType,serer?:Server) => void | Response | Promise<Response | void | null>
+    filterFunction: Array<(ctx:ContextType,serer?:Server) => void | Response | Promise<Response | void | null>>
     corsConfig: corsT | null
     globalMiddlewares: Array<(ctx: ContextType, serer?: Server) => void | Promise<Response | null | void>>
     middlewares: Map<string, Array<(ctx: ContextType, serer?: Server) => void | Promise<Response | null | void>>>
     trie: {
         search: (pathname: string, method: string) => RouteHandlerT | undefined;
     };
+    staticFiles : string | null
 }
 
 // export interface routerT  {
@@ -154,7 +155,8 @@ export type corsT = {
 export interface FilterMethods {
     routeMatcher: (...routes: string[]) => FilterMethods;
     permitAll: () => FilterMethods;
-    require: (fnc?: middlewareFunc) => Response | void;
+    authenticate: (fnc?: middlewareFunc[]) => Response | Promise<Response | null> | void;
+    // authenticate: () => Response | Promise<Response | null> | void
   }
 
   export type listenArgsT = string | (() => void) | { sslCert?: string; sslKey?: string };

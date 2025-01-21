@@ -16,12 +16,14 @@ export default class Diesel {
     corsConfig: corsT;
     FilterRoutes: string[] | null | undefined;
     filters: Set<string>;
-    filterFunction: middlewareFunc | null;
+    filterFunction: middlewareFunc[];
     hasFilterEnabled: boolean;
     private serverInstance;
+    staticFiles: any;
     constructor();
-    filter(): FilterMethods;
+    setupFilter(): FilterMethods;
     cors(corsConfig: corsT): this;
+    static(filePath: string): void;
     addHooks(typeOfHook: HookType, fnc: HookFunction | onError | onRequest): this;
     private compile;
     listen(port?: number, ...args: listenArgsT[]): Server | void;
@@ -60,6 +62,8 @@ export default class Diesel {
     post(path: string, ...handlers: handlerFunction[]): this;
     put(path: string, ...handlers: handlerFunction[]): this;
     patch(path: string, ...handlers: handlerFunction[]): this;
-    delete(path: any, ...handlers: handlerFunction[]): this;
+    delete(path: string, ...handlers: handlerFunction[]): this;
+    any(path: string, ...handlers: handlerFunction[]): this;
+    head(path: string, ...handlers: handlerFunction[]): this;
     options(path: string, ...handlers: handlerFunction[]): this;
 }
