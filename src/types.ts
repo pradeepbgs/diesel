@@ -5,7 +5,7 @@ export type handlerFunction = (ctx: ContextType, server?: Server) => Response | 
 export type middlewareFunc = (ctx:ContextType,server?:Server | undefined) => null | void | Response | Promise<Response | void | null>
 export type HookFunction = (ctx: ContextType, result?: Response | null | void, server?: Server) => Response | Promise<Response | null | void> | void
 // export type onSendHookFunc = (result?: Response | null | void, ctx?:ContextType) => Response | Promise<Response | null | void>
-export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD" | "ANY";
+export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD" | "ANY" | "PROPFIND";
 
 // export enum HookType {
 //     onRequest = "onRequest",

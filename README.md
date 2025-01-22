@@ -34,6 +34,28 @@ app.listen(port, () => {
   console.log(`diesel is running on port ${port}`)
 })
 ```
+# HttpMethods 
+**In Diesel there are almost all http methods that you can use**
+
+```javascript
+app.get()
+
+app.post()
+
+app.put()
+
+app.patch()
+
+app.delete()
+
+app.any() // used for all http methods such as GET,POST,PUT..
+
+app.head()
+
+app.options()
+
+```
+
 
 # CORS
 
@@ -83,9 +105,9 @@ async function authJwt (ctx:ContextType, server?:Server): Promise<void | Respons
 // Define routes and apply filter
 app
   .filter()
-  .routeMatcher('/api/user/register', '/api/user/login', '/test/:id', '/cookie') // Define public routes
-  .permitAll() // Mark these routes as public (no auth required)
-  .require(authJwt); // Apply the authJwt middleware to all other routes
+  .routeMatcher('/api/user/register', '/api/user/login', '/test/:id', '/cookie')
+  .permitAll()
+  .authenticate([authJwt]); 
 
 // Example public route (no auth required)
 app.get("/api/user/register", async (ctx:ContextType) => {
@@ -120,11 +142,13 @@ app.listen(port, () => {
 ```javascript 
 .permitAll()
 ```
-1. **require(fnc?: middlewareFunc)** :Means that defined routes in ***routeMatcher*** is public & All endpoints needs authentication.
+1. **authenticate([fnc?: middlewareFunc])** :Means that defined routes in ***routeMatcher*** is public & All endpoints needs authentication.
 
-*Note* : If you don't pass a middleware function to require(), DieselJS will throw an "Unauthorized" error by default. Ensure that you implement and pass a valid authentication function
+*Note* : If you don't pass a middleware function to authenticate(), DieselJS will throw an "Unauthorized" error by default. Ensure that you implement and pass a valid authentication function
 ```javascript 
-.require(authJwt)
+.authenticate([authJwt])
+
+.authenticate([authJwt, ....]) // you can can add many auth midlleware to authenticate
 ```
 ## Use Case
  * **Public Routes** :  Some routes ***(like /api/user/register or /api/user/login)*** are often open to all users without authentication. These routes can be specified with permitAll().
