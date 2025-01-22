@@ -32,9 +32,10 @@ export async function authJwt(ctx: ContextType): Promise<void | null | Response>
 
 app
 .static(`${import.meta.dir}/public`)
-  // .setupFilter()
-  // .routeMatcher("/cookie").permitAll()
-  // .authenticate([authJwt]);  
+
+// app.setupFilter()
+//   .routeMatcher("/cookie").permitAll()
+//   .authenticate([authJwt]);  
 
 // Error Handling Hook
 app.addHooks("onError", (error: any, req: Request, url: URL) => {
@@ -47,8 +48,11 @@ app.addHooks("onError", (error: any, req: Request, url: URL) => {
 // Routes
 
   app
-  .get("*",async (ctx:ContextType) => {
-    return  ctx.file(`${import.meta.dir}/public/index.html`)
+  // .get("*",async (ctx:ContextType) => {
+  //   return  ctx.file(`${import.meta.dir}/public/index.html`)
+  // })
+  .get("/", (ctx:ContextType) => {
+    return ctx.text("Hello World!");
   })
   .any("/any",(ctx) => {
     return ctx.json({msg:"any"})

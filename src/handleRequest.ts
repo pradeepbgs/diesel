@@ -3,11 +3,8 @@ import createCtx from "./ctx";
 import type { ContextType, corsT, DieselT, RouteHandlerT } from "./types";
 import { getMimeType } from "./utils";
 
-export default async function handleRequest(
-  req: Request,
-  server: Server,
-  url: URL,
-  diesel: DieselT
+
+export default async function handleRequest( req: Request, server: Server, url: URL, diesel: DieselT
 ): Promise<Response> {
 
   const routeHandler: RouteHandlerT | undefined = diesel.trie.search(
@@ -16,14 +13,14 @@ export default async function handleRequest(
   );
 
   if (routeHandler?.isDynamic) req.routePattern = routeHandler.path;
-  
-  // create the context which contains the methods Req,Res, many more
+
   const ctx: ContextType = createCtx(req, server, url);
+
 
   // cors execution
   if (diesel.corsConfig) {
-    const corsResult = applyCors(req, ctx, diesel.corsConfig);
-    if (corsResult) return corsResult;
+    const corsResponse = applyCors(req, ctx, diesel.corsConfig);
+    if (corsResponse) return corsResponse;
   }
 
   // OnReq hook 1
@@ -34,21 +31,18 @@ export default async function handleRequest(
   // filter applying
   if (diesel.hasFilterEnabled) {
     const path = req.routePattern ?? url.pathname;
-
-    const result = await handleFilterRequest(diesel, path, ctx, server);
-    if (result) return result;
+    const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
+    if (filterResponse) return filterResponse;
   }
 
   // middleware execution
   if (diesel.hasMiddleware) {
-    // first run global midl
     const globalMiddleware = diesel.globalMiddlewares;
     for (let i = 0; i < globalMiddleware.length; i++) {
       const result = await globalMiddleware[i](ctx, server);
       if (result) return result;
     }
 
-    // then path specific midl
     const pathMiddlewares = diesel.middlewares.get(url.pathname) || [];
     for (let i = 0; i < pathMiddlewares.length; i++) {
       const result = await pathMiddlewares[i](ctx, server);
@@ -57,44 +51,16 @@ export default async function handleRequest(
   }
 
   if (!routeHandler || routeHandler.method !== req.method) {
-
     const wildCard = diesel.trie.search("*", req.method)
     if (wildCard) {
-
-      if (!diesel.staticFiles) {
-        throw new Error("Static files directory is not configured.");
-      }
-  
-      if (url.pathname.endsWith(".js") || url.pathname.endsWith(".css") || url.pathname.endsWith(".html")) {
-        const filePath = `${diesel.staticFiles}${url.pathname}`;
-        const mimeType = getMimeType(filePath);
-  
-        // Serve static file with appropriate MIME type
-        // console.log(`Serving static file: ${filePath}, MIME type: ${mimeType}`);
-        return ctx.file(filePath, 200, mimeType);
-      }
-  
+      const staticResponse = await handleStaticFiles(diesel, url.pathname, ctx);
+      if (staticResponse) return staticResponse;
 
       const result = await wildCard.handler(ctx);
       return result as Response
     }
 
-    const status = routeHandler ? 405 : 404;
-    const message = routeHandler
-      ? "Method not allowed"
-      : `Route not found for ${url.pathname}`;
-
-    return new Response(
-      JSON.stringify({
-        error: true,
-        message,
-        status,
-      }),
-      {
-        status,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+    return generateErrorResponse(routeHandler ? 405 : 404, routeHandler ? "Method not allowed" : `Route not found for ${url.pathname}`);
   }
 
   // Run preHandler hooks 2
@@ -103,34 +69,24 @@ export default async function handleRequest(
     if (Hookresult) return Hookresult;
   }
 
-  // Finally, execute the route handler and return its result
+  // // Finally, execute the route handler and return its result
   const result = (await routeHandler.handler(ctx)) as Response | null | void;
-  // 3. run the postHandler hooks
+
+  // // Hooks: Post-Handler and OnSend
   if (diesel.hasPostHandlerHook && diesel.hooks.postHandler) {
     await diesel.hooks.postHandler(ctx);
   }
 
-  // 4. Run onSend hooks before sending the response
   if (diesel.hasOnSendHook && diesel.hooks.onSend) {
     const hookResponse = await diesel.hooks.onSend(ctx, result);
     if (hookResponse) return hookResponse;
   }
 
-  // Default Response if Handler is Void
-  return (
-    result ??
-    ctx.json(
-      {
-        error: true,
-        message: "No response from this handler",
-        status: 204,
-      },
-      204
-    )
-  );
+  // // Default Response if Handler is Void
+  return result ?? generateErrorResponse(204, "No response from this handler");
 }
 
-function applyCors(
+export function applyCors(
   req: Request,
   ctx: ContextType,
   config: corsT = {}
@@ -188,27 +144,32 @@ function applyCors(
   return null;
 }
 
-async function handleFilterRequest(
-  diesel: DieselT,
-  path: string,
-  ctx: ContextType,
-  server: Server
-) {
+export async function handleFilterRequest(diesel: DieselT, path: string, ctx: ContextType, server: Server) {
   if (!diesel.filters.has(path)) {
     if (diesel.filterFunction.length) {
       for (const filterFunction of diesel.filterFunction) {
         const filterResult = await filterFunction(ctx, server);
         if (filterResult) return filterResult;
       }
-    } else {
-      return ctx.json(
-        {
-          error: true,
-          message: "Protected route,authentication required",
-          status: 401,
-        },
-        401
-      );
     }
+    return ctx.json({ error: true, message: "Protected route, authentication required", status: 401 }, 401);
   }
+}
+
+export function generateErrorResponse(status: number, message: string): Response {
+  return new Response(
+    JSON.stringify({ error: true, message, status }),
+    { status, headers: { "Content-Type": "application/json" } }
+  );
+}
+
+export async function handleStaticFiles(diesel: DieselT, pathname: string, ctx: ContextType): Promise<Response | null> {
+  if (!diesel.staticFiles) throw new Error("Static files directory is not configured.");
+
+  const filePath = `${diesel.staticFiles}${pathname}`;
+  if (/\.(js|css|html)$/.test(pathname)) {
+    const mimeType = getMimeType(filePath);
+    return ctx.file(filePath, 200, mimeType);
+  }
+  return null;
 }

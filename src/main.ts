@@ -34,7 +34,7 @@ export default class Diesel {
   filterFunction: middlewareFunc[];
   hasFilterEnabled: boolean;
   private serverInstance: Server | null;
-  staticFiles :any
+  staticFiles: any;
   constructor() {
     this.tempRoutes = new Map();
     this.globalMiddlewares = [];
@@ -60,7 +60,7 @@ export default class Diesel {
     this.filterFunction = [];
     this.hasFilterEnabled = false;
     this.serverInstance = null;
-    this.staticFiles = null
+    this.staticFiles = null;
   }
 
   setupFilter(): FilterMethods {
@@ -82,8 +82,8 @@ export default class Diesel {
 
       authenticate: (fnc?: middlewareFunc[]) => {
         if (fnc?.length) {
-          for(const fn of fnc){
-            this.filterFunction.push(fn)
+          for (const fn of fnc) {
+            this.filterFunction.push(fn);
           }
         }
       },
@@ -95,8 +95,8 @@ export default class Diesel {
     return this;
   }
 
-  static(filePath:string){
-    this.staticFiles=filePath
+  static(filePath: string) {
+    this.staticFiles = filePath;
   }
 
   addHooks(
@@ -150,7 +150,6 @@ export default class Diesel {
         break;
       }
     }
-
     // check if hook is present or not
     if (this.hooks.onRequest) this.hasOnReqHook = true;
     if (this.hooks.preHandler) this.hasPreHandlerHook = true;
@@ -188,28 +187,14 @@ export default class Diesel {
         try {
           return await handleRequest(req, server, url, this as DieselT);
         } catch (error: any) {
-          if (this.hasOnError && this.hooks.onError) {
-            const onErrResponse = await this.hooks.onError(
-              error,
-              req,
-              url,
-              server
-            );
-            if (onErrResponse) return onErrResponse;
-          }
-          return new Response(
-            JSON.stringify({
-              message: "Internal Server Error",
-              error: error.message,
-              staus: 500,
-            }),
-            { status: 500 }
-          );
+          return this.hasOnError && this.hooks.onError
+            ? this.hooks.onError(error, req, url, server)
+            : new Response(JSON.stringify({ message: "Internal Server Error", error: error.message, status: 500,}),{ status: 500 });
         }
       },
     };
 
-    if (options.sslCert && options.sslKey) {
+  if (options.sslCert && options.sslKey) {
       ServerOptions.certFile = options.sslCert;
       ServerOptions.keyFile = options.sslKey;
     }
@@ -341,9 +326,17 @@ export default class Diesel {
     });
 
     try {
-
-      if (method === 'ANY') {
-        const allMethods: HttpMethod[] = ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS","HEAD"];
+      if (method === "ANY") {
+        const allMethods: HttpMethod[] = [
+          "GET",
+          "POST",
+          "PUT",
+          "DELETE",
+          "PATCH",
+          "OPTIONS",
+          "HEAD",
+          "PROPFIND",
+        ];
         for (const m of allMethods) {
           this.trie.insert(path, { handler, method: m });
         }
@@ -482,12 +475,12 @@ export default class Diesel {
     return this;
   }
 
-  any(path:string, ...handlers:handlerFunction[]) {
+  any(path: string, ...handlers: handlerFunction[]) {
     this.addRoute("ANY", path, handlers);
     return this;
   }
 
-  head(path:string,...handlers:handlerFunction[]){
+  head(path: string, ...handlers: handlerFunction[]) {
     this.addRoute("HEAD", path, handlers);
     return this;
   }
@@ -497,4 +490,8 @@ export default class Diesel {
     return this;
   }
 
+  propfind(path: string, ...handlers: handlerFunction[]): this {
+    this.addRoute("PROPFIND", path, handlers);
+    return this;
+  }
 }

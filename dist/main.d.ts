@@ -66,4 +66,5 @@ export default class Diesel {
     any(path: string, ...handlers: handlerFunction[]): this;
     head(path: string, ...handlers: handlerFunction[]): this;
     options(path: string, ...handlers: handlerFunction[]): this;
+    propfind(path: string, ...handlers: handlerFunction[]): this;
 }
