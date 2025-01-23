@@ -1,3 +1,0 @@
-tsc
-
-bun run build
