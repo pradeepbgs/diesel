@@ -1,3 +1,5 @@
+### [Read the docs](https://diesel-core.vercel.app/)
+
 # DieselJS
 
 **made only for bun***

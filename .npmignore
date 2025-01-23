@@ -1,0 +1,6 @@
+example/
+node_modules/
+.env
+.git
+.gitignore
+make.sh

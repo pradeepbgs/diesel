@@ -24,7 +24,7 @@ export default async function handleRequest( req: Request, server: Server, url: 
   }
 
   // OnReq hook 1
-  if (diesel.hasOnReqHook && diesel.hooks.onRequest) {
+  if (diesel.hooks.onRequest) {
     diesel.hooks.onRequest(req, url, server);
   }
 
@@ -64,7 +64,7 @@ export default async function handleRequest( req: Request, server: Server, url: 
   }
 
   // Run preHandler hooks 2
-  if (diesel.hasPreHandlerHook && diesel.hooks.preHandler) {
+  if (diesel.hooks.preHandler) {
     const Hookresult = await diesel.hooks.preHandler(ctx);
     if (Hookresult) return Hookresult;
   }
@@ -73,11 +73,11 @@ export default async function handleRequest( req: Request, server: Server, url: 
   const result = (await routeHandler.handler(ctx)) as Response | null | void;
 
   // // Hooks: Post-Handler and OnSend
-  if (diesel.hasPostHandlerHook && diesel.hooks.postHandler) {
+  if (diesel.hooks.postHandler) {
     await diesel.hooks.postHandler(ctx);
   }
 
-  if (diesel.hasOnSendHook && diesel.hooks.onSend) {
+  if (diesel.hooks.onSend) {
     const hookResponse = await diesel.hooks.onSend(ctx, result);
     if (hookResponse) return hookResponse;
   }
@@ -164,9 +164,9 @@ export function generateErrorResponse(status: number, message: string): Response
 }
 
 export async function handleStaticFiles(diesel: DieselT, pathname: string, ctx: ContextType): Promise<Response | null> {
-  if (!diesel.staticFiles) throw new Error("Static files directory is not configured.");
+  if (!diesel.UseStaticFiles) throw new Error("Static files directory is not configured.");
 
-  const filePath = `${diesel.staticFiles}${pathname}`;
+  const filePath = `${diesel.UseStaticFiles}${pathname}`;
   if (/\.(js|css|html)$/.test(pathname)) {
     const mimeType = getMimeType(filePath);
     return ctx.file(filePath, 200, mimeType);
