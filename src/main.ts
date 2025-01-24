@@ -93,10 +93,10 @@ export default class Diesel {
     };
   }
 
-  cors(corsConfig: corsT): this {
-    this.corsConfig = corsConfig;
-    return this;
-  }
+  // cors(corsConfig: corsT): this {
+  //   this.corsConfig = corsConfig;
+  //   return this;
+  // }
 
   UseStatic(filePath: string) {
     this.UseStaticFiles = filePath;
@@ -186,9 +186,12 @@ export default class Diesel {
       fetch: async (req: Request, server: Server) => {
         const url: URL = new URL(req.url);
         try {
+          if (this.hooks.onRequest) {
+            this.hooks.onRequest(req, url,server);
+          }
           return await handleRequest(req, server, url, this as DieselT);
         } catch (error: any) {
-          return this.hasOnError && this.hooks.onError
+          return this.hooks.onError
             ? this.hooks.onError(error, req, url, server)
             : new Response(JSON.stringify({ message: "Internal Server Error", error: error.message, status: 500,}),{ status: 500 });
         }

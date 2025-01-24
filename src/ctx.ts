@@ -1,87 +1,79 @@
 import { Server } from "bun";
-// import cookie from 'cookie'
 
 import type { ContextType, CookieOptions, ParseBodyResult } from "./types";
 import { getMimeType } from "./utils";
 
-export default function createCtx( req: Request, server: Server, url: URL): ContextType {
+export default function createCtx(req: Request, server: Server, url: URL): ContextType {
   const headers: Headers = new Headers({
     "X-Powered-By": "DieselJS", // Branding header
     "Cache-Control": "no-cache", // Prevent caching for dynamic responses
   });
-  headers.set("X-Powered-By", "DieselJS")
-  let settedValue: Record<string, string> = {};
-  let isAuthenticated: boolean = false;
-  let parsedQuery: any;
+  let parsedQuery: any = null;
   let parsedCookie: any = null;
-  let parsedParams: any ;
-  let parsedBody: ParseBodyResult | null;
-  // let responseStatus: number = 200;
-  let user: any = {};
-
+  let parsedParams: any;
+  let parsedBody: any
+  let contextData: Record<string, any> = {};
   return {
     req,
     server,
     url,
-    
+
     setHeader(key: string, value: any): ContextType {
       headers.set(key, value);
       return this;
     },
-    
-    getUser() {
-      return user;
+
+    get ip(): string | null {
+      return this.server.requestIP(this.req)?.address ?? null;
     },
 
-    setUser(data?: any): void {
-      if (data) {
-        user = data;
+    get query(): Record<string, string> {
+      if (!parsedQuery) {
+        try {
+          parsedQuery = Object.fromEntries(this.url.searchParams);
+        } catch (error) {
+          throw new Error("Failed to parse query parameters");
+        }
       }
+      return parsedQuery;
     },
 
-    // status(status: number): ContextType {
-    //   responseStatus = status;
-    //   return this;
-    // },
-
-    getIP() {
-      return this.server.requestIP(this.req);
+    get params(): Record<string, string> {
+      if (!parsedParams && this.req.routePattern) {
+        try {
+          parsedParams = extractDynamicParams(this.req.routePattern, this.url.pathname);
+        } catch (error) {
+          throw new Error("Failed to extract route parameters");
+        }
+      }
+      return parsedParams ?? {};
     },
 
-    async getBody(): Promise<any> {
+    get body(): Promise<any> {
       if (!parsedBody) {
-        parsedBody = await parseBody(req);
-      }
-      if (parsedBody.error) {
-        return new Response(JSON.stringify({ error: parsedBody.error }), {
-          status: 400,
-        });
+        parsedBody = (async () => {
+            const result = await parseBody(this.req);
+            if (result.error) {
+              throw new Error(result.error);
+            }
+            if (result.error) {
+              throw new Error(result.error);
+            }
+            return result;
+        })();
       }
       return parsedBody;
     },
 
-    set(key: string, value: any): ContextType {
-      if (typeof key !== "string") throw new Error("Key must be string type!");
-      if (!value)
-        throw new Error("value paramter is missing pls pass value after key");
-      settedValue[key] = value;
+    set<T>(key: string, value: T): ContextType {
+      contextData[key] = value;
       return this;
     },
 
-    get(key: string): any | null {
-      return key ? settedValue[key] : null;
+    get<T>(key: string): T | undefined {
+      return contextData[key];
     },
 
-    setAuth(authStatus: boolean): ContextType {
-      isAuthenticated = authStatus;
-      return this;
-    },
-
-    getAuth(): boolean {
-      return isAuthenticated;
-    },
-
-    // Response methods with optional status
     text(data: string, status?: number) {
       if (!headers.has("Content-Type")) {
         headers.set("Content-Type", "text/plain; charset=utf-8")
@@ -98,7 +90,7 @@ export default function createCtx( req: Request, server: Server, url: URL): Cont
           headers.set("Content-Type", "text/plain; charset=utf-8");
         }
       } else if (typeof data === "object") {
-        if (!headers.has("Content-Type")) { 
+        if (!headers.has("Content-Type")) {
           headers.set("Content-Type", "application/json; charset=utf-8");
         }
         data = JSON.stringify(data);
@@ -107,43 +99,27 @@ export default function createCtx( req: Request, server: Server, url: URL): Cont
           headers.set("Content-Type", "application/octet-stream");
         }
       }
-      return new Response(data, {
-        status,
-        headers,
-      });
-    },    
+      return new Response(data, { status,headers,});
+    },
 
     json(data: any, status?: number): Response {
       if (!headers.has("Content-Type")) {
         headers.set("Content-Type", "application/json; charset=utf-8");
       }
-      return new Response(JSON.stringify(data), {
-        status,
-        headers
-      });
+      return new Response(JSON.stringify(data), {status, headers });
     },
 
-    // html(filepath: string, status?: number): Response {
-    //   return new Response(Bun.file(filepath), {
-    //     status: status ?? responseStatus,
-    //     headers,
-    //   });
-    // },
-
-    file(filePath: string, status: number = 200,mime_Type?:string): Response{
+    file(filePath: string, status: number = 200, mime_Type?: string): Response {
       const mimeType = getMimeType(filePath);
       const file = Bun.file(filePath);
-    
+
       const headers = new Headers();
       if (!headers.has("Content-Type")) {
         headers.set("Content-Type", mime_Type ?? mimeType);
       }
-    
-      return new Response(file, {
-        status,
-        headers,
-      });
-    },    
+
+      return new Response(file, {status,headers,});
+    },
 
     redirect(path: string, status?: number): Response {
       headers.set("Location", path);
@@ -162,7 +138,6 @@ export default function createCtx( req: Request, server: Server, url: URL): Cont
         value
       )}`;
 
-      // Add options to cookie string (e.g., expiration, path, HttpOnly, etc.)
       if (options.maxAge) cookieString += `; Max-Age=${options.maxAge}`;
       if (options.expires)
         cookieString += `; Expires=${options.expires.toUTCString()}`;
@@ -177,77 +152,51 @@ export default function createCtx( req: Request, server: Server, url: URL): Cont
       return this;
     },
 
-    getParams(props: string): string | Record<string, string> | undefined {
-      if (!parsedParams && req?.routePattern) {
-        parsedParams = extractDynamicParams(req?.routePattern, url?.pathname);
-      }
-      if (props) {
-        if (parsedParams) {
-          return parsedParams[props]
-        }else{
-          return undefined;
-        }
-      }
-      if (parsedParams) {
-        return props
-      } else{
-        return undefined;
-      }
-    },
 
-    getQuery(props?: any): string | Record<string, string> | undefined {
-      try {
-        if (!parsedQuery) {
-          parsedQuery = Object.fromEntries(url.searchParams);
-        }
-        if (props) {
-          return parsedQuery[props] ?? undefined;
-        }
-        return parsedQuery;
-      } catch (error) {
-        return undefined;
-      }
-    },
-
-    getCookie(cookieName?: string): string | null | undefined {
+    get cookies(): Record<string, string> | undefined {
       if (!parsedCookie) {
-        const cookieHeader = req.headers.get("cookie");
+        const cookieHeader = this.req.headers.get("cookie");
         if (cookieHeader) {
           parsedCookie = parseCookie(cookieHeader);
-        } else return undefined;
+        } else {
+          return {};
+        }
       }
-      if (!parsedCookie) return undefined;
-
-      if (cookieName) {
-        return parsedCookie[cookieName] ?? undefined;
-      } else {
-        return parsedCookie;
-      }
-    },
+      return parsedCookie;
+    },  
   };
 }
 
-function parseCookie(cookieHeader: string | undefined): Record<string, string> {
-  const cookies: Record<string, string> = {};
+// function parseCookie(cookieHeader: string | undefined): Record<string, string> {
+//   const cookies: Record<string, string> = {};
 
-  const cookiesArray = cookieHeader?.split(";")!;
+//   const cookiesArray = cookieHeader?.split(";")!;
 
-  for (let i = 0; i < cookiesArray?.length!; i++) {
-    const [cookieName, ...cookieValeParts] = cookiesArray[i].trim().split("=");
-    const cookieVale = cookieValeParts?.join("=").trim();
-    if (cookieName) {
-      cookies[cookieName.trim()] = decodeURIComponent(cookieVale);
-    }
-  }
+//   for (let i = 0; i < cookiesArray?.length!; i++) {
+//     const [cookieName, ...cookieValeParts] = cookiesArray[i].trim().split("=");
+//     const cookieVale = cookieValeParts?.join("=").trim();
+//     if (cookieName) {
+//       cookies[cookieName.trim()] = decodeURIComponent(cookieVale);
+//     }
+//   }
 
-  return cookies;
+//   return cookies;
+// }
+
+function parseCookie(cookieHeader: string): Record<string, string> {
+  return Object.fromEntries(
+    cookieHeader.split(";").map((cookie) => {
+      const [name, ...valueParts] = cookie.trim().split("=");
+      return [name, decodeURIComponent(valueParts.join("="))];
+    })
+  );
 }
 
 function extractDynamicParams(
-  routePattern: any,
+routePattern: any,
   path: string
 ): Record<string, string> | null {
-  const object: Record<string, string> = {};
+  const params: Record<string, string> = {};
   const routeSegments = routePattern.split("/");
   const [pathWithoutQuery] = path.split("?");
   const pathSegments = pathWithoutQuery.split("/");
@@ -258,20 +207,22 @@ function extractDynamicParams(
 
   for (let i = 0; i < routeSegments.length; i++) {
     if (routeSegments[i].startsWith(":")) {
-      // const dynamicKey = routeSegments[i].slice(1);
-      // object[dynamicKey] = pathSegments[i];
-      // OR
-      object[routeSegments[i].slice(1)] = pathSegments[i];
+      params[routeSegments[i].slice(1)] = pathSegments[i];
     }
   }
 
-  return object;
+  return params;
 }
 
 async function parseBody(req: Request): Promise<ParseBodyResult> {
   const contentType: string = req.headers.get("Content-Type")!;
 
   if (!contentType) return {};
+
+  const contentLength = req.headers.get("Content-Length");
+    if (contentLength === "0" || !req.body) {
+      return {};
+    }
 
   try {
     if (contentType.startsWith("application/json")) {

@@ -23,24 +23,20 @@ export interface ContextType {
     req: Request;
     server: Server;
     url: URL;
-    setUser: (data?: any) => void;
-    getUser: () => any;
-    getIP: () => any;
-    getBody: () => Promise<any>;
     setHeader: (key: string, value: any) => this;
-    set: (key: string, value: any) => this;
-    get: (key: string) => any;
-    setAuth: (authStatus: boolean) => this;
-    getAuth: () => boolean;
     json: (data: Object, status?: number) => Response;
     text: (data: string, status?: number) => Response;
     send: (data: string, status?: number) => Response;
     file: (filePath: string, status?: number, mimeType?: string) => Response;
     redirect: (path: string, status?: number) => Response;
-    getParams: (props?: any) => any;
-    getQuery: (props?: any) => any;
     setCookie: (name: string, value: string, options?: CookieOptions) => this;
-    getCookie: (cookieName?: string) => any;
+    ip: string | null;
+    query: Record<string, string>;
+    params: Record<string, string>;
+    set<T>(key: string, value: T): this;
+    get<T>(key: string): T | undefined;
+    body: Promise<any>;
+    cookies: any;
 }
 export interface CookieOptions {
     maxAge?: number;

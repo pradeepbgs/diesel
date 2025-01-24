@@ -11,7 +11,7 @@ export default function rateLimit(props: { time?: number; max?: number; message?
 
     return (ctx: ContextType): void | Response => {
         const currentTime: any = new Date()
-        const socketIP = ctx.getIP().address
+        const socketIP = ctx.ip as string
 
         if (!requests.has(socketIP)) {
             requests.set(socketIP, { count: 0, startTime: currentTime })

@@ -91,6 +91,7 @@ describe("CORS Testing", () => {
         Origin: "http://localhost:3000",
       },
     });
+    console.log("Res of POST first testing: =>",await response.json())
     expect(response.status).toBe(200);
   });
 
@@ -101,6 +102,7 @@ describe("CORS Testing", () => {
       },
     });
     const data = await response.json();
+    console.log("DATA of 2nd",data)
     expect(response.status).toBe(200);
     expect(data.msg).toBe("Hello world!");
   });
@@ -111,6 +113,7 @@ describe("CORS Testing", () => {
         Origin: "http://evil.com",
       },
     });
+    console.log('DENY 3rd',await response.json())
     expect(response.status).toBe(403);
   });
   it("should deny PUT requests from disallowed origin", async () => {
@@ -120,6 +123,7 @@ describe("CORS Testing", () => {
         Origin: "http://evil.com",
       },
     });
+    console.log("DENY 4th",response.json())
     expect(response.status).toBe(403);
   });
 });
@@ -165,5 +169,74 @@ describe("Testing for Query Route", () => {
 
     expect(response.status).toBe(200);
     expect(data).toEqual({ name: undefined, age: undefined });
+  });
+});
+
+
+
+describe("Testing for Body Route", () => {
+  const baseUrl = "http://localhost:3000/body";
+
+  it("should return 200 and the request body when a valid JSON body is provided", async () => {
+    const body = { name: "pradeep", age: 23 };
+    const response = await fetch(baseUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data).toEqual(body);
+  });
+
+  it("should return 200 and an empty object when no body is provided", async () => {
+    const response = await fetch(baseUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const data = await response.json();
+    expect(response.status).toBe(200);
+    expect(data).toEqual({});
+  });
+
+  it("should return 400 when an invalid JSON body is provided", async () => {
+    const response = await fetch(baseUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "invalid-json",
+    });
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data).toEqual({ error: "Invalid request body format" });
+  });
+
+  it("should return 200 and the request body when a form-urlencoded body is provided", async () => {
+    const body = new URLSearchParams({ name: "pradeep", age: "23" });
+    const response = await fetch(baseUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data).toEqual({ name: "pradeep", age: "23" });
+  });
+
+  it("should return 200 and the request body when a multipart/form-data body is provided", async () => {
+    const formData = new FormData();
+    formData.append("name", "pradeep");
+    formData.append("age", "23");
+
+    const response = await fetch(baseUrl, {
+      method: "POST",
+      body: formData,
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data).toEqual({ name: "pradeep", age: "23" });
   });
 });

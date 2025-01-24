@@ -23,7 +23,6 @@ export default class Diesel {
     staticFiles: any;
     constructor();
     setupFilter(): FilterMethods;
-    cors(corsConfig: corsT): this;
     UseStatic(filePath: string): void;
     static(route: string | string[], filePath: string | string[]): this;
     addHooks(typeOfHook: HookType, fnc: HookFunction | onError | onRequest): this;

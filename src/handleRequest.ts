@@ -12,21 +12,9 @@ export default async function handleRequest( req: Request, server: Server, url: 
     req.method
   );
 
-  if (routeHandler?.isDynamic) req.routePattern = routeHandler.path;
+  req.routePattern = routeHandler?.path;
 
   const ctx: ContextType = createCtx(req, server, url);
-
-
-  // cors execution
-  if (diesel.corsConfig) {
-    const corsResponse = applyCors(req, ctx, diesel.corsConfig);
-    if (corsResponse) return corsResponse;
-  }
-
-  // OnReq hook 1
-  if (diesel.hooks.onRequest) {
-    diesel.hooks.onRequest(req, url, server);
-  }
 
   // filter applying
   if (diesel.hasFilterEnabled) {
@@ -50,7 +38,7 @@ export default async function handleRequest( req: Request, server: Server, url: 
     }
   }
 
-  if (!routeHandler || routeHandler.method !== req.method) {
+  if (!routeHandler?.handler || routeHandler.method !== req.method) {
     const wildCard = diesel.trie.search("*", req.method)
     if (wildCard) {
       const staticResponse = await handleStaticFiles(diesel, url.pathname, ctx);
@@ -59,8 +47,12 @@ export default async function handleRequest( req: Request, server: Server, url: 
       const result = await wildCard.handler(ctx);
       return result as Response
     }
+    if ( !routeHandler || routeHandler?.handler.length == 0) {
+      return generateErrorResponse(404, `Route not found for ${url.pathname}`);
+    } else if (routeHandler?.method !== req.method) {
+      return generateErrorResponse(405, "Method not allowed");
+    }
 
-    return generateErrorResponse(routeHandler ? 405 : 404, routeHandler ? "Method not allowed" : `Route not found for ${url.pathname}`);
   }
 
   // Run preHandler hooks 2
@@ -70,79 +62,20 @@ export default async function handleRequest( req: Request, server: Server, url: 
   }
 
   // // Finally, execute the route handler and return its result
-  const result = (await routeHandler.handler(ctx)) as Response | null | void;
-
+  const result = routeHandler.handler(ctx);
+  const finalResult = result instanceof Promise ? await result : result;
+  
   // // Hooks: Post-Handler and OnSend
-  if (diesel.hooks.postHandler) {
-    await diesel.hooks.postHandler(ctx);
-  }
+  if (diesel.hooks.postHandler) await diesel.hooks.postHandler(ctx);
 
   if (diesel.hooks.onSend) {
-    const hookResponse = await diesel.hooks.onSend(ctx, result);
+    const hookResponse = await diesel.hooks.onSend(ctx, finalResult);
     if (hookResponse) return hookResponse;
   }
 
-  // // Default Response if Handler is Void
-  return result ?? generateErrorResponse(204, "No response from this handler");
+  return finalResult ?? generateErrorResponse(204, "No response from this handler");
 }
 
-export function applyCors(
-  req: Request,
-  ctx: ContextType,
-  config: corsT = {}
-): Response | null {
-  const origin = req.headers.get("origin") ?? "*";
-  const allowedOrigins = config?.origin;
-  const allowedHeaders = config?.allowedHeaders ?? [
-    "Content-Type",
-    "Authorization",
-  ];
-  const allowedMethods = config?.methods ?? [
-    "GET",
-    "POST",
-    "PUT",
-    "DELETE",
-    "OPTIONS",
-  ];
-  const allowedCredentials = config?.credentials ?? false;
-  const exposedHeaders = config?.exposedHeaders ?? [];
-
-  ctx.setHeader("Access-Control-Allow-Methods", allowedMethods);
-  ctx.setHeader("Access-Control-Allow-Headers", allowedHeaders);
-  ctx.setHeader("Access-Control-Allow-Credentials", allowedCredentials);
-
-  if (exposedHeaders.length)
-    ctx.setHeader("Access-Control-Expose-Headers", exposedHeaders);
-
-  if (allowedOrigins === "*" || origin === "*") {
-    ctx.setHeader("Access-Control-Allow-Origin", "*");
-  } else if (Array.isArray(allowedOrigins)) {
-    if (origin && allowedOrigins.includes(origin)) {
-      ctx.setHeader("Access-Control-Allow-Origin", origin);
-    } else if (allowedOrigins.includes("*")) {
-      ctx.setHeader("Access-Control-Allow-Origin", "*");
-    } else {
-      return ctx.json({ message: "CORS not allowed" }, 403);
-    }
-  } else if (typeof allowedOrigins === "string") {
-    if (origin === allowedOrigins) {
-      ctx.setHeader("Access-Control-Allow-Origin", origin);
-    } else {
-      return ctx.json({ message: "CORS not allowed" }, 403);
-    }
-  } else {
-    return ctx.json({ message: "CORS not allowed" }, 403);
-  }
-
-  ctx.setHeader("Access-Control-Allow-Origin", origin);
-
-  if (req.method === "OPTIONS") {
-    ctx.setHeader("Access-Control-Max-Age", "86400");
-    return ctx.text("", 204);
-  }
-
-  return null;
-}
 
 export async function handleFilterRequest(diesel: DieselT, path: string, ctx: ContextType, server: Server) {
   if (!diesel.filters.has(path)) {

@@ -1,9 +1,7 @@
 import Diesel from './dist/main'
-// import Router from './src/route'
-import rateLimit from './dist/utils'
+import { corsMiddleware } from './dist/middlewares/cors/cors'
 
 
 export {
     Diesel,
-    rateLimit
 }

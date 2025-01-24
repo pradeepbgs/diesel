@@ -10,7 +10,6 @@ class TrieNode {
     pattern: string
     path: string
     method: string[]
-    subMiddlewares : Map<string,handlerFunction[]>
 
     constructor() {
       this.children = {};
@@ -20,7 +19,6 @@ class TrieNode {
       this.pattern = '';
       this.path = "";
       this.method = []
-      this.subMiddlewares= new Map()
     }
   }
   
