@@ -7,7 +7,6 @@ declare class TrieNode {
     pattern: string;
     path: string;
     method: string[];
-    subMiddlewares: Map<string, handlerFunction[]>;
     constructor();
 }
 export default class Trie {

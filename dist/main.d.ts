@@ -19,15 +19,16 @@ export default class Diesel {
     filterFunction: middlewareFunc[];
     hasFilterEnabled: boolean;
     private serverInstance;
+    UseStaticFiles: any;
     staticFiles: any;
     constructor();
     setupFilter(): FilterMethods;
-    cors(corsConfig: corsT): this;
-    static(filePath: string): void;
+    UseStatic(filePath: string): void;
+    static(route: string | string[], filePath: string | string[]): this;
     addHooks(typeOfHook: HookType, fnc: HookFunction | onError | onRequest): this;
     private compile;
     listen(port?: number, ...args: listenArgsT[]): Server | void;
-    close(): void;
+    close(callback?: () => void): void;
     /**
      * Registers a router instance for subrouting.
      * Allows defining subroutes like:

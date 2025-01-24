@@ -1,3 +1,5 @@
+### [Read the docs](https://diesel-core.vercel.app/)
+
 # DieselJS
 
 **made only for bun***
@@ -62,10 +64,10 @@ app.options()
 ### Diesel supports cors out of the box
 
 ``` javascript
-app.cors({
+app.use(cors{
   origin: ['http://localhost:5173','*'],
-  methods: 'GET,POST,PUT,DELETE',
-  allowedHeaders: 'Content-Type,Authorization'
+  methods: ['GET','POST','PUT','DELETE'],
+  allowedHeaders: ['Content-Type','Authorization']
 })
 ```
 
@@ -85,7 +87,7 @@ import jwt from 'jsonwebtoken';
 const app = new Diesel();
 
 async function authJwt (ctx:ContextType, server?:Server): Promise<void | Response> {
-  const token = await ctx.getCookie("accessToken");  // Retrieve the JWT token from cookies
+  const token = await ctx.cookies?.accessToken  // Retrieve the JWT token from cookies
   if (!token) {
     return ctx.json({ message: "Authentication token missing" },401);
   }
@@ -93,10 +95,7 @@ async function authJwt (ctx:ContextType, server?:Server): Promise<void | Respons
     // Verify the JWT token using a secret key
     const user = jwt.verify(token, secret);  // Replace with your JWT secret
     // Set the user data in context
-    ctx.setUser(user);
-
-    // Proceed to the next middleware/route handler
-    return ctx.next();
+    ctx.set('user',user);
   } catch (error) {
     return ctx.json({ message: "Invalid token" },403);
   }
@@ -117,7 +116,7 @@ app.get("/api/user/register", async (ctx:ContextType) => {
 // Example protected route (requires auth)
 app.get("/api/user/profile", async (ctx:ContextType) => {
   // This route is protected, so the auth middleware will run before this handler
-  const user = ctx.getUser()
+  const user = ctx.get.user
   return ctx.json({ 
     msg: "You are authenticated!" ,
     user
@@ -220,7 +219,7 @@ app.addHooks('onSend',async (ctx, result) => {
 async function authJwt (ctx:ContextType, server?:Server): Promise<void | Response> {
   
   try {
-    const token = ctx?.getCookie("accessToken"); 
+    const token = ctx.cookies?.accessToken
     if (!token) {
       return ctx.json({ message: "Authentication token missing" },401);
     }
@@ -292,13 +291,13 @@ app.get("/redirect",(ctx:ContextType) => {
 **You can use set ***Multiparams***** , ***like this***
 
 ```javascript
-app.get("/product/:productId/:productName)
+app.get("/product/:productId/:productName")
 ```
 
 ```javascript
 app.get("/hello/:id/",(ctx:ContextType) => {
-  const id = ctx.getParams("id")
-  const query = ctx.getQuery() // you can pass query name also , you wanna get
+  const id = ctx.params.id
+  const query = ctx.query // you can pass query name also , you wanna get
   return ctx.json({ msg: "Hello", id });
 })
 ```

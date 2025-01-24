@@ -34,7 +34,9 @@ export default class Diesel {
   filterFunction: middlewareFunc[];
   hasFilterEnabled: boolean;
   private serverInstance: Server | null;
-  staticFiles: any;
+  UseStaticFiles: any;
+  staticFiles:any
+
   constructor() {
     this.tempRoutes = new Map();
     this.globalMiddlewares = [];
@@ -60,7 +62,8 @@ export default class Diesel {
     this.filterFunction = [];
     this.hasFilterEnabled = false;
     this.serverInstance = null;
-    this.staticFiles = null;
+    this.UseStaticFiles = null;
+    this.staticFiles = {};
   }
 
   setupFilter(): FilterMethods {
@@ -90,19 +93,28 @@ export default class Diesel {
     };
   }
 
-  cors(corsConfig: corsT): this {
-    this.corsConfig = corsConfig;
+  // cors(corsConfig: corsT): this {
+  //   this.corsConfig = corsConfig;
+  //   return this;
+  // }
+
+  UseStatic(filePath: string) {
+    this.UseStaticFiles = filePath;
+  }
+
+  static (route: string | string[], filePath: string | string[]): this {
+    if(!Array.isArray(route) && !Array.isArray(filePath)) {
+      this.staticFiles[route] = filePath;
+    } 
+    else {
+      for (let i =0; i<route.length; i++){
+        this.staticFiles[route[i]] = filePath[i]
+      }
+    }
     return this;
   }
 
-  static(filePath: string) {
-    this.staticFiles = filePath;
-  }
-
-  addHooks(
-    typeOfHook: HookType,
-    fnc: HookFunction | onError | onRequest
-  ): this {
+  addHooks( typeOfHook: HookType, fnc: HookFunction | onError | onRequest ): this {
     if (typeof typeOfHook !== "string") {
       throw new Error("hookName must be a string");
     }
@@ -113,23 +125,18 @@ export default class Diesel {
     switch (typeOfHook) {
       case "onRequest":
         this.hooks.onRequest = fnc as onRequest;
-        this.hasOnReqHook = true;
         break;
       case "preHandler":
         this.hooks.preHandler = fnc as HookFunction;
-        this.hasPreHandlerHook = true;
         break;
       case "postHandler":
         this.hooks.postHandler = fnc as HookFunction;
-        this.hasPostHandlerHook = true;
         break;
       case "onSend":
         this.hooks.onSend = fnc as HookFunction;
-        this.hasOnSendHook = true;
         break;
       case "onError":
         this.hooks.onError = fnc as onError;
-        this.hasOnError = true;
         break;
       case "onClose":
         this.hooks.onClose = fnc as HookFunction;
@@ -150,12 +157,6 @@ export default class Diesel {
         break;
       }
     }
-    // check if hook is present or not
-    if (this.hooks.onRequest) this.hasOnReqHook = true;
-    if (this.hooks.preHandler) this.hasPreHandlerHook = true;
-    if (this.hooks.postHandler) this.hasPostHandlerHook = true;
-    if (this.hooks.onSend) this.hasOnSendHook = true;
-    if (this.hooks.onError) this.hasOnError = true;
     this.tempRoutes = new Map();
   }
 
@@ -185,13 +186,19 @@ export default class Diesel {
       fetch: async (req: Request, server: Server) => {
         const url: URL = new URL(req.url);
         try {
+          if (this.hooks.onRequest) {
+            this.hooks.onRequest(req, url,server);
+          }
           return await handleRequest(req, server, url, this as DieselT);
         } catch (error: any) {
-          return this.hasOnError && this.hooks.onError
+          return this.hooks.onError
             ? this.hooks.onError(error, req, url, server)
             : new Response(JSON.stringify({ message: "Internal Server Error", error: error.message, status: 500,}),{ status: 500 });
         }
       },
+      static: this.staticFiles,
+      development:true,
+      
     };
 
   if (options.sslCert && options.sslKey) {
@@ -217,11 +224,11 @@ export default class Diesel {
     return this.serverInstance;
   }
 
-  close(): void {
+  close(callback?:() => void): void {
     if (this.serverInstance) {
       this.serverInstance.stop(true);
       this.serverInstance = null;
-      console.log("Server has been stopped.");
+      callback ? callback() : console.log("Server has been stopped")
     } else {
       console.warn("Server is not running.");
     }
@@ -290,11 +297,7 @@ export default class Diesel {
     return this.route(basePath, routerInstance);
   }
 
-  private addRoute(
-    method: HttpMethod,
-    path: string,
-    handlers: handlerFunction[]
-  ): void {
+  private addRoute( method: HttpMethod, path: string, handlers: handlerFunction[] ): void {
     if (typeof path !== "string")
       throw new Error(
         `Error in ${

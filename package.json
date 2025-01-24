@@ -1,16 +1,49 @@
 {
   "name": "diesel-core",
-  "version": "1.0.0",
+  "version": "1.0.3",
+  "description": "Web framework built on Web Standards",
   "main": "index.js",
   "types": "index.d.ts",
+  "files": [
+    "./dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/main.d.ts",
+      "import": "./dist/main.js",
+      "require": "./dist/main.js"
+    },
+    "./cors": {
+      "types":"./dist/middlewares/cors/cors.d.ts",
+      "import": "./src/middlewares/cors/cors.js",
+      "require": "./dist/middlewares/cors/cors.js"
+    }
+  },
   "scripts": {
     "build": "bun run build.js",
-    "test": "bun run test/index.test.ts"
+    "test": "bun run test"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "author": "Pradeep Kumar <pradeepbgs62019@gmail.com> (https://github.com/pradeepbgs)",
+  "license": "MIT",
+  "keywords": [
+    "diesel",
+    "web",
+    "app",
+    "http",
+    "application",
+    "framework",
+    "router",
+    "cloudflare",
+    "workers",
+    "fastly",
+    "compute",
+    "deno",
+    "bun",
+    "lambda",
+    "nodejs",
+    "bun",
+    "bunjs"
+  ],
   "devDependencies": {
     "@types/bun": "latest"
   },

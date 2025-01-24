@@ -2,7 +2,7 @@ import { Server } from "bun";
 
 export type listenCalllBackType = () => void;
 export type handlerFunction = (ctx: ContextType, server?: Server) => Response | Promise<Response | null | void>;
-export type middlewareFunc = (ctx:ContextType,server?:Server | undefined) => null | void | Response | Promise<Response | void | null>
+export type middlewareFunc = (ctx: ContextType, server?: Server | undefined) => null | void | Response | Promise<Response | void | null>
 export type HookFunction = (ctx: ContextType, result?: Response | null | void, server?: Server) => Response | Promise<Response | null | void> | void
 // export type onSendHookFunc = (result?: Response | null | void, ctx?:ContextType) => Response | Promise<Response | null | void>
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD" | "ANY" | "PROPFIND";
@@ -40,26 +40,27 @@ export interface ContextType {
     req: Request;
     server: Server;
     url: URL;
-    setUser: (data?:any) => void
-    getUser: () => any
-    // status: (status: number) => this;
-    getIP: () => any;
-    getBody: () => Promise<any>;
     setHeader: (key: string, value: any) => this;
-    set: (key: string, value: any) => this;
-    get: (key: string) => any
-    setAuth: (authStatus: boolean) => this;
-    getAuth: () => boolean;
     json: (data: Object, status?: number) => Response;
     text: (data: string, status?: number) => Response;
     send: (data: string, status?: number) => Response;
-    // html: (filePath: string, status?: number) => Response;
-    file: (filePath: string, status?: number,mimeType?:string) => Response
+    file: (filePath: string, status?: number, mimeType?: string) => Response
     redirect: (path: string, status?: number) => Response;
-    getParams: (props?: any) => any;
-    getQuery: (props?: any) => any;
     setCookie: (name: string, value: string, options?: CookieOptions) => this;
-    getCookie: (cookieName?: string) => any;
+    // getCookie: (cookieName?: string) => any;
+    ip: string | null;
+    query: Record<string, string>;
+    params: Record<string, string>;
+    set<T>(key: string, value: T): this;
+    get<T>(key: string): T | undefined;
+    body: Promise<any>;
+    cookies: any
+    // setUser: (data?: any) => void
+    // getUser: () => any
+    // getParams: (props?: any) => any;
+    // getQuery: (props?: any) => any;
+    // setAuth: (authStatus: boolean) => this;
+    // getAuth: () => boolean;
 }
 
 export interface CookieOptions {
@@ -93,22 +94,22 @@ export interface DieselT {
     hasPostHandlerHook: boolean;
     hasOnSendHook: boolean;
     hooks: {
-        onRequest: ((req:Request, url:URL,serer: Server) => void) | null 
+        onRequest: ((req: Request, url: URL, serer: Server) => void) | null
         preHandler: ((ctx: ContextType, serer?: Server) => Response | Promise<Response | void | null>) | null
         postHandler: ((ctx: ContextType, serer?: Server) => Response | Promise<Response | void | null>) | null; // Updated to include Response | null
         onSend: ((ctx?: ContextType, result?: Response | null | void, serer?: Server) => Response | Promise<Response | void | null>) | null;
-        onError: ((error: Error, req: Request,url:URL, server?: Server) => void | Response | Promise<Response | null | void>) | null;
+        onError: ((error: Error, req: Request, url: URL, server?: Server) => void | Response | Promise<Response | null | void>) | null;
     };
-    filters: Set<string> 
-    hasFilterEnabled:boolean
-    filterFunction: Array<(ctx:ContextType,serer?:Server) => void | Response | Promise<Response | void | null>>
+    filters: Set<string>
+    hasFilterEnabled: boolean
+    filterFunction: Array<(ctx: ContextType, serer?: Server) => void | Response | Promise<Response | void | null>>
     corsConfig: corsT | null
     globalMiddlewares: Array<(ctx: ContextType, serer?: Server) => void | Promise<Response | null | void>>
     middlewares: Map<string, Array<(ctx: ContextType, serer?: Server) => void | Promise<Response | null | void>>>
     trie: {
         search: (pathname: string, method: string) => RouteHandlerT | undefined;
     };
-    staticFiles : string | null
+    UseStaticFiles: string | null
 }
 
 // export interface routerT  {
@@ -126,7 +127,7 @@ export interface RouteCache {
 declare global {
     interface Request {
         routePattern?: string; // Add the custom property
-        [key:string] : any
+        [key: string]: any
     }
 }
 
@@ -157,11 +158,11 @@ export interface FilterMethods {
     permitAll: () => FilterMethods;
     authenticate: (fnc?: middlewareFunc[]) => Response | Promise<Response | null> | void;
     // authenticate: () => Response | Promise<Response | null> | void
-  }
+}
 
-  export type listenArgsT = string | (() => void) | { sslCert?: string; sslKey?: string };
+export type listenArgsT = string | (() => void) | { sslCert?: string; sslKey?: string };
 
-  interface ListenType {
+interface ListenType {
     port: number;
     args?: listenArgsT
-  }
+}

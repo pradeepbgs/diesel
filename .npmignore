@@ -1,0 +1,7 @@
+example/
+node_modules/
+.env
+.git
+.gitignore
+
+PipeLineRequestHandle.ts
