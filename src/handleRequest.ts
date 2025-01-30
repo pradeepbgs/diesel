@@ -84,8 +84,9 @@ export async function handleFilterRequest(diesel: DieselT, path: string, ctx: Co
         const filterResult = await filterFunction(ctx, server);
         if (filterResult) return filterResult;
       }
+    } else {
+      return ctx.json({ error: true, message: "Protected route, authentication required", status: 401 }, 401);
     }
-    return ctx.json({ error: true, message: "Protected route, authentication required", status: 401 }, 401);
   }
 }
 
