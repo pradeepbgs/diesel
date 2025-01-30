@@ -37,6 +37,7 @@ export interface ContextType {
     get<T>(key: string): T | undefined;
     body: Promise<any>;
     cookies: any;
+    removeHeader: (key: string) => this;
 }
 export interface CookieOptions {
     maxAge?: number;

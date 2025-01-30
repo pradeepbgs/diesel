@@ -55,6 +55,7 @@ export interface ContextType {
     get<T>(key: string): T | undefined;
     body: Promise<any>;
     cookies: any
+    removeHeader: (key: string) => this;
     // setUser: (data?: any) => void
     // getUser: () => any
     // getParams: (props?: any) => any;

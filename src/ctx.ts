@@ -5,8 +5,8 @@ import { getMimeType } from "./utils";
 
 export default function createCtx(req: Request, server: Server, url: URL): ContextType {
   const headers: Headers = new Headers({
-    "X-Powered-By": "DieselJS", // Branding header
-    "Cache-Control": "no-cache", // Prevent caching for dynamic responses
+    // "X-Powered-By": "DieselJS", 
+    "Cache-Control": "no-cache",
   });
   let parsedQuery: any = null;
   let parsedCookie: any = null;
@@ -21,6 +21,11 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
     setHeader(key: string, value: any): ContextType {
       headers.set(key, value);
       return this;
+    },
+
+    removeHeader(key: string) :ContextType {
+      headers.delete(key)
+      return this
     },
 
     get ip(): string | null {
@@ -163,7 +168,8 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
         }
       }
       return parsedCookie;
-    },  
+    }, 
+    
   };
 }
 
