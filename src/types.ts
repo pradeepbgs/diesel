@@ -16,7 +16,7 @@ export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS"
 //     onClose = "onClose",
 // }
 
-export type HookType = 'onRequest' | 'preHandler' | 'postHandler' | 'onSend' | 'onError' | 'onClose';
+export type HookType = 'routeNotFound' | 'onRequest' | 'preHandler' | 'postHandler' | 'onSend' | 'onError' | 'onClose';
 
 
 export interface onError {
@@ -34,6 +34,7 @@ export interface Hooks {
     onSend: HookFunction | null;
     onError: onError | null;
     onClose: HookFunction | null;
+    routeNotFound:HookFunction | null
 }
 
 export interface ContextType {
@@ -100,6 +101,7 @@ export interface DieselT {
         postHandler: ((ctx: ContextType, serer?: Server) => Response | Promise<Response | void | null>) | null; // Updated to include Response | null
         onSend: ((ctx?: ContextType, result?: Response | null | void, serer?: Server) => Response | Promise<Response | void | null>) | null;
         onError: ((error: Error, req: Request, url: URL, server?: Server) => void | Response | Promise<Response | null | void>) | null;
+        routeNotFound: ((ctx: ContextType) => Response | Promise<Response | null | void>) | null
     };
     filters: Set<string>
     hasFilterEnabled: boolean

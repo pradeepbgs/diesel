@@ -4,21 +4,19 @@ import type { ContextType, CookieOptions, ParseBodyResult } from "./types";
 import { getMimeType } from "./utils";
 
 export default function createCtx(req: Request, server: Server, url: URL): ContextType {
-  const headers: Headers = new Headers({
-    // "X-Powered-By": "DieselJS", 
-    "Cache-Control": "no-cache",
-  });
-  let parsedQuery: any = null;
-  let parsedCookie: any = null;
-  let parsedParams: any;
-  let parsedBody: any
+  const headers: Headers = new Headers({ "Cache-Control": "no-cache" });
+  let parsedQuery: Record<string, string> | null = null;
+  let parsedParams: Record<string, string> | null = null;
+  let parsedCookies: Record<string, string> | null = null;
+  let parsedBody: Promise<any> | null = null;
   let contextData: Record<string, any> = {};
+
   return {
     req,
     server,
     url,
 
-    setHeader(key: string, value: any): ContextType {
+    setHeader(key: string, value: string): ContextType {
       headers.set(key, value);
       return this;
     },
@@ -56,19 +54,16 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
 
     get body(): Promise<any> {
       if (!parsedBody) {
-        parsedBody = (async () => {
-            const result = await parseBody(this.req);
-            if (result.error) {
-              throw new Error(result.error);
-            }
-            if (result.error) {
-              throw new Error(result.error);
-            }
-            return result;
-        })();
+          parsedBody = (async () => {
+              const result = await parseBody(this.req);
+              if (result.error) {
+                  throw new Error(result.error);
+              }
+              return Object.keys(result).length === 0 ? null : result;
+          })();
       }
       return parsedBody;
-    },
+  },  
 
     set<T>(key: string, value: T): ContextType {
       contextData[key] = value;
@@ -79,7 +74,7 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       return contextData[key];
     },
 
-    text(data: string, status?: number) {
+    text(data: string, status: number = 200) {
       if (!headers.has("Content-Type")) {
         headers.set("Content-Type", "text/plain; charset=utf-8")
       }
@@ -89,25 +84,28 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       });
     },
 
-    send(data: any, status?: number): Response {
-      if (typeof data === "string") {
-        if (!headers.has("Content-Type")) {
-          headers.set("Content-Type", "text/plain; charset=utf-8");
-        }
-      } else if (typeof data === "object") {
-        if (!headers.has("Content-Type")) {
-          headers.set("Content-Type", "application/json; charset=utf-8");
-        }
-        data = JSON.stringify(data);
-      } else if (data instanceof Uint8Array || data instanceof ArrayBuffer) {
-        if (!headers.has("Content-Type")) {
-          headers.set("Content-Type", "application/octet-stream");
-        }
+    send<T>(data: T, status: number = 200): Response {
+      const typeMap = new Map<string, string>([
+        ["string", "text/plain; charset=utf-8"],
+        ["object", "application/json; charset=utf-8"],
+        ["Uint8Array", "application/octet-stream"],
+        ["ArrayBuffer", "application/octet-stream"],
+      ]);
+    
+      const dataType = data instanceof Uint8Array ? "Uint8Array" 
+                    : data instanceof ArrayBuffer ? "ArrayBuffer" 
+                    : typeof data;
+    
+      if (!headers.has("Content-Type")) {
+        headers.set("Content-Type", typeMap.get(dataType) ?? "text/plain; charset=utf-8");
       }
-      return new Response(data, { status,headers,});
-    },
+    
+      const responseData = dataType === "object" && data !== null ? JSON.stringify(data) : (data as any);
+      
+      return new Response(responseData, { status, headers });
+    },    
 
-    json(data: any, status?: number): Response {
+    json<T>(data: T, status: number = 200): Response {
       if (!headers.has("Content-Type")) {
         headers.set("Content-Type", "application/json; charset=utf-8");
       }
@@ -115,23 +113,16 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
     },
 
     file(filePath: string, status: number = 200, mime_Type?: string): Response {
-      const mimeType = getMimeType(filePath);
       const file = Bun.file(filePath);
-
-      const headers = new Headers();
       if (!headers.has("Content-Type")) {
-        headers.set("Content-Type", mime_Type ?? mimeType);
+        headers.set("Content-Type", mime_Type ?? getMimeType(filePath));
       }
-
-      return new Response(file, {status,headers,});
+      return new Response(file, {status,headers});
     },
 
-    redirect(path: string, status?: number): Response {
+    redirect(path: string, status: number = 302): Response {
       headers.set("Location", path);
-      return new Response(null, {
-        status: status ?? 302,
-        headers,
-      });
+      return new Response(null, { status, headers });
     },
 
     setCookie(
@@ -139,6 +130,7 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       value: string,
       options: CookieOptions = {}
     ): ContextType {
+
       let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(
         value
       )}`;
@@ -152,22 +144,18 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       if (options.httpOnly) cookieString += `; HttpOnly`;
       if (options.sameSite) cookieString += `; SameSite=${options.sameSite}`;
 
-      headers?.append("Set-Cookie", cookieString);
+      headers.append("Set-Cookie", cookieString);
 
       return this;
     },
 
 
-    get cookies(): Record<string, string> | undefined {
-      if (!parsedCookie) {
+    get cookies(): Record<string, string> {
+      if (!parsedCookies) {
         const cookieHeader = this.req.headers.get("cookie");
-        if (cookieHeader) {
-          parsedCookie = parseCookie(cookieHeader);
-        } else {
-          return {};
-        }
+        parsedCookies = cookieHeader ? parseCookie(cookieHeader) : {};
       }
-      return parsedCookie;
+      return parsedCookies;
     }, 
     
   };
