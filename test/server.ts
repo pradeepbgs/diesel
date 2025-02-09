@@ -68,10 +68,10 @@ app.get("/query",async(ctx) =>{
 
 app.post("/body", async (ctx) => {
   try {
-    const body = await ctx.body; // Access the parsed request body
-    return ctx.json(body); // Return the body as JSON
+    const body = await ctx.body; 
+    return ctx.json(body); 
   } catch (error:any) {
-    return ctx.json({ error: error.message }, 400); // Return 400 for invalid body
+    return ctx.json({ error: error.message }, 400); 
   }
 });
 

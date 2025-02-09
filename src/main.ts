@@ -56,6 +56,7 @@ export default class Diesel {
       onSend: null,
       onError: null,
       onClose: null,
+      routeNotFound: null,
     };
     this.FilterRoutes = [];
     this.filters = new Set<string>();
@@ -121,7 +122,6 @@ export default class Diesel {
     if (typeof fnc !== "function") {
       throw new Error("callback must be a instance of function");
     }
-
     switch (typeOfHook) {
       case "onRequest":
         this.hooks.onRequest = fnc as onRequest;
@@ -140,6 +140,9 @@ export default class Diesel {
         break;
       case "onClose":
         this.hooks.onClose = fnc as HookFunction;
+        break;
+      case "routeNotFound":
+        this.hooks.routeNotFound = fnc as HookFunction
         break;
       default:
         throw new Error(`Unknown hook type: ${typeOfHook}`);

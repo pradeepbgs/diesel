@@ -1,6 +1,6 @@
 import { Server } from "bun";
 import createCtx from "./ctx";
-import type { ContextType, corsT, DieselT, RouteHandlerT } from "./types";
+import type { ContextType, DieselT, RouteHandlerT } from "./types";
 import { getMimeType } from "./utils";
 
 
@@ -47,12 +47,17 @@ export default async function handleRequest( req: Request, server: Server, url: 
       const result = await wildCard.handler(ctx);
       return result as Response
     }
-    if ( !routeHandler || routeHandler?.handler.length == 0) {
-      return generateErrorResponse(404, `Route not found for ${url.pathname}`);
-    } else if (routeHandler?.method !== req.method) {
-      return generateErrorResponse(405, "Method not allowed");
-    }
 
+    if (diesel.hooks.routeNotFound) {
+        const result = await diesel.hooks.routeNotFound(ctx);
+        if (result) return result;
+    }
+    if (!routeHandler || !routeHandler.handler.length) {
+      return generateErrorResponse(404, `Route not found for ${url.pathname}`);
+    }
+  
+    // Method not allowed for this route
+    return generateErrorResponse(405, "Method not allowed") 
   }
 
   // Run preHandler hooks 2

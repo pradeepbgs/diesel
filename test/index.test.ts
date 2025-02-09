@@ -197,7 +197,7 @@ describe("Testing for Body Route", () => {
     });
     const data = await response.json();
     expect(response.status).toBe(200);
-    expect(data).toEqual({});
+    expect(data).toEqual(null);
   });
 
   it("should return 400 when an invalid JSON body is provided", async () => {
