@@ -4,8 +4,10 @@ import type { ContextType, DieselT, RouteHandlerT } from "./types";
 import { getMimeType } from "./utils";
 
 
-export default async function handleRequest( req: Request, server: Server, url: URL, diesel: DieselT
+export default async function handleRequest(req: Request, server: Server, url: URL, diesel: DieselT
 ): Promise<Response> {
+  
+  const ctx: ContextType = createCtx(req, server, url);
 
   const routeHandler: RouteHandlerT | undefined = diesel.trie.search(
     url.pathname,
@@ -14,63 +16,61 @@ export default async function handleRequest( req: Request, server: Server, url: 
 
   req.routePattern = routeHandler?.path;
 
-  const ctx: ContextType = createCtx(req, server, url);
-
-  // filter applying
   if (diesel.hasFilterEnabled) {
     const path = req.routePattern ?? url.pathname;
     const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
     if (filterResponse) return filterResponse;
   }
 
-  // middleware execution
   if (diesel.hasMiddleware) {
-    const globalMiddleware = diesel.globalMiddlewares;
-    for (let i = 0; i < globalMiddleware.length; i++) {
-      const result = await globalMiddleware[i](ctx, server);
-      if (result) return result;
-    }
+    const globalMiddlewareResponse = await executeMiddlewares(
+      diesel.globalMiddlewares,
+      ctx,
+      server
+    );
+    if (globalMiddlewareResponse) return globalMiddlewareResponse;
 
     const pathMiddlewares = diesel.middlewares.get(url.pathname) || [];
-    for (let i = 0; i < pathMiddlewares.length; i++) {
-      const result = await pathMiddlewares[i](ctx, server);
-      if (result) return result;
-    }
+    const pathMiddlewareResponse = await executeMiddlewares(
+      pathMiddlewares,
+      ctx,
+      server
+    );
+    if (pathMiddlewareResponse) return pathMiddlewareResponse;
   }
+
 
   if (!routeHandler?.handler || routeHandler.method !== req.method) {
-    const wildCard = diesel.trie.search("*", req.method)
-    if (wildCard) {
+    if (diesel.staticPath) {
       const staticResponse = await handleStaticFiles(diesel, url.pathname, ctx);
       if (staticResponse) return staticResponse;
-
-      const result = await wildCard.handler(ctx);
-      return result as Response
+      
+      const wildCard = diesel.trie.search("*", req.method)
+      if (wildCard?.handler) {
+        return (await wildCard.handler(ctx)) as Response;
+      }
     }
 
-    if (diesel.hooks.routeNotFound) {
-        const result = await diesel.hooks.routeNotFound(ctx);
-        if (result) return result;
+    if (diesel.hooks.routeNotFound && !routeHandler?.handler) {
+      const routeNotFoundResponse = await diesel.hooks.routeNotFound(ctx);
+      if (routeNotFoundResponse) return routeNotFoundResponse;
     }
-    if (!routeHandler || !routeHandler.handler.length) {
+
+    if (!routeHandler || !routeHandler?.handler?.length) {
       return generateErrorResponse(404, `Route not found for ${url.pathname}`);
     }
-  
-    // Method not allowed for this route
-    return generateErrorResponse(405, "Method not allowed") 
+
+    return generateErrorResponse(405, "Method not allowed")
   }
 
-  // Run preHandler hooks 2
   if (diesel.hooks.preHandler) {
-    const Hookresult = await diesel.hooks.preHandler(ctx);
-    if (Hookresult) return Hookresult;
+    const preHandlerResponse = await diesel.hooks.preHandler(ctx);
+    if (preHandlerResponse) return preHandlerResponse;
   }
 
-  // // Finally, execute the route handler and return its result
   const result = routeHandler.handler(ctx);
   const finalResult = result instanceof Promise ? await result : result;
-  
-  // // Hooks: Post-Handler and OnSend
+
   if (diesel.hooks.postHandler) await diesel.hooks.postHandler(ctx);
 
   if (diesel.hooks.onSend) {
@@ -79,6 +79,19 @@ export default async function handleRequest( req: Request, server: Server, url: 
   }
 
   return finalResult ?? generateErrorResponse(204, "No response from this handler");
+}
+
+
+async function executeMiddlewares(
+  middlewares: Function[],
+  ctx: ContextType,
+  server: Server
+): Promise<Response | null> {
+  for (const middleware of middlewares) {
+    const result = await middleware(ctx, server);
+    if (result) return result;
+  }
+  return null;
 }
 
 
@@ -103,12 +116,15 @@ export function generateErrorResponse(status: number, message: string): Response
 }
 
 export async function handleStaticFiles(diesel: DieselT, pathname: string, ctx: ContextType): Promise<Response | null> {
-  if (!diesel.UseStaticFiles) throw new Error("Static files directory is not configured.");
+  if (!diesel.staticPath) return null;
 
-  const filePath = `${diesel.UseStaticFiles}${pathname}`;
-  if (/\.(js|css|html)$/.test(pathname)) {
-    const mimeType = getMimeType(filePath);
-    return ctx.file(filePath, 200, mimeType);
+  const filePath = `${diesel.staticPath}${pathname}`;
+  const file = Bun.file(filePath)
+
+  if (await file.exists()) {
+    const mimeType = getMimeType(filePath)
+    return ctx.file(filePath, 200, mimeType)
   }
-  return null;
+
+  return null
 }

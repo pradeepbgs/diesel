@@ -34,7 +34,7 @@ export default class Diesel {
   filterFunction: middlewareFunc[];
   hasFilterEnabled: boolean;
   private serverInstance: Server | null;
-  UseStaticFiles: any;
+  staticPath: any;
   staticFiles:any
 
   constructor() {
@@ -63,7 +63,7 @@ export default class Diesel {
     this.filterFunction = [];
     this.hasFilterEnabled = false;
     this.serverInstance = null;
-    this.UseStaticFiles = null;
+    this.staticPath = null;
     this.staticFiles = {};
   }
 
@@ -99,19 +99,12 @@ export default class Diesel {
   //   return this;
   // }
 
-  UseStatic(filePath: string) {
-    this.UseStaticFiles = filePath;
+  serveStatic(filePath: string) {
+    this.staticPath = filePath;
   }
 
-  static (route: string | string[], filePath: string | string[]): this {
-    if(!Array.isArray(route) && !Array.isArray(filePath)) {
-      this.staticFiles[route] = filePath;
-    } 
-    else {
-      for (let i =0; i<route.length; i++){
-        this.staticFiles[route[i]] = filePath[i]
-      }
-    }
+  static (args={}): this {
+    this.staticFiles = {...this.staticFiles,...args};
     return this;
   }
 
@@ -163,7 +156,7 @@ export default class Diesel {
     this.tempRoutes = new Map();
   }
 
-  listen(port: number = 3000, ...args: listenArgsT[]): Server | void {
+  listen(port = 3000, ...args: listenArgsT[]): Server | void {
     if (typeof Bun === "undefined")
       throw new Error(".listen() is designed to run on Bun only...");
 
@@ -183,6 +176,7 @@ export default class Diesel {
         options = arg;
       }
     }
+    
     const ServerOptions: any = {
       port,
       hostname,
@@ -212,10 +206,9 @@ export default class Diesel {
     this.compile();
     this.serverInstance = Bun?.serve(ServerOptions);
 
-    // Bun?.gc(false)
-
     if (callback) {
-      return callback();
+      process.nextTick(() => callback)
+      return;
     }
 
     if (options.sslCert && options.sslKey) {

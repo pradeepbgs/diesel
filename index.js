@@ -1,6 +1,4 @@
 import Diesel from './dist/main'
 
 
-export {
-    Diesel,
-}
+export {Diesel}
