@@ -19,12 +19,12 @@ export default class Diesel {
     filterFunction: middlewareFunc[];
     hasFilterEnabled: boolean;
     private serverInstance;
-    UseStaticFiles: any;
+    staticPath: any;
     staticFiles: any;
     constructor();
     setupFilter(): FilterMethods;
-    UseStatic(filePath: string): void;
-    static(route: string | string[], filePath: string | string[]): this;
+    serveStatic(filePath: string): void;
+    static(args?: {}): this;
     addHooks(typeOfHook: HookType, fnc: HookFunction | onError | onRequest): this;
     private compile;
     listen(port?: number, ...args: listenArgsT[]): Server | void;

@@ -112,7 +112,7 @@ export interface DieselT {
     trie: {
         search: (pathname: string, method: string) => RouteHandlerT | undefined;
     };
-    UseStaticFiles: string | null
+    staticPath: string | null
 }
 
 // export interface routerT  {
