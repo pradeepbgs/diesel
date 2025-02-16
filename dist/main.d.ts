@@ -27,7 +27,7 @@ export default class Diesel {
     static(args?: {}): this;
     addHooks(typeOfHook: HookType, fnc: HookFunction | onError | onRequest): this;
     private compile;
-    listen(port?: number, ...args: listenArgsT[]): Server | void;
+    listen(port: any, ...args: listenArgsT[]): Server | void;
     close(callback?: () => void): void;
     /**
      * Registers a router instance for subrouting.
