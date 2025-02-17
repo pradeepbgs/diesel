@@ -39,7 +39,7 @@ export default async function handleRequest(req: Request, server: Server, url: U
     if (pathMiddlewareResponse) return pathMiddlewareResponse;
   }
 
-
+  console.log(routeHandler)
   if (!routeHandler?.handler || routeHandler.method !== req.method) {
     if (diesel.staticPath) {
       const staticResponse = await handleStaticFiles(diesel, url.pathname, ctx);
@@ -51,6 +51,10 @@ export default async function handleRequest(req: Request, server: Server, url: U
       }
     }
 
+    if(routeHandler?.method !== req.method){
+      return generateErrorResponse(405, "Method not allowed") 
+    }
+    
     if (diesel.hooks.routeNotFound && !routeHandler?.handler) {
       const routeNotFoundResponse = await diesel.hooks.routeNotFound(ctx);
       if (routeNotFoundResponse) return routeNotFoundResponse;
@@ -60,7 +64,6 @@ export default async function handleRequest(req: Request, server: Server, url: U
       return generateErrorResponse(404, `Route not found for ${url.pathname}`);
     }
 
-    return generateErrorResponse(405, "Method not allowed")
   }
 
   if (diesel.hooks.preHandler) {

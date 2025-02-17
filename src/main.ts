@@ -94,10 +94,6 @@ export default class Diesel {
     };
   }
 
-  // cors(corsConfig: corsT): this {
-  //   this.corsConfig = corsConfig;
-  //   return this;
-  // }
 
   serveStatic(filePath: string) {
     this.staticPath = filePath;
@@ -156,12 +152,9 @@ export default class Diesel {
     this.tempRoutes = new Map();
   }
 
-  listen(port = 3000, ...args: listenArgsT[]): Server | void {
+  listen(port:any, ...args: listenArgsT[]): Server | void {
     if (typeof Bun === "undefined")
       throw new Error(".listen() is designed to run on Bun only...");
-
-    if (!port || typeof port !== "number")
-      throw new Error("port is required and should be a number type");
 
     let hostname = "0.0.0.0";
     let callback: (() => void) | undefined = undefined;
@@ -207,8 +200,7 @@ export default class Diesel {
     this.serverInstance = Bun?.serve(ServerOptions);
 
     if (callback) {
-      process.nextTick(() => callback)
-      return;
+     return callback();
     }
 
     if (options.sslCert && options.sslKey) {
