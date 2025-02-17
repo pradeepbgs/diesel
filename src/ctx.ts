@@ -21,7 +21,7 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       return this;
     },
 
-    removeHeader(key: string) :ContextType {
+    removeHeader(key: string): ContextType {
       headers.delete(key)
       return this
     },
@@ -53,17 +53,21 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
     },
 
     get body(): Promise<any> {
-      if (!parsedBody) {
-          parsedBody = (async () => {
-              const result = await parseBody(this.req);
-              if (result.error) {
-                  throw new Error(result.error);
-              }
-              return Object.keys(result).length === 0 ? null : result;
-          })();
+      if (this.req.method === "GET") {
+        return Promise.resolve({});
       }
+      if (!parsedBody) {
+        parsedBody = (async () => {
+          const result = await parseBody(this.req);
+          if (result.error) {
+            throw new Error(result.error);
+          }
+          return Object.keys(result).length === 0 ? null : result;
+        })();
+      }
+      console.log("lohgging", parsedBody)
       return parsedBody;
-  },  
+    },
 
     set<T>(key: string, value: T): ContextType {
       contextData[key] = value;
@@ -91,25 +95,25 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
         ["Uint8Array", "application/octet-stream"],
         ["ArrayBuffer", "application/octet-stream"],
       ]);
-    
-      const dataType = data instanceof Uint8Array ? "Uint8Array" 
-                    : data instanceof ArrayBuffer ? "ArrayBuffer" 
-                    : typeof data;
-    
+
+      const dataType = data instanceof Uint8Array ? "Uint8Array"
+        : data instanceof ArrayBuffer ? "ArrayBuffer"
+          : typeof data;
+
       if (!headers.has("Content-Type")) {
         headers.set("Content-Type", typeMap.get(dataType) ?? "text/plain; charset=utf-8");
       }
-    
+
       const responseData = dataType === "object" && data !== null ? JSON.stringify(data) : (data as any);
-      
+
       return new Response(responseData, { status, headers });
-    },    
+    },
 
     json<T>(data: T, status: number = 200): Response {
       if (!headers.has("Content-Type")) {
         headers.set("Content-Type", "application/json; charset=utf-8");
       }
-      return new Response(JSON.stringify(data), {status, headers });
+      return new Response(JSON.stringify(data), { status, headers });
     },
 
     file(filePath: string, status: number = 200, mime_Type?: string): Response {
@@ -117,7 +121,7 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       if (!headers.has("Content-Type")) {
         headers.set("Content-Type", mime_Type ?? getMimeType(filePath));
       }
-      return new Response(file, {status,headers});
+      return new Response(file, { status, headers });
     },
 
     redirect(path: string, status: number = 302): Response {
@@ -156,8 +160,8 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
         parsedCookies = cookieHeader ? parseCookie(cookieHeader) : {};
       }
       return parsedCookies;
-    }, 
-    
+    },
+
   };
 }
 
@@ -187,7 +191,7 @@ function parseCookie(cookieHeader: string): Record<string, string> {
 }
 
 function extractDynamicParams(
-routePattern: any,
+  routePattern: any,
   path: string
 ): Record<string, string> | null {
   const params: Record<string, string> = {};
@@ -210,13 +214,12 @@ routePattern: any,
 
 async function parseBody(req: Request): Promise<ParseBodyResult> {
   const contentType: string = req.headers.get("Content-Type")!;
-
   if (!contentType) return {};
 
   const contentLength = req.headers.get("Content-Length");
-    if (contentLength === "0" || !req.body) {
-      return {};
-    }
+  if (contentLength === "0" || !req.body) {
+    return {};
+  }
 
   try {
     if (contentType.startsWith("application/json")) {
