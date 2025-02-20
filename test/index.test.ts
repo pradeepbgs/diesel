@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test'
 import {app} from './server'
 const port = process.env.PORT
+if (!port) {
+  throw new Error("PORT environment variable is not set.");
+}
 beforeAll(async () => {
   app.listen( port , () => {
     console.log('Server running on '+port)
@@ -177,11 +180,10 @@ describe("Testing for Query Route", () => {
 
 
 describe("Testing for Body Route", () => {
-  const thisUrl = baseUrl+"/body"
 
   it("should return 200 and the request body when a valid JSON body is provided", async () => {
     const body = { name: "pradeep", age: 23 };
-    const response = await fetch(thisUrl, {
+    const response = await fetch(`${baseUrl}/body`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -193,7 +195,7 @@ describe("Testing for Body Route", () => {
   });
 
   it("should return 200 and an empty object when no body is provided", async () => {
-    const response = await fetch(thisUrl, {
+    const response = await fetch(`${baseUrl}/body`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     });
@@ -203,7 +205,7 @@ describe("Testing for Body Route", () => {
   });
 
   it("should return 400 when an invalid JSON body is provided", async () => {
-    const response = await fetch(thisUrl, {
+    const response = await fetch(`${baseUrl}/body`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: "invalid-json",
@@ -216,7 +218,7 @@ describe("Testing for Body Route", () => {
 
   it("should return 200 and the request body when a form-urlencoded body is provided", async () => {
     const body = new URLSearchParams({ name: "pradeep", age: "23" });
-    const response = await fetch(thisUrl, {
+    const response = await fetch(`${baseUrl}/body`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: body.toString(),
@@ -232,7 +234,7 @@ describe("Testing for Body Route", () => {
     formData.append("name", "pradeep");
     formData.append("age", "23");
 
-    const response = await fetch(thisUrl, {
+    const response = await fetch(`${baseUrl}/body`, {
       method: "POST",
       body: formData,
     });
