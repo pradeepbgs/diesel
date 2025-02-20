@@ -65,7 +65,6 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
           return Object.keys(result).length === 0 ? null : result;
         })();
       }
-      console.log("lohgging", parsedBody)
       return parsedBody;
     },
 
