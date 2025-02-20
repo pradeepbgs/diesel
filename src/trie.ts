@@ -117,7 +117,7 @@ class TrieNode {
     
       return {
         path: node.path,
-        handler: node.handler[routeMethodIndex],
+        handler: node.handler,
         isDynamic: node.isDynamic,
         pattern: node.pattern,
         method: node.method[routeMethodIndex]
