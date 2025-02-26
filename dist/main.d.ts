@@ -23,6 +23,7 @@ export default class Diesel {
     staticFiles: any;
     constructor();
     setupFilter(): FilterMethods;
+    redirect(incomingPath: string, redirectPath: string, statusCode?: 302): this;
     serveStatic(filePath: string): void;
     static(args?: {}): this;
     addHooks(typeOfHook: HookType, fnc: HookFunction | onError | onRequest): this;
