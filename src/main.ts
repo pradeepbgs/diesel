@@ -35,7 +35,7 @@ export default class Diesel {
   hasFilterEnabled: boolean;
   private serverInstance: Server | null;
   staticPath: any;
-  staticFiles:any
+  staticFiles: any
 
   constructor() {
     this.tempRoutes = new Map();
@@ -94,17 +94,43 @@ export default class Diesel {
     };
   }
 
+  redirect(incomingPath: string, redirectPath: string, statusCode?: 302): this {
+    this.any(incomingPath, (ctx) => {
+
+      const params = ctx.params
+      let finalPathToRedirect = redirectPath
+
+      if (params) {
+        for (const key in params) {
+          finalPathToRedirect = finalPathToRedirect.replace(`:${key}`, params[key])
+        }
+      }
+      // const query = ctx?.query
+      // if(query){
+      //   finalPathToRedirect = finalPathToRedirect+"?"
+      //   for (const key in query){
+      //     finalPathToRedirect = `${finalPathToRedirect}${key}=${query[key]}&`
+      //   }
+      // }
+
+      const queryParams = ctx.url.search;
+      if (queryParams)
+        finalPathToRedirect += queryParams
+      return ctx.redirect(finalPathToRedirect, statusCode)
+    })
+    return this
+  }
 
   serveStatic(filePath: string) {
     this.staticPath = filePath;
   }
 
-  static (args={}): this {
-    this.staticFiles = {...this.staticFiles,...args};
+  static(args = {}): this {
+    this.staticFiles = { ...this.staticFiles, ...args };
     return this;
   }
 
-  addHooks( typeOfHook: HookType, fnc: HookFunction | onError | onRequest ): this {
+  addHooks(typeOfHook: HookType, fnc: HookFunction | onError | onRequest): this {
     if (typeof typeOfHook !== "string") {
       throw new Error("hookName must be a string");
     }
@@ -152,7 +178,7 @@ export default class Diesel {
     this.tempRoutes = new Map();
   }
 
-  listen(port:any, ...args: listenArgsT[]): Server | void {
+  listen(port: any, ...args: listenArgsT[]): Server | void {
     if (typeof Bun === "undefined")
       throw new Error(".listen() is designed to run on Bun only...");
 
@@ -169,7 +195,7 @@ export default class Diesel {
         options = arg;
       }
     }
-    
+
     const ServerOptions: any = {
       port,
       hostname,
@@ -177,21 +203,21 @@ export default class Diesel {
         const url: URL = new URL(req.url);
         try {
           if (this.hooks.onRequest) {
-            this.hooks.onRequest(req, url,server);
+            this.hooks.onRequest(req, url, server);
           }
           return await handleRequest(req, server, url, this as DieselT);
         } catch (error: any) {
           return this.hooks.onError
             ? this.hooks.onError(error, req, url, server)
-            : new Response(JSON.stringify({ message: "Internal Server Error", error: error.message, status: 500,}),{ status: 500 });
+            : new Response(JSON.stringify({ message: "Internal Server Error", error: error.message, status: 500, }), { status: 500 });
         }
       },
       static: this.staticFiles,
-      development:true,
-      
+      development: true,
+
     };
 
-  if (options.sslCert && options.sslKey) {
+    if (options.sslCert && options.sslKey) {
       ServerOptions.certFile = options.sslCert;
       ServerOptions.keyFile = options.sslKey;
     }
@@ -200,7 +226,7 @@ export default class Diesel {
     this.serverInstance = Bun?.serve(ServerOptions);
 
     if (callback) {
-     return callback();
+      return callback();
     }
 
     if (options.sslCert && options.sslKey) {
@@ -212,7 +238,7 @@ export default class Diesel {
     return this.serverInstance;
   }
 
-  close(callback?:() => void): void {
+  close(callback?: () => void): void {
     if (this.serverInstance) {
       this.serverInstance.stop(true);
       this.serverInstance = null;
@@ -285,11 +311,10 @@ export default class Diesel {
     return this.route(basePath, routerInstance);
   }
 
-  private addRoute( method: HttpMethod, path: string, handlers: handlerFunction[] ): void {
+  private addRoute(method: HttpMethod, path: string, handlers: handlerFunction[]): void {
     if (typeof path !== "string")
       throw new Error(
-        `Error in ${
-          handlers[handlers.length - 1]
+        `Error in ${handlers[handlers.length - 1]
         }: Path must be a string. Received: ${typeof path}`
       );
     if (typeof method !== "string")
@@ -415,8 +440,8 @@ export default class Diesel {
     const paths: string[] = Array.isArray(pathORHandler)
       ? pathORHandler.filter((path): path is string => typeof path === "string")
       : [pathORHandler].filter(
-          (path): path is string => typeof path === "string"
-        );
+        (path): path is string => typeof path === "string"
+      );
 
     paths.forEach((path: string) => {
       // Initialize the middleware array for the given path if it doesn't already exist.
