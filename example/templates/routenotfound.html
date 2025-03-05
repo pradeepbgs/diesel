@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Page Not Found</title>
+    <style>
+        /* General reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Set up the full screen */
+        html, body {
+            height: 100%;
+            font-family: 'Arial', sans-serif;
+        }
+
+        /* Center the container */
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            background-color: #f4f4f9;
+        }
+
+        /* Style the error message */
+        .error-message {
+            text-align: center;
+            padding: 50px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .error-message h1 {
+            font-size: 100px;
+            color: #e74c3c;
+            margin-bottom: 20px;
+        }
+
+        .error-message p {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        .error-message .btn {
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: #fff;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .error-message .btn:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="error-message">
+            <h1>404</h1>
+            <p>Oops! The page you are looking for does not exist.</p>
+            <a href="/" class="btn">Go Back Home</a>
+        </div>
+    </div>
+</body>
+</html>

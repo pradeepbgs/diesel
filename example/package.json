@@ -1,0 +1,22 @@
+{
+  "name": "test",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "bun test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/jsonwebtoken": "^9.0.7",
+    "diesel-core": "^0.0.13",
+    "ejs": "^3.1.10",
+    "i": "^0.3.7",
+    "jsonwebtoken": "^9.0.2",
+    "jwt": "^0.2.0",
+    "uuid": "^11.0.5"
+  }
+}

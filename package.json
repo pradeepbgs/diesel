@@ -1,6 +1,6 @@
 {
   "name": "diesel-core",
-  "version": "1.0.22",
+  "version": "1.0.24",
   "description": "Web framework built on Web Standards",
   "main": "index.js",
   "types": "index.d.ts",
@@ -12,16 +12,16 @@
   "exports": {
     ".": {
       "types": "./index.d.ts",
-      "import": "./index.js", 
-      "require": "./index.js" 
+      "import": "./index.js",
+      "require": "./index.js"
     },
     "./cors": {
-      "types":"./dist/middlewares/cors/cors.d.ts",
+      "types": "./dist/middlewares/cors/cors.d.ts",
       "import": "./dist/middlewares/cors/cors.js",
       "require": "./dist/middlewares/cors/cors.js"
     },
     "./security": {
-      "types":"./dist/middlewares/security/security.d.ts",
+      "types": "./dist/middlewares/security/security.d.ts",
       "import": "./dist/middlewares/security/security.js",
       "require": "./dist/middlewares/security/security.js"
     }
@@ -56,5 +56,7 @@
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
   }
 }

@@ -57,6 +57,7 @@ export interface ContextType {
     body: Promise<any>;
     cookies: any
     removeHeader: (key: string) => this;
+    ejs:(viewPath: string, data:{}) => Response
     // setUser: (data?: any) => void
     // getUser: () => any
     // getParams: (props?: any) => any;
