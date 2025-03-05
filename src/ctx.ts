@@ -123,6 +123,27 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       return new Response(file, { status, headers });
     },
 
+    async ejs(viewPath:string,data={}):  Promise<Response>{
+      let ejs;
+      try {
+        ejs = await import('ejs')
+        ejs = ejs.default || ejs
+      } catch (error) {
+        console.error("EJS not installed! Please run `bun add ejs`");
+        return new Response("EJS not installed! Please run `bun add ejs`", { status: 500 });
+      }
+
+      try {
+        const template = await Bun.file(viewPath).text()
+        const rendered = ejs.render(template, data)
+        const headers = new Headers({ "Content-Type": "text/html; charset=utf-8" });
+        return new Response(rendered, { status: 200, headers });
+      } catch (error) {
+        console.error("EJS Rendering Error:", error);
+        return new Response("Error rendering template", { status: 500 });
+      }
+    },
+
     redirect(path: string, status: number = 302): Response {
       headers.set("Location", path);
       return new Response(null, { status, headers });

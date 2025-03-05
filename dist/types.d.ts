@@ -39,6 +39,7 @@ export interface ContextType {
     body: Promise<any>;
     cookies: any;
     removeHeader: (key: string) => this;
+    ejs: (viewPath: string, data: {}) => Response;
 }
 export interface CookieOptions {
     maxAge?: number;
