@@ -8,11 +8,13 @@ export default async function handleRequest(req: Request, server: Server, url: U
 ): Promise<Response> {
   
   const ctx: ContextType = createCtx(req, server, url);
-
+  // console.log('url',url)
+  // console.log('method',req.method)
   const routeHandler: RouteHandlerT | undefined = diesel.trie.search(
     url.pathname,
     req.method
   );
+  // console.log('routehandler',routeHandler)
 
   req.routePattern = routeHandler?.path;
 
