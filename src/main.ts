@@ -17,7 +17,7 @@ import {
 import { Server } from "bun";
 
 export default class Diesel {
-  private tempRoutes: Map<string, any>;
+  private tempRoutes: Map<string, any> | null;
   globalMiddlewares: middlewareFunc[];
   middlewares: Map<string, middlewareFunc[]>;
   trie: Trie;
@@ -175,7 +175,7 @@ export default class Diesel {
         break;
       }
     }
-    this.tempRoutes = new Map();
+    this.tempRoutes = null
   }
 
   listen(port: any, ...args: listenArgsT[]): Server | void {
@@ -263,7 +263,8 @@ export default class Diesel {
     const routesArray = Object.entries(routes);
 
     routesArray.forEach(([path, args]) => {
-      const fullpath = `${basePath}${path}`; // Construct the full path.
+      const cleanedPath = path.replace(/::\w+$/,"")
+      const fullpath = `${basePath}${cleanedPath}`; // Construct the full path.
 
       // Ensure the middleware array is initialized for the path.
       if (!this.middlewares.has(fullpath)) {
@@ -279,11 +280,13 @@ export default class Diesel {
       });
 
       // Retrieve the final handler for the route (last in the array).
-      const handler = args.handlers[args.handlers.length - 1];
-
+      const handler = args.handlers[args.handlers.length -1];
+      // console.log('handlersssss',args)
       // Register the handler and method in the trie.
       const method = args.method;
-
+      // console.log('method',method)
+      // console.log('path',path)
+      // console.log('handler',handler)
       try {
         this.trie.insert(fullpath, {
           handler: handler as handlerFunction,
@@ -322,7 +325,7 @@ export default class Diesel {
         `Error in addRoute: Method must be a string. Received: ${typeof method}`
       );
 
-    this.tempRoutes.set(path, { method, handlers });
+    this.tempRoutes?.set(path+"::"+method, { method, handlers });
     const middlewareHandlers = handlers.slice(0, -1) as middlewareFunc[];
     const handler = handlers[handlers.length - 1];
 
@@ -357,7 +360,6 @@ export default class Diesel {
           this.trie.insert(path, { handler, method: m });
         }
       }
-
       this.trie.insert(path, { handler, method });
     } catch (error) {
       console.error(`Error inserting ${path}:`, error);

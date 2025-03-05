@@ -1,6 +1,6 @@
 {
   "name": "diesel-core",
-  "version": "1.0.20",
+  "version": "1.0.22",
   "description": "Web framework built on Web Standards",
   "main": "index.js",
   "types": "index.d.ts",
