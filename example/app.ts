@@ -1,4 +1,4 @@
-import Diesel from "../src/main";
+import Diesel from "../dist/main";
 import jwt from "jsonwebtoken";
 import { ContextType, CookieOptions } from "../src/types";
 import { newRoute, userRoute } from "./route";
@@ -7,6 +7,8 @@ import aboutpage from './templates/about.html'
 import {cors} from "../src/middlewares/cors/cors";
 import { securityMiddleware } from "../src/middlewares/security/security";
 import {fileSaveMiddleware} from './middleware/saveFile'
+import {logger} from '../src/middlewares/logger/logger'
+
 const app = new Diesel();
 const SECRET_KEY = "linux";
 
@@ -44,9 +46,8 @@ app.addHooks("onError", (error: any, req: Request, url: URL) => {
   return new Response("Internal Server Error", { status: 500 });
 });
 
-app.addHooks('onRequest', (_,url:URL) => {
-  console.log(`Request for ----> ${url?.pathname}`)
-})
+
+app.use(logger())
 
 app.use(securityMiddleware)
 

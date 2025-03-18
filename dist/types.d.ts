@@ -39,7 +39,7 @@ export interface ContextType {
     body: Promise<any>;
     cookies: any;
     removeHeader: (key: string) => this;
-    ejs: (viewPath: string, data: {}) => Response;
+    ejs: (viewPath: string, data: {}) => Response | Promise<Response>;
 }
 export interface CookieOptions {
     maxAge?: number;
@@ -117,6 +117,8 @@ export interface FilterMethods {
     routeMatcher: (...routes: string[]) => FilterMethods;
     permitAll: () => FilterMethods;
     authenticate: (fnc?: middlewareFunc[]) => Response | Promise<Response | null> | void;
+    authenticateJwt: () => Response | Promise<Response | null> | void;
+    authenticateJwtDB: (UserModel: any) => Response | Promise<Response | null> | void;
 }
 export type listenArgsT = string | (() => void) | {
     sslCert?: string;

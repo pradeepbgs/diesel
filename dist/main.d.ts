@@ -21,6 +21,7 @@ export default class Diesel {
     private serverInstance;
     staticPath: any;
     staticFiles: any;
+    private user_jwt_secret;
     constructor();
     setupFilter(): FilterMethods;
     redirect(incomingPath: string, redirectPath: string, statusCode?: 302): this;

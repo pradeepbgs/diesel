@@ -1,6 +1,7 @@
 import Trie from "./trie.js";
 import handleRequest from "./handleRequest.js";
 import {
+  ContextType,
   corsT,
   DieselT,
   FilterMethods,
@@ -15,6 +16,7 @@ import {
   type HttpMethod,
 } from "./types.js";
 import { Server } from "bun";
+// import { authenticateJwtDbMiddleware, authenticateJwtMiddleware } from "./utils.js";
 
 export default class Diesel {
   private tempRoutes: Map<string, any> | null;
@@ -36,8 +38,10 @@ export default class Diesel {
   private serverInstance: Server | null;
   staticPath: any;
   staticFiles: any
+  private user_jwt_secret: string
 
   constructor() {
+    this.user_jwt_secret = process.env.DIESEL_JWT_SECRET ?? 'feault_diesel_secret_for_jwt'
     this.tempRoutes = new Map();
     this.globalMiddlewares = [];
     this.middlewares = new Map();
@@ -91,6 +95,12 @@ export default class Diesel {
           }
         }
       },
+      // authenticateJwt: () => {
+      //   this.filterFunction.push(authenticateJwtMiddleware(this.user_jwt_secret));
+      // },
+      // authenticateJwtDB: (User: any) => {
+      //   this.filterFunction.push(authenticateJwtDbMiddleware(User, this.user_jwt_secret));
+      // }
     };
   }
 
@@ -263,7 +273,7 @@ export default class Diesel {
     const routesArray = Object.entries(routes);
 
     routesArray.forEach(([path, args]) => {
-      const cleanedPath = path.replace(/::\w+$/,"")
+      const cleanedPath = path.replace(/::\w+$/, "")
       const fullpath = `${basePath}${cleanedPath}`; // Construct the full path.
 
       // Ensure the middleware array is initialized for the path.
@@ -280,7 +290,7 @@ export default class Diesel {
       });
 
       // Retrieve the final handler for the route (last in the array).
-      const handler = args.handlers[args.handlers.length -1];
+      const handler = args.handlers[args.handlers.length - 1];
       // console.log('handlersssss',args)
       // Register the handler and method in the trie.
       const method = args.method;
@@ -325,7 +335,7 @@ export default class Diesel {
         `Error in addRoute: Method must be a string. Received: ${typeof method}`
       );
 
-    this.tempRoutes?.set(path+"::"+method, { method, handlers });
+    this.tempRoutes?.set(path + "::" + method, { method, handlers });
     const middlewareHandlers = handlers.slice(0, -1) as middlewareFunc[];
     const handler = handlers[handlers.length - 1];
 
