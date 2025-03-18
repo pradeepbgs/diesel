@@ -1,7 +1,9 @@
 import Trie from "./trie.js";
 import handleRequest from "./handleRequest.js";
+import path from 'path'
+import fs from 'fs'
+
 import {
-  ContextType,
   corsT,
   DieselT,
   FilterMethods,
@@ -16,7 +18,7 @@ import {
   type HttpMethod,
 } from "./types.js";
 import { Server } from "bun";
-// import { authenticateJwtDbMiddleware, authenticateJwtMiddleware } from "./utils.js";
+import { authenticateJwtDbMiddleware, authenticateJwtMiddleware } from "./utils.js";
 
 export default class Diesel {
   private tempRoutes: Map<string, any> | null;
@@ -95,12 +97,12 @@ export default class Diesel {
           }
         }
       },
-      // authenticateJwt: () => {
-      //   this.filterFunction.push(authenticateJwtMiddleware(this.user_jwt_secret));
-      // },
-      // authenticateJwtDB: (User: any) => {
-      //   this.filterFunction.push(authenticateJwtDbMiddleware(User, this.user_jwt_secret));
-      // }
+      authenticateJwt: (jwt: any) => {
+        this.filterFunction.push(authenticateJwtMiddleware(jwt, this.user_jwt_secret) as middlewareFunc);
+      },
+      authenticateJwtDB: (jwt: any, User: any) => {
+        this.filterFunction.push(authenticateJwtDbMiddleware(jwt, User, this.user_jwt_secret) as middlewareFunc);
+      }
     };
   }
 
@@ -185,7 +187,58 @@ export default class Diesel {
         break;
       }
     }
-    this.tempRoutes = null
+
+    const routesPath = path.join(__dirname, '', 'routes');
+    if (fs?.existsSync(routesPath)) {
+      this.loadRoutes(routesPath, '');
+    }
+    // this.loadRoutes(routesPath,'')
+    setTimeout(() => {
+      this.tempRoutes = null
+    }, 2000);
+  }
+
+  private async registerFileRoutes(filePath: string, baseRoute: string) {
+    const module = await import(filePath);
+    let routePath = baseRoute + '/' + path.basename(filePath, '.ts');
+
+    // Remove `/index` if present
+    if (routePath.endsWith('/index')) {
+      routePath = baseRoute
+    }
+
+    const supportedMethods: HttpMethod[] = [
+        'GET', 'POST', 'PUT', 'PATCH',
+        'DELETE', 'ANY', 'HEAD', 'OPTIONS', 'PROPFIND'
+    ];
+
+    for (const method of supportedMethods) {
+        if (module[method]) {
+          const lowerMethod = method.toLowerCase();
+          this[lowerMethod](routePath, module[method] as handlerFunction);
+          
+          // if (routePath === '/user/profile') {
+          //   console.log(this.trie.search("/user/profile",'GET'))
+          //   // console.log(module[method]())
+          // }
+        }
+    }
+}
+
+
+  private async loadRoutes(dirPath: string, baseRoute: string) {
+    const files = await fs.promises.readdir(dirPath);
+
+    for (const file of files) {
+      const filePath = path.join(dirPath, file);
+      const stat = await fs.promises.stat(filePath);
+
+      if (stat.isDirectory()) {
+        this.loadRoutes(filePath, baseRoute + '/' + file);
+      } else if (file.endsWith('.ts')) {
+        this.registerFileRoutes(filePath, baseRoute);
+      }
+    }
   }
 
   listen(port: any, ...args: listenArgsT[]): Server | void {
@@ -211,16 +264,10 @@ export default class Diesel {
       hostname,
       fetch: async (req: Request, server: Server) => {
         const url: URL = new URL(req.url);
-        try {
-          if (this.hooks.onRequest) {
-            this.hooks.onRequest(req, url, server);
-          }
-          return await handleRequest(req, server, url, this as DieselT);
-        } catch (error: any) {
-          return this.hooks.onError
-            ? this.hooks.onError(error, req, url, server)
-            : new Response(JSON.stringify({ message: "Internal Server Error", error: error.message, status: 500, }), { status: 500 });
+        if (this.hooks.onRequest) {
+          this.hooks.onRequest(req, url, server);
         }
+        return await handleRequest(req, server, url, this as DieselT);
       },
       static: this.staticFiles,
       development: true,

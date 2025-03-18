@@ -3,7 +3,7 @@ import { Server } from "bun";
 export type listenCalllBackType = () => void;
 export type handlerFunction = (ctx: ContextType, server?: Server) => Response | Promise<Response | null | void>;
 export type middlewareFunc = (ctx: ContextType, server?: Server | undefined) => null | void | Response | Promise<Response | void | null>
-export type HookFunction = (ctx: ContextType, result?: Response | null | void, server?: Server) => Response | Promise<Response | null | void> | void
+export type HookFunction = (ctx: ContextType, result?: Response | null | void, server?: Server) => Response | Promise<Response | null | void> | void | null
 // export type onSendHookFunc = (result?: Response | null | void, ctx?:ContextType) => Response | Promise<Response | null | void>
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD" | "ANY" | "PROPFIND";
 
@@ -161,8 +161,8 @@ export interface FilterMethods {
     routeMatcher: (...routes: string[]) => FilterMethods;
     permitAll: () => FilterMethods;
     authenticate: (fnc?: middlewareFunc[]) => Response | Promise<Response | null> | void;
-    authenticateJwt: () => Response | Promise<Response | null> | void;
-    authenticateJwtDB: (UserModel:any) => Response | Promise<Response | null> | void
+    authenticateJwt: (jwt:any) => Response | Promise<Response | null> | void;
+    authenticateJwtDB: (jwt:any,UserModel:any) => Response | Promise<Response | null> | void
 }
 
 export type listenArgsT = string | (() => void) | { sslCert?: string; sslKey?: string };

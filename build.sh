@@ -1,3 +1,3 @@
 tsc
 
-bun run build
+bun run build --target=bun

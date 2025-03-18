@@ -5,83 +5,87 @@ import { getMimeType } from "./utils";
 
 
 export default async function handleRequest(req: Request, server: Server, url: URL, diesel: DieselT
-): Promise<Response> {
-  
+) {
+
   const ctx: ContextType = createCtx(req, server, url);
-  // console.log('url',url)
-  // console.log('method',req.method)
+
   const routeHandler: RouteHandlerT | undefined = diesel.trie.search(
     url.pathname,
     req.method
   );
-  // console.log('routehandler',routeHandler)
-
   req.routePattern = routeHandler?.path;
 
-  if (diesel.hasFilterEnabled) {
-    const path = req.routePattern ?? url.pathname;
-    const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
-    if (filterResponse) return filterResponse;
-  }
+  try {
+    if (diesel.hasFilterEnabled) {
+      const path = req.routePattern ?? url.pathname;
+      const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
+      if (filterResponse) return filterResponse;
+    }
 
-  if (diesel.hasMiddleware) {
-    const globalMiddlewareResponse = await executeMiddlewares(
-      diesel.globalMiddlewares,
-      ctx,
-      server
-    );
-    if (globalMiddlewareResponse) return globalMiddlewareResponse;
+    if (diesel.hasMiddleware) {
+      const globalMiddlewareResponse = await executeMiddlewares(
+        diesel.globalMiddlewares,
+        ctx,
+        server
+      );
+      if (globalMiddlewareResponse) return globalMiddlewareResponse;
 
-    const pathMiddlewares = diesel.middlewares.get(url.pathname) || [];
-    const pathMiddlewareResponse = await executeMiddlewares(
-      pathMiddlewares,
-      ctx,
-      server
-    );
-    if (pathMiddlewareResponse) return pathMiddlewareResponse;
-  }
+      const pathMiddlewares = diesel.middlewares.get(url.pathname) || [];
+      const pathMiddlewareResponse = await executeMiddlewares(
+        pathMiddlewares,
+        ctx,
+        server
+      );
+      if (pathMiddlewareResponse) return pathMiddlewareResponse;
+    }
 
-  if (!routeHandler?.handler || routeHandler.method !== req.method) {
-    if (diesel.staticPath) {
-      const staticResponse = await handleStaticFiles(diesel, url.pathname, ctx);
-      if (staticResponse) return staticResponse;
-      
-      const wildCard = diesel.trie.search("*", req.method)
-      if (wildCard?.handler) {
-        return (await wildCard.handler(ctx)) as Response;
+    if (!routeHandler?.handler || routeHandler.method !== req.method) {
+      if (diesel.staticPath) {
+        const staticResponse = await handleStaticFiles(diesel, url.pathname, ctx);
+        if (staticResponse) return staticResponse;
+
+        const wildCard = diesel.trie.search("*", req.method)
+        if (wildCard?.handler) {
+          return (await wildCard.handler(ctx)) as Response;
+        }
       }
-    }
-    if (diesel.hooks.routeNotFound && !routeHandler?.handler) {
-      const routeNotFoundResponse = await diesel.hooks.routeNotFound(ctx);
-      if (routeNotFoundResponse) return routeNotFoundResponse;
+      if (diesel.hooks.routeNotFound && !routeHandler?.handler) {
+        const routeNotFoundResponse = await diesel.hooks.routeNotFound(ctx);
+        if (routeNotFoundResponse) return routeNotFoundResponse;
+      }
+
+      if (!routeHandler || !routeHandler?.handler?.length) {
+        return generateErrorResponse(404, `Route not found for ${url.pathname}`);
+      }
+
+      if (routeHandler?.method !== req.method) {
+        return generateErrorResponse(405, "Method not allowed")
+      }
+
     }
 
-    if (!routeHandler || !routeHandler?.handler?.length) {
-      return generateErrorResponse(404, `Route not found for ${url.pathname}`);
+    if (diesel.hooks.preHandler) {
+      const preHandlerResponse = await diesel.hooks.preHandler(ctx);
+      if (preHandlerResponse) return preHandlerResponse;
     }
 
-    if(routeHandler?.method !== req.method){
-      return generateErrorResponse(405, "Method not allowed") 
+    const result = routeHandler.handler(ctx);
+    const finalResult = result instanceof Promise ? await result : result;
+
+
+    if (diesel.hooks.onSend) {
+      const hookResponse = await diesel.hooks.onSend(ctx, finalResult);
+      if (hookResponse) return hookResponse;
     }
 
+    return finalResult ?? generateErrorResponse(204, "No response from this handler");
+  } catch (error:any) {
+    return diesel.hooks.onError
+      ? diesel.hooks.onError(error, req, url, server)
+      : new Response(JSON.stringify({ message: "Internal Server Error", error: error.message, status: 500, }), { status: 500 });
+  } finally {
+    if (diesel.hooks.postHandler) await diesel.hooks.postHandler(ctx);
   }
-
-  if (diesel.hooks.preHandler) {
-    const preHandlerResponse = await diesel.hooks.preHandler(ctx);
-    if (preHandlerResponse) return preHandlerResponse;
-  }
-
-  const result = routeHandler.handler(ctx);
-  const finalResult = result instanceof Promise ? await result : result;
-
-  if (diesel.hooks.postHandler) await diesel.hooks.postHandler(ctx);
-
-  if (diesel.hooks.onSend) {
-    const hookResponse = await diesel.hooks.onSend(ctx, finalResult);
-    if (hookResponse) return hookResponse;
-  }
-
-  return finalResult ?? generateErrorResponse(204, "No response from this handler");
 }
 
 

@@ -80,19 +80,61 @@ function getMimeType(filePath) {
       return "application/octet-stream";
   }
 }
-var binaryS = (arr, target, start, end) => {
-  if (start > end) {
-    return false;
+function authenticateJwtMiddleware(jwt, user_jwt_secret) {
+  if (!jwt) {
+    throw new Error("JWT library is not defined, please provide jwt to authenticateJwt Function");
   }
-  let mid = start + (end - start) / 2;
-  if (arr[mid] == target) {
-    return true;
+  return (ctx) => {
+    try {
+      let token = ctx.cookies?.accessToken || ctx.req?.headers?.get("Authorization");
+      if (!token) {
+        return ctx.json({ message: "Unauthorized: No token provided" }, 401);
+      }
+      if (token.startsWith("Bearer ")) {
+        token = token.slice(7);
+      }
+      const decoded = jwt?.verify(token, user_jwt_secret);
+      if (!decoded) {
+        return ctx.json({ message: "Unauthorized: Invalid token" }, 401);
+      }
+      ctx.set("user", decoded);
+      return;
+    } catch (error) {
+      return ctx.json({ message: "Unauthorized: Invalid token", error: error?.message }, 401);
+    }
+  };
+}
+function authenticateJwtDbMiddleware(jwt, User, user_jwt_secret) {
+  if (!jwt) {
+    throw new Error("JWT library is not defined, please provide jwt to authenticateJwtDB Function");
   }
-  if (arr[mid] > target) {
-    return binaryS(arr, target, start, mid - 1);
+  if (!User) {
+    throw new Error("User model is not defined, please provide UserModel to authenticateJwtDB Function");
   }
-  return binaryS(arr, target, mid + 1, end);
-};
+  return async (ctx) => {
+    try {
+      let token = ctx.cookies?.accessToken || ctx.req?.headers?.get("Authorization");
+      if (!token) {
+        return ctx.json({ message: "Unauthorized: No token provided" }, 401);
+      }
+      if (token.startsWith("Bearer ")) {
+        token = token.slice(7);
+      }
+      const decodedToken = jwt?.verify(token, user_jwt_secret);
+      if (!decodedToken) {
+        return ctx.json({ message: "Unauthorized: Invalid token" }, 401);
+      }
+      const user = await User.findById(decodedToken._id).select("-password -refreshToken");
+      if (!user) {
+        return ctx.json({ message: "Unauthorized: User not found" }, 401);
+      }
+      ctx.set("user", user);
+      return;
+    } catch (error) {
+      return ctx.json({ message: "Unauthorized: Authentication failed", error: error?.message }, 401);
+    }
+  };
+}
 // src/ctx.ts
 function createCtx(req, server, url) {
   const headers = new Headers({ "Cache-Control": "no-cache" });
@@ -301,58 +343,63 @@ async function handleRequest(req, server, url, diesel) {
   const ctx = createCtx(req, server, url);
   const routeHandler = diesel.trie.search(url.pathname, req.method);
   req.routePattern = routeHandler?.path;
-  if (diesel.hasFilterEnabled) {
-    const path = req.routePattern ?? url.pathname;
-    const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
-    if (filterResponse)
-      return filterResponse;
-  }
-  if (diesel.hasMiddleware) {
-    const globalMiddlewareResponse = await executeMiddlewares(diesel.globalMiddlewares, ctx, server);
-    if (globalMiddlewareResponse)
-      return globalMiddlewareResponse;
-    const pathMiddlewares = diesel.middlewares.get(url.pathname) || [];
-    const pathMiddlewareResponse = await executeMiddlewares(pathMiddlewares, ctx, server);
-    if (pathMiddlewareResponse)
-      return pathMiddlewareResponse;
-  }
-  if (!routeHandler?.handler || routeHandler.method !== req.method) {
-    if (diesel.staticPath) {
-      const staticResponse = await handleStaticFiles(diesel, url.pathname, ctx);
-      if (staticResponse)
-        return staticResponse;
-      const wildCard = diesel.trie.search("*", req.method);
-      if (wildCard?.handler) {
-        return await wildCard.handler(ctx);
+  try {
+    if (diesel.hasFilterEnabled) {
+      const path = req.routePattern ?? url.pathname;
+      const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
+      if (filterResponse)
+        return filterResponse;
+    }
+    if (diesel.hasMiddleware) {
+      const globalMiddlewareResponse = await executeMiddlewares(diesel.globalMiddlewares, ctx, server);
+      if (globalMiddlewareResponse)
+        return globalMiddlewareResponse;
+      const pathMiddlewares = diesel.middlewares.get(url.pathname) || [];
+      const pathMiddlewareResponse = await executeMiddlewares(pathMiddlewares, ctx, server);
+      if (pathMiddlewareResponse)
+        return pathMiddlewareResponse;
+    }
+    if (!routeHandler?.handler || routeHandler.method !== req.method) {
+      if (diesel.staticPath) {
+        const staticResponse = await handleStaticFiles(diesel, url.pathname, ctx);
+        if (staticResponse)
+          return staticResponse;
+        const wildCard = diesel.trie.search("*", req.method);
+        if (wildCard?.handler) {
+          return await wildCard.handler(ctx);
+        }
+      }
+      if (diesel.hooks.routeNotFound && !routeHandler?.handler) {
+        const routeNotFoundResponse = await diesel.hooks.routeNotFound(ctx);
+        if (routeNotFoundResponse)
+          return routeNotFoundResponse;
+      }
+      if (!routeHandler || !routeHandler?.handler?.length) {
+        return generateErrorResponse(404, `Route not found for ${url.pathname}`);
+      }
+      if (routeHandler?.method !== req.method) {
+        return generateErrorResponse(405, "Method not allowed");
       }
     }
-    if (diesel.hooks.routeNotFound && !routeHandler?.handler) {
-      const routeNotFoundResponse = await diesel.hooks.routeNotFound(ctx);
-      if (routeNotFoundResponse)
-        return routeNotFoundResponse;
+    if (diesel.hooks.preHandler) {
+      const preHandlerResponse = await diesel.hooks.preHandler(ctx);
+      if (preHandlerResponse)
+        return preHandlerResponse;
     }
-    if (!routeHandler || !routeHandler?.handler?.length) {
-      return generateErrorResponse(404, `Route not found for ${url.pathname}`);
+    const result = routeHandler.handler(ctx);
+    const finalResult = result instanceof Promise ? await result : result;
+    if (diesel.hooks.onSend) {
+      const hookResponse = await diesel.hooks.onSend(ctx, finalResult);
+      if (hookResponse)
+        return hookResponse;
     }
-    if (routeHandler?.method !== req.method) {
-      return generateErrorResponse(405, "Method not allowed");
-    }
+    return finalResult ?? generateErrorResponse(204, "No response from this handler");
+  } catch (error) {
+    return diesel.hooks.onError ? diesel.hooks.onError(error, req, url, server) : new Response(JSON.stringify({ message: "Internal Server Error", error: error.message, status: 500 }), { status: 500 });
+  } finally {
+    if (diesel.hooks.postHandler)
+      await diesel.hooks.postHandler(ctx);
   }
-  if (diesel.hooks.preHandler) {
-    const preHandlerResponse = await diesel.hooks.preHandler(ctx);
-    if (preHandlerResponse)
-      return preHandlerResponse;
-  }
-  const result = routeHandler.handler(ctx);
-  const finalResult = result instanceof Promise ? await result : result;
-  if (diesel.hooks.postHandler)
-    await diesel.hooks.postHandler(ctx);
-  if (diesel.hooks.onSend) {
-    const hookResponse = await diesel.hooks.onSend(ctx, finalResult);
-    if (hookResponse)
-      return hookResponse;
-  }
-  return finalResult ?? generateErrorResponse(204, "No response from this handler");
 }
 async function executeMiddlewares(middlewares, ctx, server) {
   for (const middleware of middlewares) {

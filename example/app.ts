@@ -1,4 +1,4 @@
-import Diesel from "../dist/main";
+import Diesel from "../src/main";
 import jwt from "jsonwebtoken";
 import { ContextType, CookieOptions } from "../src/types";
 import { newRoute, userRoute } from "./route";
@@ -35,9 +35,12 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"],
 }))
 
-// app.setupFilter()
-// .routeMatcher("/cookie").permitAll()
-// .authenticate([authJwt])
+app.setupFilter()
+.routeMatcher("/cookie",'/')
+.permitAll()
+.authenticateJwt(jwt)
+// .routeMatcher("/rt")
+// .authenticateJwt(jwt)
 
 // Error Handling Hook
 app.addHooks("onError", (error: any, req: Request, url: URL) => {

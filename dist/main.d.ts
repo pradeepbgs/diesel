@@ -29,6 +29,8 @@ export default class Diesel {
     static(args?: {}): this;
     addHooks(typeOfHook: HookType, fnc: HookFunction | onError | onRequest): this;
     private compile;
+    private registerFileRoutes;
+    private loadRoutes;
     listen(port: any, ...args: listenArgsT[]): Server | void;
     close(callback?: () => void): void;
     /**

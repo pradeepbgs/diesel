@@ -80,21 +80,64 @@ function getMimeType(filePath) {
       return "application/octet-stream";
   }
 }
-var binaryS = (arr, target, start, end) => {
-  if (start > end) {
-    return false;
+function authenticateJwtMiddleware(jwt, user_jwt_secret) {
+  if (!jwt) {
+    throw new Error("JWT library is not defined, please provide jwt to authenticateJwt Function");
   }
-  let mid = start + (end - start) / 2;
-  if (arr[mid] == target) {
-    return true;
+  return (ctx) => {
+    try {
+      let token = ctx.cookies?.accessToken || ctx.req?.headers?.get("Authorization");
+      if (!token) {
+        return ctx.json({ message: "Unauthorized: No token provided" }, 401);
+      }
+      if (token.startsWith("Bearer ")) {
+        token = token.slice(7);
+      }
+      const decoded = jwt?.verify(token, user_jwt_secret);
+      if (!decoded) {
+        return ctx.json({ message: "Unauthorized: Invalid token" }, 401);
+      }
+      ctx.set("user", decoded);
+      return;
+    } catch (error) {
+      return ctx.json({ message: "Unauthorized: Invalid token", error: error?.message }, 401);
+    }
+  };
+}
+function authenticateJwtDbMiddleware(jwt, User, user_jwt_secret) {
+  if (!jwt) {
+    throw new Error("JWT library is not defined, please provide jwt to authenticateJwtDB Function");
   }
-  if (arr[mid] > target) {
-    return binaryS(arr, target, start, mid - 1);
+  if (!User) {
+    throw new Error("User model is not defined, please provide UserModel to authenticateJwtDB Function");
   }
-  return binaryS(arr, target, mid + 1, end);
-};
+  return async (ctx) => {
+    try {
+      let token = ctx.cookies?.accessToken || ctx.req?.headers?.get("Authorization");
+      if (!token) {
+        return ctx.json({ message: "Unauthorized: No token provided" }, 401);
+      }
+      if (token.startsWith("Bearer ")) {
+        token = token.slice(7);
+      }
+      const decodedToken = jwt?.verify(token, user_jwt_secret);
+      if (!decodedToken) {
+        return ctx.json({ message: "Unauthorized: Invalid token" }, 401);
+      }
+      const user = await User.findById(decodedToken._id).select("-password -refreshToken");
+      if (!user) {
+        return ctx.json({ message: "Unauthorized: User not found" }, 401);
+      }
+      ctx.set("user", user);
+      return;
+    } catch (error) {
+      return ctx.json({ message: "Unauthorized: Authentication failed", error: error?.message }, 401);
+    }
+  };
+}
 export {
   getMimeType,
   rateLimit as default,
-  binaryS
+  authenticateJwtMiddleware,
+  authenticateJwtDbMiddleware
 };
