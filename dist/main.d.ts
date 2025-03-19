@@ -21,13 +21,16 @@ export default class Diesel {
     private serverInstance;
     staticPath: any;
     staticFiles: any;
+    private user_jwt_secret;
     constructor();
     setupFilter(): FilterMethods;
     redirect(incomingPath: string, redirectPath: string, statusCode?: 302): this;
-    serveStatic(filePath: string): void;
-    static(args?: {}): this;
+    serveStatic(filePath: string): this;
+    static(args: Record<string, string>): this;
     addHooks(typeOfHook: HookType, fnc: HookFunction | onError | onRequest): this;
     private compile;
+    private registerFileRoutes;
+    private loadRoutes;
     listen(port: any, ...args: listenArgsT[]): Server | void;
     close(callback?: () => void): void;
     /**

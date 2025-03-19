@@ -32,11 +32,11 @@ Bun.build({
         './src/utils.ts',
     ],
     outdir: './dist',
-    minify: true,
+    minify: false,
 })
 
 Bun.build({
-    entrypoints: ['./src/middlewares/cors/cors.ts', './src/middlewares/security/security.ts'],
+    entrypoints: ['./src/middlewares/cors/cors.ts', './src/middlewares/security/security.ts','./src/middlewares/logger/logger.ts'],
     outdir: './dist/middlewares',
     minify: true,
 })

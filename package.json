@@ -1,6 +1,6 @@
 {
   "name": "diesel-core",
-  "version": "1.0.24",
+  "version": "1.1.2",
   "description": "Web framework built on Web Standards",
   "main": "index.js",
   "types": "index.d.ts",
@@ -24,6 +24,11 @@
       "types": "./dist/middlewares/security/security.d.ts",
       "import": "./dist/middlewares/security/security.js",
       "require": "./dist/middlewares/security/security.js"
+    },
+    "./logger": {
+      "types": "./dist/middlewares/logger/logger.d.ts",
+      "import": "./dist/middlewares/logger/logger.js",
+      "require": "./dist/middlewares/logger/logger.js"
     }
   },
   "scripts": {

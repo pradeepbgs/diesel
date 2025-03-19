@@ -1,1 +1,455 @@
-var j=Object.create;var{getPrototypeOf:C,defineProperty:Q,getOwnPropertyNames:b}=Object;var I=Object.prototype.hasOwnProperty;var M=(A,K,L)=>{L=A!=null?j(C(A)):{};let z=K||!A||!A.__esModule?Q(L,"default",{value:A,enumerable:!0}):L;for(let J of b(A))if(!I.call(z,J))Q(z,J,{get:()=>A[J],enumerable:!0});return z};var T=((A)=>typeof require!=="undefined"?require:typeof Proxy!=="undefined"?new Proxy(A,{get:(K,L)=>(typeof require!=="undefined"?require:K)[L]}):A)(function(A){if(typeof require!=="undefined")return require.apply(this,arguments);throw Error('Dynamic require of "'+A+'" is not supported')});function H(A){let{time:K=60000,max:L=100,message:z="Rate limit exceeded. Please try again later."}=A,J=new Map;return(X)=>{let $=new Date,V=X.ip;if(!J.has(V))J.set(V,{count:0,startTime:$});let O=J.get(V);if(O)if($-O.startTime>K)O.count=1,O.startTime=$;else O.count++;if(O&&O.count>L)return X.json({error:z},429)}}function W(A){switch(A.split(".").pop()?.toLowerCase()){case"js":return"application/javascript";case"css":return"text/css";case"html":return"text/html";case"json":return"application/json";case"png":return"image/png";case"jpg":case"jpeg":return"image/jpeg";case"svg":return"image/svg+xml";case"gif":return"image/gif";case"woff":return"font/woff";case"woff2":return"font/woff2";default:return"application/octet-stream"}}var B=(A,K,L,z)=>{if(L>z)return!1;let J=L+(z-L)/2;if(A[J]==K)return!0;if(A[J]>K)return B(A,K,L,J-1);return B(A,K,J+1,z)};function E(A,K,L){let z=new Headers({"Cache-Control":"no-cache"}),J=null,X=null,$=null,V=null,O={};return{req:A,server:K,url:L,setHeader(G,Z){return z.set(G,Z),this},removeHeader(G){return z.delete(G),this},get ip(){return this.server.requestIP(this.req)?.address??null},get query(){if(!J)try{J=Object.fromEntries(this.url.searchParams)}catch(G){throw new Error("Failed to parse query parameters")}return J},get params(){if(!X&&this.req.routePattern)try{X=S(this.req.routePattern,this.url.pathname)}catch(G){throw new Error("Failed to extract route parameters")}return X??{}},get body(){if(this.req.method==="GET")return Promise.resolve({});if(!V)V=(async()=>{let G=await P(this.req);if(G.error)throw new Error(G.error);return Object.keys(G).length===0?null:G})();return V},set(G,Z){return O[G]=Z,this},get(G){return O[G]},text(G,Z=200){if(!z.has("Content-Type"))z.set("Content-Type","text/plain; charset=utf-8");return new Response(G,{status:Z,headers:z})},send(G,Z=200){let Y=new Map([["string","text/plain; charset=utf-8"],["object","application/json; charset=utf-8"],["Uint8Array","application/octet-stream"],["ArrayBuffer","application/octet-stream"]]),U=G instanceof Uint8Array?"Uint8Array":G instanceof ArrayBuffer?"ArrayBuffer":typeof G;if(!z.has("Content-Type"))z.set("Content-Type",Y.get(U)??"text/plain; charset=utf-8");let _=U==="object"&&G!==null?JSON.stringify(G):G;return new Response(_,{status:Z,headers:z})},json(G,Z=200){if(!z.has("Content-Type"))z.set("Content-Type","application/json; charset=utf-8");return new Response(JSON.stringify(G),{status:Z,headers:z})},file(G,Z=200,Y){let U=Bun.file(G);if(!z.has("Content-Type"))z.set("Content-Type",Y??W(G));return new Response(U,{status:Z,headers:z})},async ejs(G,Z={}){let Y;try{Y=await import("ejs"),Y=Y.default||Y}catch(U){return console.error("EJS not installed! Please run `bun add ejs`"),new Response("EJS not installed! Please run `bun add ejs`",{status:500})}try{let U=await Bun.file(G).text(),_=Y.render(U,Z),F=new Headers({"Content-Type":"text/html; charset=utf-8"});return new Response(_,{status:200,headers:F})}catch(U){return console.error("EJS Rendering Error:",U),new Response("Error rendering template",{status:500})}},redirect(G,Z=302){return z.set("Location",G),new Response(null,{status:Z,headers:z})},setCookie(G,Z,Y={}){let U=`${encodeURIComponent(G)}=${encodeURIComponent(Z)}`;if(Y.maxAge)U+=`; Max-Age=${Y.maxAge}`;if(Y.expires)U+=`; Expires=${Y.expires.toUTCString()}`;if(Y.path)U+=`; Path=${Y.path}`;if(Y.domain)U+=`; Domain=${Y.domain}`;if(Y.secure)U+="; Secure";if(Y.httpOnly)U+="; HttpOnly";if(Y.sameSite)U+=`; SameSite=${Y.sameSite}`;return z.append("Set-Cookie",U),this},get cookies(){if(!$){let G=this.req.headers.get("cookie");$=G?w(G):{}}return $}}}function w(A){return Object.fromEntries(A.split(";").map((K)=>{let[L,...z]=K.trim().split("=");return[L,decodeURIComponent(z.join("="))]}))}function S(A,K){let L={},z=A.split("/"),[J]=K.split("?"),X=J.split("/");if(z.length!==X.length)return null;for(let $=0;$<z.length;$++)if(z[$].startsWith(":"))L[z[$].slice(1)]=X[$];return L}async function P(A){let K=A.headers.get("Content-Type");if(!K)return{};if(A.headers.get("Content-Length")==="0"||!A.body)return{};try{if(K.startsWith("application/json"))return await A.json();if(K.startsWith("application/x-www-form-urlencoded")){let z=await A.text();return Object.fromEntries(new URLSearchParams(z))}if(K.startsWith("multipart/form-data")){let z=await A.formData(),J={};for(let[X,$]of z.entries())J[X]=$;return J}return{error:"Unknown request body type"}}catch(z){return{error:"Invalid request body format"}}}async function R(A,K,L,z){let J=E(A,K,L),X=z.trie.search(L.pathname,A.method);if(A.routePattern=X?.path,z.hasFilterEnabled){let O=A.routePattern??L.pathname,G=await v(z,O,J,K);if(G)return G}if(z.hasMiddleware){let O=await D(z.globalMiddlewares,J,K);if(O)return O;let G=z.middlewares.get(L.pathname)||[],Z=await D(G,J,K);if(Z)return Z}if(!X?.handler||X.method!==A.method){if(z.staticPath){let O=await f(z,L.pathname,J);if(O)return O;let G=z.trie.search("*",A.method);if(G?.handler)return await G.handler(J)}if(z.hooks.routeNotFound&&!X?.handler){let O=await z.hooks.routeNotFound(J);if(O)return O}if(!X||!X?.handler?.length)return N(404,`Route not found for ${L.pathname}`);if(X?.method!==A.method)return N(405,"Method not allowed")}if(z.hooks.preHandler){let O=await z.hooks.preHandler(J);if(O)return O}let $=X.handler(J),V=$ instanceof Promise?await $:$;if(z.hooks.postHandler)await z.hooks.postHandler(J);if(z.hooks.onSend){let O=await z.hooks.onSend(J,V);if(O)return O}return V??N(204,"No response from this handler")}async function D(A,K,L){for(let z of A){let J=await z(K,L);if(J)return J}return null}async function v(A,K,L,z){if(!A.filters.has(K))if(A.filterFunction.length)for(let J of A.filterFunction){let X=await J(L,z);if(X)return X}else return L.json({error:!0,message:"Protected route, authentication required",status:401},401)}function N(A,K){return new Response(JSON.stringify({error:!0,message:K,status:A}),{status:A,headers:{"Content-Type":"application/json"}})}async function f(A,K,L){if(!A.staticPath)return null;let z=`${A.staticPath}${K}`;if(await Bun.file(z).exists()){let X=W(z);return L.file(z,200,X)}return null}export{f as handleStaticFiles,v as handleFilterRequest,N as generateErrorResponse,R as default};
+var __create = Object.create;
+var __getProtoOf = Object.getPrototypeOf;
+var __defProp = Object.defineProperty;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __toESM = (mod, isNodeMode, target) => {
+  target = mod != null ? __create(__getProtoOf(mod)) : {};
+  const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
+  for (let key of __getOwnPropNames(mod))
+    if (!__hasOwnProp.call(to, key))
+      __defProp(to, key, {
+        get: () => mod[key],
+        enumerable: true
+      });
+  return to;
+};
+var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
+  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
+}) : x)(function(x) {
+  if (typeof require !== "undefined")
+    return require.apply(this, arguments);
+  throw Error('Dynamic require of "' + x + '" is not supported');
+});
+
+// src/utils.ts
+function rateLimit(props) {
+  const {
+    time: windowMs = 60000,
+    max = 100,
+    message = "Rate limit exceeded. Please try again later."
+  } = props;
+  const requests = new Map;
+  return (ctx) => {
+    const currentTime = new Date;
+    const socketIP = ctx.ip;
+    if (!requests.has(socketIP)) {
+      requests.set(socketIP, { count: 0, startTime: currentTime });
+    }
+    const requestInfo = requests.get(socketIP);
+    if (requestInfo) {
+      if (currentTime - requestInfo.startTime > windowMs) {
+        requestInfo.count = 1;
+        requestInfo.startTime = currentTime;
+      } else {
+        requestInfo.count++;
+      }
+    }
+    if (requestInfo && requestInfo.count > max) {
+      return ctx.json({
+        error: message
+      }, 429);
+    }
+  };
+}
+function getMimeType(filePath) {
+  const ext = filePath.split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "js":
+      return "application/javascript";
+    case "css":
+      return "text/css";
+    case "html":
+      return "text/html";
+    case "json":
+      return "application/json";
+    case "png":
+      return "image/png";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "svg":
+      return "image/svg+xml";
+    case "gif":
+      return "image/gif";
+    case "woff":
+      return "font/woff";
+    case "woff2":
+      return "font/woff2";
+    default:
+      return "application/octet-stream";
+  }
+}
+function authenticateJwtMiddleware(jwt, user_jwt_secret) {
+  if (!jwt) {
+    throw new Error("JWT library is not defined, please provide jwt to authenticateJwt Function");
+  }
+  return (ctx) => {
+    try {
+      let token = ctx.cookies?.accessToken || ctx.req?.headers?.get("Authorization");
+      if (!token) {
+        return ctx.json({ message: "Unauthorized: No token provided" }, 401);
+      }
+      if (token.startsWith("Bearer ")) {
+        token = token.slice(7);
+      }
+      const decoded = jwt?.verify(token, user_jwt_secret);
+      if (!decoded) {
+        return ctx.json({ message: "Unauthorized: Invalid token" }, 401);
+      }
+      ctx.set("user", decoded);
+      return;
+    } catch (error) {
+      return ctx.json({ message: "Unauthorized: Invalid token", error: error?.message }, 401);
+    }
+  };
+}
+function authenticateJwtDbMiddleware(jwt, User, user_jwt_secret) {
+  if (!jwt) {
+    throw new Error("JWT library is not defined, please provide jwt to authenticateJwtDB Function");
+  }
+  if (!User) {
+    throw new Error("User model is not defined, please provide UserModel to authenticateJwtDB Function");
+  }
+  return async (ctx) => {
+    try {
+      let token = ctx.cookies?.accessToken || ctx.req?.headers?.get("Authorization");
+      if (!token) {
+        return ctx.json({ message: "Unauthorized: No token provided" }, 401);
+      }
+      if (token.startsWith("Bearer ")) {
+        token = token.slice(7);
+      }
+      const decodedToken = jwt?.verify(token, user_jwt_secret);
+      if (!decodedToken) {
+        return ctx.json({ message: "Unauthorized: Invalid token" }, 401);
+      }
+      const user = await User.findById(decodedToken._id).select("-password -refreshToken");
+      if (!user) {
+        return ctx.json({ message: "Unauthorized: User not found" }, 401);
+      }
+      ctx.set("user", user);
+      return;
+    } catch (error) {
+      return ctx.json({ message: "Unauthorized: Authentication failed", error: error?.message }, 401);
+    }
+  };
+}
+// src/ctx.ts
+function createCtx(req, server, url) {
+  const headers = new Headers({ "Cache-Control": "no-cache" });
+  let parsedQuery = null;
+  let parsedParams = null;
+  let parsedCookies = null;
+  let parsedBody = null;
+  let contextData = {};
+  return {
+    req,
+    server,
+    url,
+    status: 200,
+    setHeader(key, value) {
+      headers.set(key, value);
+      return this;
+    },
+    removeHeader(key) {
+      headers.delete(key);
+      return this;
+    },
+    get ip() {
+      return this.server.requestIP(this.req)?.address ?? null;
+    },
+    get query() {
+      if (!parsedQuery) {
+        try {
+          parsedQuery = Object.fromEntries(this.url.searchParams);
+        } catch (error) {
+          throw new Error("Failed to parse query parameters");
+        }
+      }
+      return parsedQuery;
+    },
+    get params() {
+      if (!parsedParams && this.req.routePattern) {
+        try {
+          parsedParams = extractDynamicParams(this.req.routePattern, this.url.pathname);
+        } catch (error) {
+          throw new Error("Failed to extract route parameters");
+        }
+      }
+      return parsedParams ?? {};
+    },
+    get body() {
+      if (this.req.method === "GET") {
+        return Promise.resolve({});
+      }
+      if (!parsedBody) {
+        parsedBody = (async () => {
+          const result = await parseBody(this.req);
+          if (result.error) {
+            throw new Error(result.error);
+          }
+          return Object.keys(result).length === 0 ? null : result;
+        })();
+      }
+      return parsedBody;
+    },
+    set(key, value) {
+      contextData[key] = value;
+      return this;
+    },
+    get(key) {
+      return contextData[key];
+    },
+    text(data, status) {
+      if (status)
+        this.status = 200;
+      if (!headers.has("Content-Type")) {
+        headers.set("Content-Type", "text/plain; charset=utf-8");
+      }
+      return new Response(data, {
+        status: this.status,
+        headers
+      });
+    },
+    send(data, status) {
+      if (status)
+        this.status = 200;
+      const typeMap = new Map([
+        ["string", "text/plain; charset=utf-8"],
+        ["object", "application/json; charset=utf-8"],
+        ["Uint8Array", "application/octet-stream"],
+        ["ArrayBuffer", "application/octet-stream"]
+      ]);
+      const dataType = data instanceof Uint8Array ? "Uint8Array" : data instanceof ArrayBuffer ? "ArrayBuffer" : typeof data;
+      if (!headers.has("Content-Type")) {
+        headers.set("Content-Type", typeMap.get(dataType) ?? "text/plain; charset=utf-8");
+      }
+      const responseData = dataType === "object" && data !== null ? JSON.stringify(data) : data;
+      return new Response(responseData, { status: this.status, headers });
+    },
+    json(data, status) {
+      if (status)
+        this.status = 200;
+      if (!headers.has("Content-Type")) {
+        headers.set("Content-Type", "application/json; charset=utf-8");
+      }
+      return new Response(JSON.stringify(data), { status: this.status, headers });
+    },
+    file(filePath, status, mime_Type) {
+      const file = Bun.file(filePath);
+      if (!headers.has("Content-Type")) {
+        headers.set("Content-Type", mime_Type ?? getMimeType(filePath));
+      }
+      return new Response(file, { status: status ?? 200, headers });
+    },
+    async ejs(viewPath, data = {}, status) {
+      if (status)
+        this.status = 200;
+      let ejs;
+      try {
+        ejs = await import("ejs");
+        ejs = ejs.default || ejs;
+      } catch (error) {
+        console.error("EJS not installed! Please run `bun add ejs`");
+        return new Response("EJS not installed! Please run `bun add ejs`", { status: 500 });
+      }
+      try {
+        const template = await Bun.file(viewPath).text();
+        const rendered = ejs.render(template, data);
+        const headers2 = new Headers({ "Content-Type": "text/html; charset=utf-8" });
+        return new Response(rendered, { status: this.status, headers: headers2 });
+      } catch (error) {
+        console.error("EJS Rendering Error:", error);
+        return new Response("Error rendering template", { status: 500 });
+      }
+    },
+    redirect(path, status) {
+      if (!status)
+        this.status = 302;
+      headers.set("Location", path);
+      return new Response(null, { status: this.status, headers });
+    },
+    setCookie(name, value, options = {}) {
+      let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
+      if (options.maxAge)
+        cookieString += `; Max-Age=${options.maxAge}`;
+      if (options.expires)
+        cookieString += `; Expires=${options.expires.toUTCString()}`;
+      if (options.path)
+        cookieString += `; Path=${options.path}`;
+      if (options.domain)
+        cookieString += `; Domain=${options.domain}`;
+      if (options.secure)
+        cookieString += `; Secure`;
+      if (options.httpOnly)
+        cookieString += `; HttpOnly`;
+      if (options.sameSite)
+        cookieString += `; SameSite=${options.sameSite}`;
+      headers.append("Set-Cookie", cookieString);
+      return this;
+    },
+    get cookies() {
+      if (!parsedCookies) {
+        const cookieHeader = this.req.headers.get("cookie");
+        parsedCookies = cookieHeader ? parseCookie(cookieHeader) : {};
+      }
+      return parsedCookies;
+    }
+  };
+}
+function parseCookie(cookieHeader) {
+  return Object.fromEntries(cookieHeader.split(";").map((cookie) => {
+    const [name, ...valueParts] = cookie.trim().split("=");
+    return [name, decodeURIComponent(valueParts.join("="))];
+  }));
+}
+function extractDynamicParams(routePattern, path) {
+  const params = {};
+  const routeSegments = routePattern.split("/");
+  const [pathWithoutQuery] = path.split("?");
+  const pathSegments = pathWithoutQuery.split("/");
+  if (routeSegments.length !== pathSegments.length) {
+    return null;
+  }
+  for (let i = 0;i < routeSegments.length; i++) {
+    if (routeSegments[i].startsWith(":")) {
+      params[routeSegments[i].slice(1)] = pathSegments[i];
+    }
+  }
+  return params;
+}
+async function parseBody(req) {
+  const contentType = req.headers.get("Content-Type");
+  if (!contentType)
+    return {};
+  const contentLength = req.headers.get("Content-Length");
+  if (contentLength === "0" || !req.body) {
+    return {};
+  }
+  try {
+    if (contentType.startsWith("application/json")) {
+      return await req.json();
+    }
+    if (contentType.startsWith("application/x-www-form-urlencoded")) {
+      const body = await req.text();
+      return Object.fromEntries(new URLSearchParams(body));
+    }
+    if (contentType.startsWith("multipart/form-data")) {
+      const formData = await req.formData();
+      const obj = {};
+      for (const [key, value] of formData.entries()) {
+        obj[key] = value;
+      }
+      return obj;
+    }
+    return { error: "Unknown request body type" };
+  } catch (error) {
+    return { error: "Invalid request body format" };
+  }
+}
+
+// src/handleRequest.ts
+async function handleRequest(req, server, url, diesel) {
+  const ctx = createCtx(req, server, url);
+  const routeHandler = diesel.trie.search(url.pathname, req.method);
+  req.routePattern = routeHandler?.path;
+  try {
+    if (diesel.hasFilterEnabled) {
+      const path = req.routePattern ?? url.pathname;
+      const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
+      if (filterResponse)
+        return filterResponse;
+    }
+    if (diesel.hasMiddleware) {
+      const globalMiddlewareResponse = await executeMiddlewares(diesel.globalMiddlewares, ctx, server);
+      if (globalMiddlewareResponse)
+        return globalMiddlewareResponse;
+      const pathMiddlewares = diesel.middlewares.get(url.pathname) || [];
+      const pathMiddlewareResponse = await executeMiddlewares(pathMiddlewares, ctx, server);
+      if (pathMiddlewareResponse)
+        return pathMiddlewareResponse;
+    }
+    if (!routeHandler?.handler || routeHandler.method !== req.method) {
+      if (diesel.staticPath) {
+        const staticResponse = await handleStaticFiles(diesel, url.pathname, ctx);
+        if (staticResponse)
+          return staticResponse;
+        const wildCard = diesel.trie.search("*", req.method);
+        if (wildCard?.handler) {
+          return await wildCard.handler(ctx);
+        }
+      }
+      if (diesel.hooks.routeNotFound && !routeHandler?.handler) {
+        const routeNotFoundResponse = await diesel.hooks.routeNotFound(ctx);
+        if (routeNotFoundResponse)
+          return routeNotFoundResponse;
+      }
+      if (!routeHandler || !routeHandler?.handler?.length) {
+        return generateErrorResponse(404, `Route not found for ${url.pathname}`);
+      }
+      if (routeHandler?.method !== req.method) {
+        return generateErrorResponse(405, "Method not allowed");
+      }
+    }
+    if (diesel.hooks.preHandler) {
+      const preHandlerResponse = await diesel.hooks.preHandler(ctx);
+      if (preHandlerResponse)
+        return preHandlerResponse;
+    }
+    const result = routeHandler.handler(ctx);
+    const finalResult = result instanceof Promise ? await result : result;
+    if (diesel.hooks.onSend) {
+      const hookResponse = await diesel.hooks.onSend(ctx, finalResult);
+      if (hookResponse)
+        return hookResponse;
+    }
+    return finalResult ?? generateErrorResponse(204, "No response from this handler");
+  } catch (error) {
+    return diesel.hooks.onError ? diesel.hooks.onError(error, req, url, server) : new Response(JSON.stringify({ message: "Internal Server Error", error: error.message, status: 500 }), { status: 500 });
+  } finally {
+    if (diesel.hooks.postHandler)
+      diesel.hooks.postHandler(ctx);
+  }
+}
+async function executeMiddlewares(middlewares, ctx, server) {
+  for (const middleware of middlewares) {
+    const result = await middleware(ctx, server);
+    if (result)
+      return result;
+  }
+  return null;
+}
+async function handleFilterRequest(diesel, path, ctx, server) {
+  if (!diesel.filters.has(path)) {
+    if (diesel.filterFunction.length) {
+      for (const filterFunction of diesel.filterFunction) {
+        const filterResult = await filterFunction(ctx, server);
+        if (filterResult)
+          return filterResult;
+      }
+    } else {
+      return ctx.json({ error: true, message: "Protected route, authentication required", status: 401 }, 401);
+    }
+  }
+}
+function generateErrorResponse(status, message) {
+  return new Response(JSON.stringify({ error: true, message, status }), { status, headers: { "Content-Type": "application/json" } });
+}
+async function handleStaticFiles(diesel, pathname, ctx) {
+  if (!diesel.staticPath)
+    return null;
+  const filePath = `${diesel.staticPath}${pathname}`;
+  const file = Bun.file(filePath);
+  if (await file.exists()) {
+    const mimeType = getMimeType(filePath);
+    return ctx.file(filePath, 200, mimeType);
+  }
+  return null;
+}
+export {
+  handleStaticFiles,
+  handleFilterRequest,
+  generateErrorResponse,
+  handleRequest as default
+};

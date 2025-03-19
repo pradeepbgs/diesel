@@ -15,7 +15,7 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
     req,
     server,
     url,
-
+    status: 200,
     setHeader(key: string, value: string): ContextType {
       headers.set(key, value);
       return this;
@@ -77,17 +77,19 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       return contextData[key];
     },
 
-    text(data: string, status: number = 200) {
+    text(data: string, status?: number) {
+      if(status) this.status = 200
       if (!headers.has("Content-Type")) {
         headers.set("Content-Type", "text/plain; charset=utf-8")
       }
       return new Response(data, {
-        status,
+        status: this.status,
         headers
       });
     },
 
-    send<T>(data: T, status: number = 200): Response {
+    send<T>(data: T, status?: number): Response {
+      if(status) this.status = 200;
       const typeMap = new Map<string, string>([
         ["string", "text/plain; charset=utf-8"],
         ["object", "application/json; charset=utf-8"],
@@ -104,26 +106,27 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       }
 
       const responseData = dataType === "object" && data !== null ? JSON.stringify(data) : (data as any);
-
-      return new Response(responseData, { status, headers });
+      return new Response(responseData, { status: this.status, headers });
     },
 
-    json<T>(data: T, status: number = 200): Response {
+    json<T>(data: T, status?:number): Response {
+      if(status) this.status = 200;
       if (!headers.has("Content-Type")) {
         headers.set("Content-Type", "application/json; charset=utf-8");
       }
-      return new Response(JSON.stringify(data), { status, headers });
+      return new Response(JSON.stringify(data), { status: this.status, headers });
     },
 
-    file(filePath: string, status: number = 200, mime_Type?: string): Response {
+    file(filePath: string, status?: number, mime_Type?: string): Response {
       const file = Bun.file(filePath);
       if (!headers.has("Content-Type")) {
         headers.set("Content-Type", mime_Type ?? getMimeType(filePath));
       }
-      return new Response(file, { status, headers });
+      return new Response(file, { status: status ?? 200, headers });
     },
 
-    async ejs(viewPath:string,data={}):  Promise<Response>{
+    async ejs(viewPath: string, data = {}, status?: number): Promise<Response> {
+      if(status) this.status = 200;
       let ejs;
       try {
         ejs = await import('ejs')
@@ -137,16 +140,17 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
         const template = await Bun.file(viewPath).text()
         const rendered = ejs.render(template, data)
         const headers = new Headers({ "Content-Type": "text/html; charset=utf-8" });
-        return new Response(rendered, { status: 200, headers });
+        return new Response(rendered, { status: this.status, headers });
       } catch (error) {
         console.error("EJS Rendering Error:", error);
         return new Response("Error rendering template", { status: 500 });
       }
     },
 
-    redirect(path: string, status: number = 302): Response {
+    redirect(path: string, status?: number): Response {
+      if(!status) this.status = 302;
       headers.set("Location", path);
-      return new Response(null, { status, headers });
+      return new Response(null, { status: this.status, headers });
     },
 
     setCookie(

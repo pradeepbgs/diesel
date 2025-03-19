@@ -1,1 +1,143 @@
-var K=Object.create;var{getPrototypeOf:L,defineProperty:H,getOwnPropertyNames:N}=Object;var O=Object.prototype.hasOwnProperty;var R=(j,A,v)=>{v=j!=null?K(L(j)):{};let C=A||!j||!j.__esModule?H(v,"default",{value:j,enumerable:!0}):v;for(let z of N(j))if(!O.call(C,z))H(C,z,{get:()=>j[z],enumerable:!0});return C};var U=((j)=>typeof require!=="undefined"?require:typeof Proxy!=="undefined"?new Proxy(j,{get:(A,v)=>(typeof require!=="undefined"?require:A)[v]}):j)(function(j){if(typeof require!=="undefined")return require.apply(this,arguments);throw Error('Dynamic require of "'+j+'" is not supported')});function Q(j){let{time:A=60000,max:v=100,message:C="Rate limit exceeded. Please try again later."}=j,z=new Map;return(G)=>{let E=new Date,F=G.ip;if(!z.has(F))z.set(F,{count:0,startTime:E});let D=z.get(F);if(D)if(E-D.startTime>A)D.count=1,D.startTime=E;else D.count++;if(D&&D.count>v)return G.json({error:C},429)}}function W(j){switch(j.split(".").pop()?.toLowerCase()){case"js":return"application/javascript";case"css":return"text/css";case"html":return"text/html";case"json":return"application/json";case"png":return"image/png";case"jpg":case"jpeg":return"image/jpeg";case"svg":return"image/svg+xml";case"gif":return"image/gif";case"woff":return"font/woff";case"woff2":return"font/woff2";default:return"application/octet-stream"}}var J=(j,A,v,C)=>{if(v>C)return!1;let z=v+(C-v)/2;if(j[z]==A)return!0;if(j[z]>A)return J(j,A,v,z-1);return J(j,A,z+1,C)};export{W as getMimeType,Q as default,J as binaryS};
+var __create = Object.create;
+var __getProtoOf = Object.getPrototypeOf;
+var __defProp = Object.defineProperty;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __toESM = (mod, isNodeMode, target) => {
+  target = mod != null ? __create(__getProtoOf(mod)) : {};
+  const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
+  for (let key of __getOwnPropNames(mod))
+    if (!__hasOwnProp.call(to, key))
+      __defProp(to, key, {
+        get: () => mod[key],
+        enumerable: true
+      });
+  return to;
+};
+var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
+  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
+}) : x)(function(x) {
+  if (typeof require !== "undefined")
+    return require.apply(this, arguments);
+  throw Error('Dynamic require of "' + x + '" is not supported');
+});
+
+// src/utils.ts
+function rateLimit(props) {
+  const {
+    time: windowMs = 60000,
+    max = 100,
+    message = "Rate limit exceeded. Please try again later."
+  } = props;
+  const requests = new Map;
+  return (ctx) => {
+    const currentTime = new Date;
+    const socketIP = ctx.ip;
+    if (!requests.has(socketIP)) {
+      requests.set(socketIP, { count: 0, startTime: currentTime });
+    }
+    const requestInfo = requests.get(socketIP);
+    if (requestInfo) {
+      if (currentTime - requestInfo.startTime > windowMs) {
+        requestInfo.count = 1;
+        requestInfo.startTime = currentTime;
+      } else {
+        requestInfo.count++;
+      }
+    }
+    if (requestInfo && requestInfo.count > max) {
+      return ctx.json({
+        error: message
+      }, 429);
+    }
+  };
+}
+function getMimeType(filePath) {
+  const ext = filePath.split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "js":
+      return "application/javascript";
+    case "css":
+      return "text/css";
+    case "html":
+      return "text/html";
+    case "json":
+      return "application/json";
+    case "png":
+      return "image/png";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "svg":
+      return "image/svg+xml";
+    case "gif":
+      return "image/gif";
+    case "woff":
+      return "font/woff";
+    case "woff2":
+      return "font/woff2";
+    default:
+      return "application/octet-stream";
+  }
+}
+function authenticateJwtMiddleware(jwt, user_jwt_secret) {
+  if (!jwt) {
+    throw new Error("JWT library is not defined, please provide jwt to authenticateJwt Function");
+  }
+  return (ctx) => {
+    try {
+      let token = ctx.cookies?.accessToken || ctx.req?.headers?.get("Authorization");
+      if (!token) {
+        return ctx.json({ message: "Unauthorized: No token provided" }, 401);
+      }
+      if (token.startsWith("Bearer ")) {
+        token = token.slice(7);
+      }
+      const decoded = jwt?.verify(token, user_jwt_secret);
+      if (!decoded) {
+        return ctx.json({ message: "Unauthorized: Invalid token" }, 401);
+      }
+      ctx.set("user", decoded);
+      return;
+    } catch (error) {
+      return ctx.json({ message: "Unauthorized: Invalid token", error: error?.message }, 401);
+    }
+  };
+}
+function authenticateJwtDbMiddleware(jwt, User, user_jwt_secret) {
+  if (!jwt) {
+    throw new Error("JWT library is not defined, please provide jwt to authenticateJwtDB Function");
+  }
+  if (!User) {
+    throw new Error("User model is not defined, please provide UserModel to authenticateJwtDB Function");
+  }
+  return async (ctx) => {
+    try {
+      let token = ctx.cookies?.accessToken || ctx.req?.headers?.get("Authorization");
+      if (!token) {
+        return ctx.json({ message: "Unauthorized: No token provided" }, 401);
+      }
+      if (token.startsWith("Bearer ")) {
+        token = token.slice(7);
+      }
+      const decodedToken = jwt?.verify(token, user_jwt_secret);
+      if (!decodedToken) {
+        return ctx.json({ message: "Unauthorized: Invalid token" }, 401);
+      }
+      const user = await User.findById(decodedToken._id).select("-password -refreshToken");
+      if (!user) {
+        return ctx.json({ message: "Unauthorized: User not found" }, 401);
+      }
+      ctx.set("user", user);
+      return;
+    } catch (error) {
+      return ctx.json({ message: "Unauthorized: Authentication failed", error: error?.message }, 401);
+    }
+  };
+}
+export {
+  getMimeType,
+  rateLimit as default,
+  authenticateJwtMiddleware,
+  authenticateJwtDbMiddleware
+};

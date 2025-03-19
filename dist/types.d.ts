@@ -2,7 +2,7 @@ import { Server } from "bun";
 export type listenCalllBackType = () => void;
 export type handlerFunction = (ctx: ContextType, server?: Server) => Response | Promise<Response | null | void>;
 export type middlewareFunc = (ctx: ContextType, server?: Server | undefined) => null | void | Response | Promise<Response | void | null>;
-export type HookFunction = (ctx: ContextType, result?: Response | null | void, server?: Server) => Response | Promise<Response | null | void> | void;
+export type HookFunction = (ctx: ContextType, result?: Response | null | void, server?: Server) => Response | Promise<Response | null | void> | void | null;
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD" | "ANY" | "PROPFIND";
 export type HookType = 'routeNotFound' | 'onRequest' | 'preHandler' | 'postHandler' | 'onSend' | 'onError' | 'onClose';
 export interface onError {
@@ -24,6 +24,7 @@ export interface ContextType {
     req: Request;
     server: Server;
     url: URL;
+    status: number;
     setHeader: (key: string, value: any) => this;
     json: (data: Object, status?: number) => Response;
     text: (data: string, status?: number) => Response;
@@ -39,7 +40,7 @@ export interface ContextType {
     body: Promise<any>;
     cookies: any;
     removeHeader: (key: string) => this;
-    ejs: (viewPath: string, data: {}) => Response;
+    ejs: (viewPath: string, data: {}) => Response | Promise<Response>;
 }
 export interface CookieOptions {
     maxAge?: number;
@@ -117,6 +118,8 @@ export interface FilterMethods {
     routeMatcher: (...routes: string[]) => FilterMethods;
     permitAll: () => FilterMethods;
     authenticate: (fnc?: middlewareFunc[]) => Response | Promise<Response | null> | void;
+    authenticateJwt: (jwt: any) => Response | Promise<Response | null> | void;
+    authenticateJwtDB: (jwt: any, UserModel: any) => Response | Promise<Response | null> | void;
 }
 export type listenArgsT = string | (() => void) | {
     sslCert?: string;

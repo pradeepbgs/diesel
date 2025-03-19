@@ -7,6 +7,8 @@ import aboutpage from './templates/about.html'
 import {cors} from "../src/middlewares/cors/cors";
 import { securityMiddleware } from "../src/middlewares/security/security";
 import {fileSaveMiddleware} from './middleware/saveFile'
+import {advancedLogger, logger} from '../src/middlewares/logger/logger'
+
 const app = new Diesel();
 const SECRET_KEY = "linux";
 
@@ -34,8 +36,11 @@ app.use(cors({
 }))
 
 // app.setupFilter()
-// .routeMatcher("/cookie").permitAll()
-// .authenticate([authJwt])
+// .routeMatcher("/cookie",'/')
+// .permitAll()
+// .authenticateJwt(jwt)
+// .routeMatcher("/rt")
+// .authenticateJwt(jwt)
 
 // Error Handling Hook
 app.addHooks("onError", (error: any, req: Request, url: URL) => {
@@ -44,9 +49,9 @@ app.addHooks("onError", (error: any, req: Request, url: URL) => {
   return new Response("Internal Server Error", { status: 500 });
 });
 
-app.addHooks('onRequest', (_,url:URL) => {
-  console.log(`Request for ----> ${url?.pathname}`)
-})
+
+app.use(logger(app) as any)
+// app.use(advancedLogger(app) as any)
 
 app.use(securityMiddleware)
 
@@ -60,13 +65,14 @@ app.addHooks('routeNotFound',async (ctx:ContextType) => {
   // have problem with headers so
 })
 
-
-// app.static(
-//   {
-//     "/":homapge,
-//     "/about":aboutpage
-//   }
-// )
+import homapge from './templates/index.html'
+import aboutpage from './templates/about.html'
+app.static(
+  {
+    "/":homapge,
+    "/about":aboutpage
+  }
+)
 
 app.redirect("/name/:name/:age","/redirect/:name/:age")
 app.get("/redirect/:name/:age",(ctx) => {
@@ -90,7 +96,8 @@ app.serveStatic(`${import.meta.dirname}/public`)
   
  app.get("/", async (ctx: ContextType) => {
     //  await new Promise((resolve) => setTimeout(resolve, 100));
-     return new Response("Hello world");
+    // ctx.status = 400
+    return ctx.send("Hello world from /")
    });
 
 app
@@ -110,7 +117,11 @@ app
     console.log(ctx.params.name)
     return ctx.text("How are you? "+id+name);
   })
-
+  .get("/err",(ctx) =>{
+    ctx.status = 400
+    throw new Error("Something went wrong yes");
+    // return ctx.send("Error");
+  })
   .get("/query",async(ctx) =>{
     const name = ctx.query.name
     const age = ctx.query.age

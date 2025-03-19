@@ -5,4 +5,6 @@ export default function rateLimit(props: {
     message?: string;
 }): (ctx: ContextType) => void | Response;
 export declare function getMimeType(filePath: string): string;
-export declare const binaryS: (arr: string[], target: string, start: number, end: number) => boolean;
+declare function authenticateJwtMiddleware(jwt: any, user_jwt_secret: string): (ctx: ContextType) => Response | undefined;
+declare function authenticateJwtDbMiddleware(jwt: any, User: any, user_jwt_secret: string): (ctx: ContextType) => Promise<Response | undefined>;
+export { authenticateJwtMiddleware, authenticateJwtDbMiddleware };

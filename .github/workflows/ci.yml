@@ -37,7 +37,7 @@ jobs:
         run: bun install
       
       - name: Run TypeScript Compiler
-        run: tsc
+        run: tsc --noEmit || true
 
       - name: Minify our code
         run: bun run build

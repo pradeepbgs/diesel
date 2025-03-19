@@ -46,27 +46,25 @@ class TrieNode {
         let key = segment;
     
         if (segment.startsWith(':')) {
-          isDynamic = true;
-          key = ':';  // Store dynamic routes under the key ':'
+            isDynamic = true;
+            key = ':';  // Store dynamic routes under the key ':'
         }
     
         if (!node.children[key]) {
-          node.children[key] = new TrieNode();
+            node.children[key] = new TrieNode();
         }
     
         node = node.children[key];
-        // Set dynamic route information if applicable
         node.isDynamic = isDynamic;
         node.pattern = segment;
-        node.method.push(route.method)
-        node.handler.push(route.handler)
-        node.path = path;  // Store the actual pattern like ':id'
-      }
-      // After looping through the entire path, assign route details
-      node.isEndOfWord = true;
-      node.method.push(route.method);    
-      node.handler.push(route.handler)
-      node.path = path;  // Store the original path
+    }
+    
+    // Assign route details only after path traversal
+    node.isEndOfWord = true;
+    node.path = path;  
+    node.method.push(route.method);
+    node.handler.push(route.handler);
+    
     }
     
     // insertMidl(midl:handlerFunction): void {
