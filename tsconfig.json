@@ -11,6 +11,7 @@
     "esModuleInterop": true,            // Enables emit interoperability between CommonJS and ES Modules
     "skipLibCheck": true,               // Skip type checking of declaration files
     "forceConsistentCasingInFileNames": true // Disallow inconsistently-cased references to the same file
+    
   },
   "include": ["src/**/*.ts"],           // Specify the files to include
   "exclude": ["node_modules","src/PipeLineRequestHandle.ts"]           // Exclude the 'node_modules' directory

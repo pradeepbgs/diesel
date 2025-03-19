@@ -70,14 +70,11 @@ class Trie {
       node = node.children[key];
       node.isDynamic = isDynamic;
       node.pattern = segment;
-      node.method.push(route.method);
-      node.handler.push(route.handler);
-      node.path = path;
     }
     node.isEndOfWord = true;
+    node.path = path;
     node.method.push(route.method);
     node.handler.push(route.handler);
-    node.path = path;
   }
   search(path, method) {
     let node = this.root;
@@ -244,6 +241,7 @@ function createCtx(req, server, url) {
     req,
     server,
     url,
+    status: 200,
     setHeader(key, value) {
       headers.set(key, value);
       return this;
@@ -297,16 +295,20 @@ function createCtx(req, server, url) {
     get(key) {
       return contextData[key];
     },
-    text(data, status = 200) {
+    text(data, status) {
+      if (status)
+        this.status = 200;
       if (!headers.has("Content-Type")) {
         headers.set("Content-Type", "text/plain; charset=utf-8");
       }
       return new Response(data, {
-        status,
+        status: this.status,
         headers
       });
     },
-    send(data, status = 200) {
+    send(data, status) {
+      if (status)
+        this.status = 200;
       const typeMap = new Map([
         ["string", "text/plain; charset=utf-8"],
         ["object", "application/json; charset=utf-8"],
@@ -318,22 +320,26 @@ function createCtx(req, server, url) {
         headers.set("Content-Type", typeMap.get(dataType) ?? "text/plain; charset=utf-8");
       }
       const responseData = dataType === "object" && data !== null ? JSON.stringify(data) : data;
-      return new Response(responseData, { status, headers });
+      return new Response(responseData, { status: this.status, headers });
     },
-    json(data, status = 200) {
+    json(data, status) {
+      if (status)
+        this.status = 200;
       if (!headers.has("Content-Type")) {
         headers.set("Content-Type", "application/json; charset=utf-8");
       }
-      return new Response(JSON.stringify(data), { status, headers });
+      return new Response(JSON.stringify(data), { status: this.status, headers });
     },
-    file(filePath, status = 200, mime_Type) {
+    file(filePath, status, mime_Type) {
       const file = Bun.file(filePath);
       if (!headers.has("Content-Type")) {
         headers.set("Content-Type", mime_Type ?? getMimeType(filePath));
       }
-      return new Response(file, { status, headers });
+      return new Response(file, { status: status ?? 200, headers });
     },
-    async ejs(viewPath, data = {}) {
+    async ejs(viewPath, data = {}, status) {
+      if (status)
+        this.status = 200;
       let ejs;
       try {
         ejs = await import("ejs");
@@ -346,15 +352,17 @@ function createCtx(req, server, url) {
         const template = await Bun.file(viewPath).text();
         const rendered = ejs.render(template, data);
         const headers2 = new Headers({ "Content-Type": "text/html; charset=utf-8" });
-        return new Response(rendered, { status: 200, headers: headers2 });
+        return new Response(rendered, { status: this.status, headers: headers2 });
       } catch (error) {
         console.error("EJS Rendering Error:", error);
         return new Response("Error rendering template", { status: 500 });
       }
     },
-    redirect(path, status = 302) {
+    redirect(path, status) {
+      if (!status)
+        this.status = 302;
       headers.set("Location", path);
-      return new Response(null, { status, headers });
+      return new Response(null, { status: this.status, headers });
     },
     setCookie(name, value, options = {}) {
       let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
@@ -495,7 +503,7 @@ async function handleRequest(req, server, url, diesel) {
     return diesel.hooks.onError ? diesel.hooks.onError(error, req, url, server) : new Response(JSON.stringify({ message: "Internal Server Error", error: error.message, status: 500 }), { status: 500 });
   } finally {
     if (diesel.hooks.postHandler)
-      await diesel.hooks.postHandler(ctx);
+      diesel.hooks.postHandler(ctx);
   }
 }
 async function executeMiddlewares(middlewares, ctx, server) {
@@ -743,8 +751,6 @@ var q = g;
 
 // src/main.ts
 var { default: fs} = (() => ({}));
-var __dirname = "/home/pradeep/Desktop/diesel/src";
-
 class Diesel {
   tempRoutes;
   globalMiddlewares;
@@ -843,8 +849,9 @@ class Diesel {
   }
   serveStatic(filePath) {
     this.staticPath = filePath;
+    return this;
   }
-  static(args = {}) {
+  static(args) {
     this.staticFiles = { ...this.staticFiles, ...args };
     return this;
   }
@@ -892,7 +899,8 @@ class Diesel {
         break;
       }
     }
-    const routesPath = q.join(__dirname, "", "routes");
+    const projectRoot = process.cwd();
+    const routesPath = q.join(projectRoot, "src", "routes");
     if (fs?.existsSync(routesPath)) {
       this.loadRoutes(routesPath, "");
     }
@@ -919,8 +927,9 @@ class Diesel {
     ];
     for (const method of supportedMethods) {
       if (module[method]) {
-        const lowerMethod = method.toLowerCase();
-        this[lowerMethod](routePath, module[method]);
+        const lowerMethod = method;
+        const handler = module[method];
+        this.trie.insert(routePath, { handler, method: lowerMethod });
       }
     }
   }
@@ -970,13 +979,11 @@ class Diesel {
     }
     this.compile();
     this.serverInstance = Bun?.serve(ServerOptions);
-    if (callback) {
-      return callback();
-    }
     if (options.sslCert && options.sslKey) {
       console.log(`HTTPS server is running on https://localhost:${port}`);
-    } else {
-      console.log(`HTTP server is running on http://localhost:${port}`);
+    }
+    if (callback) {
+      return callback();
     }
     return this.serverInstance;
   }

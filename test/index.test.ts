@@ -12,7 +12,7 @@ beforeAll(async () => {
   await Bun.sleep(1000)
 })
 afterAll(async () => {
-  await Bun.sleep(2000)
+  //await Bun.sleep(100)
   app.close()
   console.log("Server closed.");
 });

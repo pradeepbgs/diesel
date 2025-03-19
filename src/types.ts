@@ -41,6 +41,7 @@ export interface ContextType {
     req: Request;
     server: Server;
     url: URL;
+    status: number;
     setHeader: (key: string, value: any) => this;
     json: (data: Object, status?: number) => Response;
     text: (data: string, status?: number) => Response;

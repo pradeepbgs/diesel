@@ -25,8 +25,8 @@ export default class Diesel {
     constructor();
     setupFilter(): FilterMethods;
     redirect(incomingPath: string, redirectPath: string, statusCode?: 302): this;
-    serveStatic(filePath: string): void;
-    static(args?: {}): this;
+    serveStatic(filePath: string): this;
+    static(args: Record<string, string>): this;
     addHooks(typeOfHook: HookType, fnc: HookFunction | onError | onRequest): this;
     private compile;
     private registerFileRoutes;

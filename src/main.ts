@@ -21,6 +21,7 @@ import { Server } from "bun";
 import { authenticateJwtDbMiddleware, authenticateJwtMiddleware } from "./utils.js";
 
 export default class Diesel {
+
   private tempRoutes: Map<string, any> | null;
   globalMiddlewares: middlewareFunc[];
   middlewares: Map<string, middlewareFunc[]>;
@@ -43,6 +44,7 @@ export default class Diesel {
   private user_jwt_secret: string
 
   constructor() {
+
     this.user_jwt_secret = process.env.DIESEL_JWT_SECRET ?? 'feault_diesel_secret_for_jwt'
     this.tempRoutes = new Map();
     this.globalMiddlewares = [];
@@ -71,13 +73,16 @@ export default class Diesel {
     this.serverInstance = null;
     this.staticPath = null;
     this.staticFiles = {};
+
   }
 
   setupFilter(): FilterMethods {
     this.hasFilterEnabled = true;
 
     return {
-      routeMatcher: (...routes: string[]) => {
+      routeMatcher: (
+        ...routes: string[]
+      ) => {
         this.FilterRoutes = routes;
         return this.setupFilter();
       },
@@ -90,7 +95,9 @@ export default class Diesel {
         return this.setupFilter();
       },
 
-      authenticate: (fnc?: middlewareFunc[]) => {
+      authenticate: (
+        fnc?: middlewareFunc[]
+      ) => {
         if (fnc?.length) {
           for (const fn of fnc) {
             this.filterFunction.push(fn);
@@ -98,15 +105,25 @@ export default class Diesel {
         }
       },
       authenticateJwt: (jwt: any) => {
-        this.filterFunction.push(authenticateJwtMiddleware(jwt, this.user_jwt_secret) as middlewareFunc);
+        this.filterFunction
+          .push(
+            authenticateJwtMiddleware(jwt, this.user_jwt_secret) as middlewareFunc
+          );
       },
       authenticateJwtDB: (jwt: any, User: any) => {
-        this.filterFunction.push(authenticateJwtDbMiddleware(jwt, User, this.user_jwt_secret) as middlewareFunc);
+        this.filterFunction
+          .push(
+            authenticateJwtDbMiddleware(jwt, User, this.user_jwt_secret) as middlewareFunc
+          );
       }
     };
   }
 
-  redirect(incomingPath: string, redirectPath: string, statusCode?: 302): this {
+  redirect(
+    incomingPath: string,
+    redirectPath: string,
+    statusCode?: 302
+  ): this {
     this.any(incomingPath, (ctx) => {
 
       const params = ctx.params
@@ -133,22 +150,34 @@ export default class Diesel {
     return this
   }
 
-  serveStatic(filePath: string) {
+  serveStatic(
+    filePath: string
+  ) {
     this.staticPath = filePath;
+    return this;
   }
 
-  static(args = {}): this {
+  
+  static(
+    args :Record<string, string>
+  ): this {
     this.staticFiles = { ...this.staticFiles, ...args };
     return this;
   }
 
-  addHooks(typeOfHook: HookType, fnc: HookFunction | onError | onRequest): this {
+  addHooks(
+    typeOfHook: HookType,
+    fnc: HookFunction | onError | onRequest
+  ): this {
+
     if (typeof typeOfHook !== "string") {
       throw new Error("hookName must be a string");
     }
+
     if (typeof fnc !== "function") {
       throw new Error("callback must be a instance of function");
     }
+
     switch (typeOfHook) {
       case "onRequest":
         this.hooks.onRequest = fnc as onRequest;
@@ -188,49 +217,69 @@ export default class Diesel {
       }
     }
 
-    const routesPath = path.join(__dirname, '', 'routes');
+    const projectRoot = process.cwd();
+    // console.log('project root:-> ', projectRoot)
+    const routesPath = path.join(projectRoot, 'src', 'routes');
     if (fs?.existsSync(routesPath)) {
+      // console.log('calling loadroutes')
       this.loadRoutes(routesPath, '');
     }
+    // console.log('routesPath', routesPath)
     // this.loadRoutes(routesPath,'')
     setTimeout(() => {
       this.tempRoutes = null
     }, 2000);
   }
 
-  private async registerFileRoutes(filePath: string, baseRoute: string) {
+  private async registerFileRoutes(
+    filePath: string,
+    baseRoute: string
+  ) {
+    // console.log('registering file routes')
     const module = await import(filePath);
     let routePath = baseRoute + '/' + path.basename(filePath, '.ts');
-
     // Remove `/index` if present
     if (routePath.endsWith('/index')) {
       routePath = baseRoute
     }
+    // console.log('routePath', routePath)
 
     const supportedMethods: HttpMethod[] = [
-        'GET', 'POST', 'PUT', 'PATCH',
-        'DELETE', 'ANY', 'HEAD', 'OPTIONS', 'PROPFIND'
+      'GET', 'POST', 'PUT', 'PATCH',
+      'DELETE', 'ANY', 'HEAD', 'OPTIONS', 'PROPFIND'
     ];
 
+    // console.log('module', module)
     for (const method of supportedMethods) {
-        if (module[method]) {
-          const lowerMethod = method.toLowerCase();
-          this[lowerMethod](routePath, module[method] as handlerFunction);
-          
-          // if (routePath === '/user/profile') {
-          //   console.log(this.trie.search("/user/profile",'GET'))
-          //   // console.log(module[method]())
-          // }
-        }
+      // console.log('method', method)
+      if (module[method]) {
+        const lowerMethod = method as HttpMethod;
+        // this[lowerMethod](routePath, module[method] as handlerFunction);
+        const handler = module[method] as handlerFunction;
+        // console.log('handler', handler)
+        this.trie.insert(routePath, { handler, method: lowerMethod });
+        // console.log('inserted route', routePath, lowerMethod, 'with handler', handler)
+
+        // if (routePath === '/user/profile') {
+        //   console.log(this.trie.search("/user/profile",'GET'))
+        //   // console.log(module[method]())
+        // }
+      }
     }
-}
+  }
 
 
-  private async loadRoutes(dirPath: string, baseRoute: string) {
+  private async loadRoutes(
+    dirPath: string,
+    baseRoute: string
+  ) {
+    // console.log('\ncalled\n')
     const files = await fs.promises.readdir(dirPath);
 
     for (const file of files) {
+      // console.log('does file exist?', file)
       const filePath = path.join(dirPath, file);
+      // console.log('file path', filePath)
       const stat = await fs.promises.stat(filePath);
 
       if (stat.isDirectory()) {
@@ -241,7 +290,10 @@ export default class Diesel {
     }
   }
 
-  listen(port: any, ...args: listenArgsT[]): Server | void {
+  listen(
+    port: any,
+    ...args: listenArgsT[]
+  ): Server | void {
     if (typeof Bun === "undefined")
       throw new Error(".listen() is designed to run on Bun only...");
 
@@ -282,20 +334,20 @@ export default class Diesel {
     this.compile();
     this.serverInstance = Bun?.serve(ServerOptions);
 
+    if (options.sslCert && options.sslKey) {
+      console.log(`HTTPS server is running on https://localhost:${port}`);
+    } 
+    // console.log('logging trie', this.trie.search("/user/videos",'GET'))
     if (callback) {
       return callback();
     }
-
-    if (options.sslCert && options.sslKey) {
-      console.log(`HTTPS server is running on https://localhost:${port}`);
-    } else {
-      console.log(`HTTP server is running on http://localhost:${port}`);
-    }
-
+    
     return this.serverInstance;
   }
 
-  close(callback?: () => void): void {
+  close(
+    callback?: () => void
+  ): void {
     if (this.serverInstance) {
       this.serverInstance.stop(true);
       this.serverInstance = null;
@@ -311,7 +363,10 @@ export default class Diesel {
    *   const userRoute = new Diesel();
    *   app.route("/api/v1/user", userRoute);
    */
-  route(basePath: string, routerInstance: any): this {
+  route(
+    basePath: string,
+    routerInstance: any
+  ): this {
     if (!basePath || typeof basePath !== "string")
       throw new Error("Path must be a string");
 
@@ -338,12 +393,8 @@ export default class Diesel {
 
       // Retrieve the final handler for the route (last in the array).
       const handler = args.handlers[args.handlers.length - 1];
-      // console.log('handlersssss',args)
       // Register the handler and method in the trie.
       const method = args.method;
-      // console.log('method',method)
-      // console.log('path',path)
-      // console.log('handler',handler)
       try {
         this.trie.insert(fullpath, {
           handler: handler as handlerFunction,
@@ -366,12 +417,20 @@ export default class Diesel {
    *   userRoute.post("/register", handlerFunction)
    *   app.register("/api/v1/user", userRoute);
    */
-  register(basePath: string, routerInstance: any): this {
+  register(
+    basePath: string,
+    routerInstance: any
+  ): this {
     // Simply delegate to the `route` method.
     return this.route(basePath, routerInstance);
   }
 
-  private addRoute(method: HttpMethod, path: string, handlers: handlerFunction[]): void {
+
+  private addRoute(
+    method: HttpMethod,
+    path: string,
+    handlers: handlerFunction[]
+  ): void {
     if (typeof path !== "string")
       throw new Error(
         `Error in ${handlers[handlers.length - 1]
@@ -512,7 +571,7 @@ export default class Diesel {
         // Example: app.use('/home', h1) -> handlers becomes [h1].
         const handlerArray = Array.isArray(handlers) ? handlers : [handlers];
 
-        // Add each handler to the middleware list for the path, avoiding duplicates.
+        // Add each handler to the middleware list for the path.
         handlerArray.forEach((handler: middlewareFunc) => {
           // if (!this.middlewares.get(path)?.includes(handler)) {
           this.middlewares.get(path)?.push(handler);
@@ -525,47 +584,74 @@ export default class Diesel {
     return this;
   }
 
-  get(path: string, ...handlers: handlerFunction[]): this {
+  get(
+    path: string,
+    ...handlers: handlerFunction[]
+  ): this {
     this.addRoute("GET", path, handlers);
     return this;
   }
 
-  post(path: string, ...handlers: handlerFunction[]): this {
+  post(
+    path: string,
+    ...handlers: handlerFunction[]
+  ): this {
     this.addRoute("POST", path, handlers);
     return this;
   }
 
-  put(path: string, ...handlers: handlerFunction[]): this {
+  put(
+    path: string,
+    ...handlers: handlerFunction[]
+  ): this {
     this.addRoute("PUT", path, handlers);
     return this;
   }
 
-  patch(path: string, ...handlers: handlerFunction[]): this {
+  patch(
+    path: string,
+    ...handlers: handlerFunction[]
+  ): this {
     this.addRoute("PATCH", path, handlers);
     return this;
   }
 
-  delete(path: string, ...handlers: handlerFunction[]): this {
+  delete(
+    path: string,
+    ...handlers: handlerFunction[]
+  ): this {
     this.addRoute("DELETE", path, handlers);
     return this;
   }
 
-  any(path: string, ...handlers: handlerFunction[]) {
+  any(
+    path: string,
+    ...handlers: handlerFunction[]
+  ) {
     this.addRoute("ANY", path, handlers);
     return this;
   }
 
-  head(path: string, ...handlers: handlerFunction[]) {
+  head(
+    path: string,
+    ...handlers: handlerFunction[]
+  ) {
     this.addRoute("HEAD", path, handlers);
     return this;
   }
 
-  options(path: string, ...handlers: handlerFunction[]): this {
+  options(
+    path: string,
+    ...handlers: handlerFunction[]
+  ): this {
     this.addRoute("OPTIONS", path, handlers);
     return this;
   }
 
-  propfind(path: string, ...handlers: handlerFunction[]): this {
+  propfind(
+    path: string,
+    ...handlers: handlerFunction[]
+  ): this {
     this.addRoute("PROPFIND", path, handlers);
     return this;
   }

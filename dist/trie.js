@@ -70,14 +70,11 @@ class Trie {
       node = node.children[key];
       node.isDynamic = isDynamic;
       node.pattern = segment;
-      node.method.push(route.method);
-      node.handler.push(route.handler);
-      node.path = path;
     }
     node.isEndOfWord = true;
+    node.path = path;
     node.method.push(route.method);
     node.handler.push(route.handler);
-    node.path = path;
   }
   search(path, method) {
     let node = this.root;

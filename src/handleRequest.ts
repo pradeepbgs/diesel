@@ -4,7 +4,11 @@ import type { ContextType, DieselT, RouteHandlerT } from "./types";
 import { getMimeType } from "./utils";
 
 
-export default async function handleRequest(req: Request, server: Server, url: URL, diesel: DieselT
+export default async function handleRequest(
+  req: Request,
+  server: Server,
+  url: URL,
+  diesel: DieselT
 ) {
 
   const ctx: ContextType = createCtx(req, server, url);
@@ -13,9 +17,11 @@ export default async function handleRequest(req: Request, server: Server, url: U
     url.pathname,
     req.method
   );
+
   req.routePattern = routeHandler?.path;
 
   try {
+
     if (diesel.hasFilterEnabled) {
       const path = req.routePattern ?? url.pathname;
       const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
@@ -79,13 +85,18 @@ export default async function handleRequest(req: Request, server: Server, url: U
     }
 
     return finalResult ?? generateErrorResponse(204, "No response from this handler");
-  } catch (error:any) {
+
+  } catch (error: any) {
+
     return diesel.hooks.onError
       ? diesel.hooks.onError(error, req, url, server)
       : new Response(JSON.stringify({ message: "Internal Server Error", error: error.message, status: 500, }), { status: 500 });
-  } finally {
-    if (diesel.hooks.postHandler) await diesel.hooks.postHandler(ctx);
-  }
+  
+    } finally {
+  
+      if (diesel.hooks.postHandler) diesel.hooks.postHandler(ctx);
+  
+    }
 }
 
 
@@ -102,7 +113,12 @@ async function executeMiddlewares(
 }
 
 
-export async function handleFilterRequest(diesel: DieselT, path: string, ctx: ContextType, server: Server) {
+export async function handleFilterRequest(
+  diesel: DieselT,
+  path: string,
+  ctx: ContextType,
+  server: Server) {
+
   if (!diesel.filters.has(path)) {
     if (diesel.filterFunction.length) {
       for (const filterFunction of diesel.filterFunction) {
@@ -113,16 +129,25 @@ export async function handleFilterRequest(diesel: DieselT, path: string, ctx: Co
       return ctx.json({ error: true, message: "Protected route, authentication required", status: 401 }, 401);
     }
   }
+
 }
 
-export function generateErrorResponse(status: number, message: string): Response {
+export function generateErrorResponse(
+  status: number,
+  message: string
+): Response {
   return new Response(
     JSON.stringify({ error: true, message, status }),
     { status, headers: { "Content-Type": "application/json" } }
   );
 }
 
-export async function handleStaticFiles(diesel: DieselT, pathname: string, ctx: ContextType): Promise<Response | null> {
+export async function handleStaticFiles(
+  diesel: DieselT,
+  pathname: string,
+  ctx: ContextType
+): Promise<Response | null> {
+
   if (!diesel.staticPath) return null;
 
   const filePath = `${diesel.staticPath}${pathname}`;

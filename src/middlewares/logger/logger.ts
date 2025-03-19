@@ -60,7 +60,7 @@ export const advancedLogger = (app: any) => {
         log("info", "Response Sent", {
             method: ctx.req.method,
             url: ctx.url,
-            status: ctx?.status ?? "",
+            status: ctx.status,
             duration,
         });
     });
@@ -69,7 +69,7 @@ export const advancedLogger = (app: any) => {
 type PrintFunc = (str: string, ...rest: string[]) => void;
 
 const logFormatted = (
-    fn: PrintFunc,
+    // fn: PrintFunc,
     prefix: LogPrefix,
     method: string,
     path: string,
@@ -80,7 +80,7 @@ const logFormatted = (
         prefix === LogPrefix.Incoming
             ? `${prefix} ${method} ${path}`
             : `${prefix} ${method} ${path} ${status} ${elapsed || ""}`;
-    fn(message);
+    console.log(message);
 };
 
 const timeElapsed = (start: number) => {
@@ -88,14 +88,28 @@ const timeElapsed = (start: number) => {
     return delta < 1000 ? `${delta}ms` : `${Math.round(delta / 1000)}s`;
 };
 
-export const logger = (fn: PrintFunc = console.log) => {
-    return async function logger(ctx: ContextType) {
+export const logger = (app:any) => {
+    // app.addHooks('preHandler', async (ctx: ContextType) => {
+    //     const { method, url } = ctx.req;
+    //     const path = new URL(url).pathname;
+    //     logFormatted( LogPrefix.Incoming, method, path);
+    //     ctx.req.startTime = Date.now();
+    // });
+    app.addHooks('onRequest', (req: Request, url: URL) => {
+        req.startTime = Date.now();
+        logFormatted( LogPrefix.Incoming, req.method, new URL(url).pathname);
+    })
+    app.addHooks('postHandler', async (ctx: ContextType) => {
         const { method, url } = ctx.req;
         const path = new URL(url).pathname;
+        logFormatted( LogPrefix.Outgoing, method, path, ctx.status, timeElapsed(ctx.req.startTime));
+    });
 
-        logFormatted(fn, LogPrefix.Incoming, method, path);
-
-        const start = Date.now();
-        logFormatted(fn, LogPrefix.Outgoing, method, path, 0, timeElapsed(start));
-    };
+    app.addHooks('onError', (error: any, req: Request, url: URL) => {
+        log("error", "Error occurred", {
+            method: req.method,
+            url: url.toString(),
+            error: error.message,
+        });
+    });
 };
