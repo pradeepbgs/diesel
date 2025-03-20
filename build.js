@@ -32,7 +32,7 @@ Bun.build({
         './src/utils.ts',
     ],
     outdir: './dist',
-    minify: false,
+    minify: true,
 })
 
 Bun.build({

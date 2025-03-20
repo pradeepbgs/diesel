@@ -109,7 +109,6 @@ export const logger = (app:any) => {
         log("error", "Error occurred", {
             method: req.method,
             url: url.toString(),
-            error: error.message,
         });
     });
 };

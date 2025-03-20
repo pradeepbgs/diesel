@@ -49,10 +49,10 @@ export default class Diesel {
       jwtSecret,
       baseApiUrl
     }
-    :{
-      jwtSecret?:string,
-      baseApiUrl?:string
-    } = {}
+      : {
+        jwtSecret?: string,
+        baseApiUrl?: string
+      } = {}
   ) {
 
     this.baseApiUrl = baseApiUrl || ''
@@ -168,9 +168,9 @@ export default class Diesel {
     return this;
   }
 
-  
+
   static(
-    args :Record<string, string>
+    args: Record<string, string>
   ): this {
     this.staticFiles = { ...this.staticFiles, ...args };
     return this;
@@ -294,7 +294,7 @@ export default class Diesel {
 
       if (stat.isDirectory()) {
         this.loadRoutes(filePath, baseRoute + '/' + file);
-      } 
+      }
       else if (file.endsWith('.ts')) {
         this.registerFileRoutes(filePath, baseRoute, '.ts');
       }
@@ -330,10 +330,17 @@ export default class Diesel {
       hostname,
       fetch: async (req: Request, server: Server) => {
         const url: URL = new URL(req.url);
-        if (this.hooks.onRequest) {
-          this.hooks.onRequest(req, url, server);
+        try {
+          if (this.hooks.onRequest) {
+            this.hooks.onRequest(req, url, server);
+          }
+          return await handleRequest(req, server, url, this as DieselT)
+        } catch (error: any) {
+          return this.hooks.onError
+            ? this.hooks.onError(error, req, url, server)
+            : new Response(JSON.stringify({ message: "Internal Server Error", error: error?.message, status: 500, }), { status: 500 });
+
         }
-        return await handleRequest(req, server, url, this as DieselT);
       },
       static: this.staticFiles,
       development: true,
@@ -350,12 +357,12 @@ export default class Diesel {
 
     if (options.sslCert && options.sslKey) {
       console.log(`HTTPS server is running on https://localhost:${port}`);
-    } 
+    }
     // console.log('logging trie', this.trie.search("/user/videos",'GET'))
     if (callback) {
       return callback();
     }
-    
+
     return this.serverInstance;
   }
 

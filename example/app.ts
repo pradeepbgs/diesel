@@ -61,7 +61,7 @@ app.use(securityMiddleware)
 app.addHooks('routeNotFound',async (ctx:ContextType) => {
   const file = await Bun.file(`${import.meta.dir}/templates/routenotfound.html`)
   // console.log(file)
-  return new Response(file)
+  return new Response(file,{status:404})
   // return ctx.file(`${import.meta.dir}/templates/routenotfound.html`)
 
   // have problem with headers so
@@ -103,6 +103,9 @@ app.serveStatic(`${import.meta.dirname}/public`)
    });
 
 app
+.get('/rd',(ctx) => {
+  return ctx.redirect('/test/pradeep/23')
+})
   .head("/", (ctx:ContextType) => {
     return ctx.send("")
   })
@@ -121,8 +124,8 @@ app
   })
   .get("/err",(ctx) =>{
     ctx.status = 400
-    throw new Error("Something went wrong yes");
-    // return ctx.send("Error");
+    // throw new Error("Somethin`g went wrong yes");
+    return ctx.send("Error",500);
   })
   .get("/query",async(ctx) =>{
     const name = ctx.query.name

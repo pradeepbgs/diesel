@@ -78,7 +78,7 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
     },
 
     text(data: string, status?: number) {
-      if(status) this.status = 200
+      if(status) this.status = status
       if (!headers.has("Content-Type")) {
         headers.set("Content-Type", "text/plain; charset=utf-8")
       }
@@ -89,7 +89,7 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
     },
 
     send<T>(data: T, status?: number): Response {
-      if(status) this.status = 200;
+      if(status) this.status = status;
       const typeMap = new Map<string, string>([
         ["string", "text/plain; charset=utf-8"],
         ["object", "application/json; charset=utf-8"],
@@ -110,23 +110,24 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
     },
 
     json<T>(data: T, status?:number): Response {
-      if(status) this.status = 200;
+      if(status) this.status = status;
       if (!headers.has("Content-Type")) {
         headers.set("Content-Type", "application/json; charset=utf-8");
       }
       return new Response(JSON.stringify(data), { status: this.status, headers });
     },
 
-    file(filePath: string, status?: number, mime_Type?: string): Response {
+    file(filePath: string, mime_Type?: string,status?: number): Response {
+      if(status) this.status = status;
       const file = Bun.file(filePath);
       if (!headers.has("Content-Type")) {
         headers.set("Content-Type", mime_Type ?? getMimeType(filePath));
       }
-      return new Response(file, { status: status ?? 200, headers });
+      return new Response(file, { status: this.status, headers });
     },
 
     async ejs(viewPath: string, data = {}, status?: number): Promise<Response> {
-      if(status) this.status = 200;
+      if(status) this.status = status;
       let ejs;
       try {
         ejs = await import('ejs')
@@ -148,7 +149,9 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
     },
 
     redirect(path: string, status?: number): Response {
-      if(!status) this.status = 302;
+      if(status) this.status=status
+      else this.status = 302;
+      
       headers.set("Location", path);
       return new Response(null, { status: this.status, headers });
     },
