@@ -9,7 +9,9 @@ import { securityMiddleware } from "../src/middlewares/security/security";
 import {fileSaveMiddleware} from './middleware/saveFile'
 import {advancedLogger, logger} from '../src/middlewares/logger/logger'
 
-const app = new Diesel();
+const app = new Diesel({
+  baseApiUrl:'/api/v1'
+});
 const SECRET_KEY = "linux";
 
 const port = process.env.PORT ?? 3000
@@ -65,14 +67,14 @@ app.addHooks('routeNotFound',async (ctx:ContextType) => {
   // have problem with headers so
 })
 
-import homapge from './templates/index.html'
-import aboutpage from './templates/about.html'
-app.static(
-  {
-    "/":homapge,
-    "/about":aboutpage
-  }
-)
+// import homapge from './templates/index.html'
+// import aboutpage from './templates/about.html'
+// app.static(
+//   {
+//     "/":homapge,
+//     "/about":aboutpage
+//   }
+// )
 
 app.redirect("/name/:name/:age","/redirect/:name/:age")
 app.get("/redirect/:name/:age",(ctx) => {
@@ -167,7 +169,7 @@ app
     return ctx.json({ message: "Cookies set successfully" });
   });
 
-app.route("/api/user", userRoute)
+// app.route("/api/user", userRoute)
 
 app.get("/too",(ctx) => {return ctx.send("GETTT too")})
 app.post('/too',(ctx) =>{return ctx.send("Send posstt")})

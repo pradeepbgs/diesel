@@ -11,6 +11,6 @@
     "skipLibCheck": true,               // Skip type checking of declaration files
     "forceConsistentCasingInFileNames": true // Disallow inconsistently-cased references to the same file
   },
-  "include": ["./*.ts"],           // Specify the files to include
+  "include": ["./*.ts", "app.ts"],           // Specify the files to include
   "exclude": ["node_modules"]           // Exclude the 'node_modules' directory
 }

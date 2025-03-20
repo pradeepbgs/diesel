@@ -42,10 +42,21 @@ export default class Diesel {
   staticPath: any;
   staticFiles: any
   private user_jwt_secret: string
+  private baseApiUrl: string
 
-  constructor() {
+  constructor(
+    {
+      jwtSecret,
+      baseApiUrl
+    }
+    :{
+      jwtSecret?:string,
+      baseApiUrl?:string
+    } = {}
+  ) {
 
-    this.user_jwt_secret = process.env.DIESEL_JWT_SECRET ?? 'feault_diesel_secret_for_jwt'
+    this.baseApiUrl = baseApiUrl || ''
+    this.user_jwt_secret = jwtSecret || process.env.DIESEL_JWT_SECRET || 'feault_diesel_secret_for_jwt'
     this.tempRoutes = new Map();
     this.globalMiddlewares = [];
     this.middlewares = new Map();
@@ -233,37 +244,36 @@ export default class Diesel {
 
   private async registerFileRoutes(
     filePath: string,
-    baseRoute: string
+    baseRoute: string,
+    extension: string
   ) {
-    // console.log('registering file routes')
     const module = await import(filePath);
-    let routePath = baseRoute + '/' + path.basename(filePath, '.ts');
+
+    let pathRoute;
+    if (extension === '.ts') {
+      pathRoute = path.basename(filePath, '.ts');
+    }
+    else if (extension === '.js') {
+      pathRoute = path.basename(filePath, '.js');
+    }
+
+    let routePath = baseRoute + '/' + pathRoute;
+
     // Remove `/index` if present
     if (routePath.endsWith('/index')) {
       routePath = baseRoute
     }
-    // console.log('routePath', routePath)
 
     const supportedMethods: HttpMethod[] = [
       'GET', 'POST', 'PUT', 'PATCH',
       'DELETE', 'ANY', 'HEAD', 'OPTIONS', 'PROPFIND'
     ];
 
-    // console.log('module', module)
     for (const method of supportedMethods) {
-      // console.log('method', method)
       if (module[method]) {
         const lowerMethod = method as HttpMethod;
-        // this[lowerMethod](routePath, module[method] as handlerFunction);
         const handler = module[method] as handlerFunction;
-        // console.log('handler', handler)
-        this.trie.insert(routePath, { handler, method: lowerMethod });
-        // console.log('inserted route', routePath, lowerMethod, 'with handler', handler)
-
-        // if (routePath === '/user/profile') {
-        //   console.log(this.trie.search("/user/profile",'GET'))
-        //   // console.log(module[method]())
-        // }
+        this.trie.insert(`${this.baseApiUrl}${routePath}`, { handler, method: lowerMethod });
       }
     }
   }
@@ -284,8 +294,12 @@ export default class Diesel {
 
       if (stat.isDirectory()) {
         this.loadRoutes(filePath, baseRoute + '/' + file);
-      } else if (file.endsWith('.ts')) {
-        this.registerFileRoutes(filePath, baseRoute);
+      } 
+      else if (file.endsWith('.ts')) {
+        this.registerFileRoutes(filePath, baseRoute, '.ts');
+      }
+      else if (file.endsWith('.js')) {
+        this.registerFileRoutes(filePath, baseRoute, '.js');
       }
     }
   }
