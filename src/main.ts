@@ -263,6 +263,9 @@ export default class Diesel {
     if (routePath.endsWith('/index')) {
       routePath = baseRoute
     }
+   
+    // here we can check if routePath include [] like - user/[id] if yes then remove [] and add user:id
+    routePath = routePath.replace(/\[(.*?)\]/g, ':$1');
 
     const supportedMethods: HttpMethod[] = [
       'GET', 'POST', 'PUT', 'PATCH',
@@ -274,6 +277,7 @@ export default class Diesel {
         const lowerMethod = method as HttpMethod;
         const handler = module[method] as handlerFunction;
         this.trie.insert(`${this.baseApiUrl}${routePath}`, { handler, method: lowerMethod });
+        // console.log(`${this.baseApiUrl}${routePath}`);
       }
     }
   }
@@ -325,6 +329,8 @@ export default class Diesel {
       }
     }
 
+    this.compile();
+
     const ServerOptions: any = {
       port,
       hostname,
@@ -352,7 +358,6 @@ export default class Diesel {
       ServerOptions.keyFile = options.sslKey;
     }
 
-    this.compile();
     this.serverInstance = Bun?.serve(ServerOptions);
 
     if (options.sslCert && options.sslKey) {

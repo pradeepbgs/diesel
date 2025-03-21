@@ -52,8 +52,8 @@ app.addHooks("onError", (error: any, req: Request, url: URL) => {
 });
 
 
-app.use(logger(app) as any)
-// app.use(advancedLogger(app) as any)
+//app.use(logger(app) as any)
+//  app.use(advancedLogger(app) as any)
 
 app.use(securityMiddleware)
 
