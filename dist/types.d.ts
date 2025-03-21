@@ -29,7 +29,7 @@ export interface ContextType {
     json: (data: Object, status?: number) => Response;
     text: (data: string, status?: number) => Response;
     send: (data: string, status?: number) => Response;
-    file: (filePath: string, status?: number, mimeType?: string) => Response;
+    file: (filePath: string, mimeType?: string, status?: number) => Response;
     redirect: (path: string, status?: number) => Response;
     setCookie: (name: string, value: string, options?: CookieOptions) => this;
     ip: string | null;

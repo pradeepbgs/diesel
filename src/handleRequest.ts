@@ -20,8 +20,6 @@ export default async function handleRequest(
 
   req.routePattern = routeHandler?.path;
 
-  try {
-
     if (diesel.hasFilterEnabled) {
       const path = req.routePattern ?? url.pathname;
       const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
@@ -78,6 +76,7 @@ export default async function handleRequest(
     const result = routeHandler.handler(ctx);
     const finalResult = result instanceof Promise ? await result : result;
 
+    if (diesel.hooks.postHandler) diesel.hooks.postHandler(ctx);
 
     if (diesel.hooks.onSend) {
       const hookResponse = await diesel.hooks.onSend(ctx, finalResult);
@@ -85,18 +84,6 @@ export default async function handleRequest(
     }
 
     return finalResult ?? generateErrorResponse(204, "No response from this handler");
-
-  } catch (error: any) {
-
-    return diesel.hooks.onError
-      ? diesel.hooks.onError(error, req, url, server)
-      : new Response(JSON.stringify({ message: "Internal Server Error", error: error.message, status: 500, }), { status: 500 });
-  
-    } finally {
-  
-      if (diesel.hooks.postHandler) diesel.hooks.postHandler(ctx);
-  
-    }
 }
 
 
@@ -155,7 +142,7 @@ export async function handleStaticFiles(
 
   if (await file.exists()) {
     const mimeType = getMimeType(filePath)
-    return ctx.file(filePath, 200, mimeType)
+    return ctx.file(filePath, mimeType,200)
   }
 
   return null

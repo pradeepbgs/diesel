@@ -6,7 +6,7 @@
       "dependencies": {
         "@types/cors": "^2.8.17",
         "@types/jsonwebtoken": "^9.0.7",
-        "diesel-core": "^1.0.30",
+        "diesel-core": "^1.1.2",
         "ejs": "^3.1.10",
         "i": "^0.3.7",
         "jsonwebtoken": "^9.0.2",
@@ -40,7 +40,7 @@
 
     "concat-map": ["concat-map@0.0.1", "", {}, "sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg=="],
 
-    "diesel-core": ["diesel-core@1.0.30", "", { "peerDependencies": { "typescript": "^5.0.0" } }, "sha512-IkI3iOIQECowQzjvCWvvu69nWqI4qTfbHRoWArvbzk2MTQgnLBI9nK9hIm4IlMLc7p0cQtkVyPwKQrwwfoX5XA=="],
+    "diesel-core": ["diesel-core@1.1.2", "", { "peerDependencies": { "typescript": "^5.0.0" } }, "sha512-GrE5UqtWH7uk5xPtGw1pejCVGa0GeUXsjJbowMztPwzoFKnWksB3Aq6kOB975LHu9mVI2tFWl7y8UHUnK9Pz9A=="],
 
     "ecdsa-sig-formatter": ["ecdsa-sig-formatter@1.0.11", "", { "dependencies": { "safe-buffer": "^5.0.1" } }, ""],
 

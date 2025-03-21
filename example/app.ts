@@ -9,7 +9,9 @@ import { securityMiddleware } from "../src/middlewares/security/security";
 import {fileSaveMiddleware} from './middleware/saveFile'
 import {advancedLogger, logger} from '../src/middlewares/logger/logger'
 
-const app = new Diesel();
+const app = new Diesel({
+  baseApiUrl:'/api/v1'
+});
 const SECRET_KEY = "linux";
 
 const port = process.env.PORT ?? 3000
@@ -50,8 +52,8 @@ app.addHooks("onError", (error: any, req: Request, url: URL) => {
 });
 
 
-app.use(logger(app) as any)
-// app.use(advancedLogger(app) as any)
+//app.use(logger(app) as any)
+//  app.use(advancedLogger(app) as any)
 
 app.use(securityMiddleware)
 
@@ -59,20 +61,20 @@ app.use(securityMiddleware)
 app.addHooks('routeNotFound',async (ctx:ContextType) => {
   const file = await Bun.file(`${import.meta.dir}/templates/routenotfound.html`)
   // console.log(file)
-  return new Response(file)
+  return new Response(file,{status:404})
   // return ctx.file(`${import.meta.dir}/templates/routenotfound.html`)
 
   // have problem with headers so
 })
 
-import homapge from './templates/index.html'
-import aboutpage from './templates/about.html'
-app.static(
-  {
-    "/":homapge,
-    "/about":aboutpage
-  }
-)
+// import homapge from './templates/index.html'
+// import aboutpage from './templates/about.html'
+// app.static(
+//   {
+//     "/":homapge,
+//     "/about":aboutpage
+//   }
+// )
 
 app.redirect("/name/:name/:age","/redirect/:name/:age")
 app.get("/redirect/:name/:age",(ctx) => {
@@ -101,6 +103,9 @@ app.serveStatic(`${import.meta.dirname}/public`)
    });
 
 app
+.get('/rd',(ctx) => {
+  return ctx.redirect('/test/pradeep/23')
+})
   .head("/", (ctx:ContextType) => {
     return ctx.send("")
   })
@@ -119,8 +124,8 @@ app
   })
   .get("/err",(ctx) =>{
     ctx.status = 400
-    throw new Error("Something went wrong yes");
-    // return ctx.send("Error");
+    // throw new Error("Somethin`g went wrong yes");
+    return ctx.send("Error",500);
   })
   .get("/query",async(ctx) =>{
     const name = ctx.query.name
@@ -167,7 +172,7 @@ app
     return ctx.json({ message: "Cookies set successfully" });
   });
 
-app.route("/api/user", userRoute)
+// app.route("/api/user", userRoute)
 
 app.get("/too",(ctx) => {return ctx.send("GETTT too")})
 app.post('/too',(ctx) =>{return ctx.send("Send posstt")})

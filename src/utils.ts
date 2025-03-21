@@ -88,7 +88,7 @@ function authenticateJwtMiddleware(jwt: any, user_jwt_secret: string) {
 
       ctx.set("user", decoded);
       return;
-    } catch (error) {
+    } catch (error:any) {
       // console.error("JWT verification error:", error?.message);
       return ctx.json({ message: "Unauthorized: Invalid token", error: error?.message }, 401);
     }
@@ -128,7 +128,7 @@ function authenticateJwtDbMiddleware(jwt: any, User: any, user_jwt_secret: strin
 
       ctx.set("user", user);
       return;
-    } catch (error) {
+    } catch (error:any) {
       // console.error("JWT/DB authentication error:", error?.message);
       return ctx.json({ message: "Unauthorized: Authentication failed",error: error?.message }, 401);
     }

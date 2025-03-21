@@ -1,6 +1,6 @@
 import type { Server } from 'bun'
-import Diesel from '../dist/main'
-import type { ContextType } from '../dist/types'
+import {Diesel} from '../index.js'
+import type { ContextType } from '../index'
 import { cors } from '../src/middlewares/cors/cors' 
 export const app = new Diesel()
 
@@ -10,7 +10,7 @@ async function authJwt(ctx:ContextType, server:Server):Promise<void | null | Res
   try {
     const token = await ctx.cookies.accessToken
   if (!token) {
-    return ctx.json({ message: 'Authentication token missing' }, 401)
+    return ctx.json({ message: 'Authentication token missing' },401)
   }
     const user = { id: 1, name: 'John Doe' }
     ctx.set('user',user)
@@ -40,9 +40,14 @@ app
 })
 
 app.get("/error", (ctx) => {
-  return ctx.json({ message: "Something went wrong!" }, 500);
-});
-
+  ctx.status=500
+  return ctx.json({ message: "Something went wrong!" });
+})
+app.get("/err",(ctx) =>{
+  ctx.status = 500
+  // throw new Error("Somethin`g went wrong yes");
+  return ctx.send("Error");
+})
 app
 .get('/api/protected', authJwt, async (ctx) => {
   return ctx.json({ msg: 'Authenticated user' })
@@ -71,7 +76,7 @@ app.post("/body", async (ctx) => {
     const body = await ctx.body; 
     return ctx.json(body); 
   } catch (error:any) {
-    return ctx.json({ error: error.message }, 400); 
+    return ctx.json({ error: error.message },400); 
   }
 });
 

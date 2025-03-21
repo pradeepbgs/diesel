@@ -22,7 +22,11 @@ export default class Diesel {
     staticPath: any;
     staticFiles: any;
     private user_jwt_secret;
-    constructor();
+    private baseApiUrl;
+    constructor({ jwtSecret, baseApiUrl }?: {
+        jwtSecret?: string;
+        baseApiUrl?: string;
+    });
     setupFilter(): FilterMethods;
     redirect(incomingPath: string, redirectPath: string, statusCode?: 302): this;
     serveStatic(filePath: string): this;

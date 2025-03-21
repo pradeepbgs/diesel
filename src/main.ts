@@ -42,10 +42,21 @@ export default class Diesel {
   staticPath: any;
   staticFiles: any
   private user_jwt_secret: string
+  private baseApiUrl: string
 
-  constructor() {
+  constructor(
+    {
+      jwtSecret,
+      baseApiUrl
+    }
+      : {
+        jwtSecret?: string,
+        baseApiUrl?: string
+      } = {}
+  ) {
 
-    this.user_jwt_secret = process.env.DIESEL_JWT_SECRET ?? 'feault_diesel_secret_for_jwt'
+    this.baseApiUrl = baseApiUrl || ''
+    this.user_jwt_secret = jwtSecret || process.env.DIESEL_JWT_SECRET || 'feault_diesel_secret_for_jwt'
     this.tempRoutes = new Map();
     this.globalMiddlewares = [];
     this.middlewares = new Map();
@@ -157,9 +168,9 @@ export default class Diesel {
     return this;
   }
 
-  
+
   static(
-    args :Record<string, string>
+    args: Record<string, string>
   ): this {
     this.staticFiles = { ...this.staticFiles, ...args };
     return this;
@@ -233,37 +244,40 @@ export default class Diesel {
 
   private async registerFileRoutes(
     filePath: string,
-    baseRoute: string
+    baseRoute: string,
+    extension: string
   ) {
-    // console.log('registering file routes')
     const module = await import(filePath);
-    let routePath = baseRoute + '/' + path.basename(filePath, '.ts');
+
+    let pathRoute;
+    if (extension === '.ts') {
+      pathRoute = path.basename(filePath, '.ts');
+    }
+    else if (extension === '.js') {
+      pathRoute = path.basename(filePath, '.js');
+    }
+
+    let routePath = baseRoute + '/' + pathRoute;
+
     // Remove `/index` if present
     if (routePath.endsWith('/index')) {
       routePath = baseRoute
     }
-    // console.log('routePath', routePath)
+   
+    // here we can check if routePath include [] like - user/[id] if yes then remove [] and add user:id
+    routePath = routePath.replace(/\[(.*?)\]/g, ':$1');
 
     const supportedMethods: HttpMethod[] = [
       'GET', 'POST', 'PUT', 'PATCH',
       'DELETE', 'ANY', 'HEAD', 'OPTIONS', 'PROPFIND'
     ];
 
-    // console.log('module', module)
     for (const method of supportedMethods) {
-      // console.log('method', method)
       if (module[method]) {
         const lowerMethod = method as HttpMethod;
-        // this[lowerMethod](routePath, module[method] as handlerFunction);
         const handler = module[method] as handlerFunction;
-        // console.log('handler', handler)
-        this.trie.insert(routePath, { handler, method: lowerMethod });
-        // console.log('inserted route', routePath, lowerMethod, 'with handler', handler)
-
-        // if (routePath === '/user/profile') {
-        //   console.log(this.trie.search("/user/profile",'GET'))
-        //   // console.log(module[method]())
-        // }
+        this.trie.insert(`${this.baseApiUrl}${routePath}`, { handler, method: lowerMethod });
+        // console.log(`${this.baseApiUrl}${routePath}`);
       }
     }
   }
@@ -284,8 +298,12 @@ export default class Diesel {
 
       if (stat.isDirectory()) {
         this.loadRoutes(filePath, baseRoute + '/' + file);
-      } else if (file.endsWith('.ts')) {
-        this.registerFileRoutes(filePath, baseRoute);
+      }
+      else if (file.endsWith('.ts')) {
+        this.registerFileRoutes(filePath, baseRoute, '.ts');
+      }
+      else if (file.endsWith('.js')) {
+        this.registerFileRoutes(filePath, baseRoute, '.js');
       }
     }
   }
@@ -311,15 +329,24 @@ export default class Diesel {
       }
     }
 
+    this.compile();
+
     const ServerOptions: any = {
       port,
       hostname,
       fetch: async (req: Request, server: Server) => {
         const url: URL = new URL(req.url);
-        if (this.hooks.onRequest) {
-          this.hooks.onRequest(req, url, server);
+        try {
+          if (this.hooks.onRequest) {
+            this.hooks.onRequest(req, url, server);
+          }
+          return await handleRequest(req, server, url, this as DieselT)
+        } catch (error: any) {
+          return this.hooks.onError
+            ? this.hooks.onError(error, req, url, server)
+            : new Response(JSON.stringify({ message: "Internal Server Error", error: error?.message, status: 500, }), { status: 500 });
+
         }
-        return await handleRequest(req, server, url, this as DieselT);
       },
       static: this.staticFiles,
       development: true,
@@ -331,17 +358,16 @@ export default class Diesel {
       ServerOptions.keyFile = options.sslKey;
     }
 
-    this.compile();
     this.serverInstance = Bun?.serve(ServerOptions);
 
     if (options.sslCert && options.sslKey) {
       console.log(`HTTPS server is running on https://localhost:${port}`);
-    } 
+    }
     // console.log('logging trie', this.trie.search("/user/videos",'GET'))
     if (callback) {
       return callback();
     }
-    
+
     return this.serverInstance;
   }
 
