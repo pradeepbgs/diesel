@@ -8,12 +8,14 @@ import {cors} from "../src/middlewares/cors/cors";
 import { securityMiddleware } from "../src/middlewares/security/security";
 import {fileSaveMiddleware} from './middleware/saveFile'
 import {advancedLogger, logger} from '../src/middlewares/logger/logger'
+// import {loadRoutes} from 'ex-router'
 
-const app = new Diesel({
-  baseApiUrl:'/api/v1'
-});
+const app = new Diesel();
 const SECRET_KEY = "linux";
-
+// this is my external lib fro file based routing
+// loadRoutes(app,{
+//   routeDir:process.cwd()+'/src/routes'
+// })
 const port = process.env.PORT ?? 3000
 
 
@@ -31,11 +33,11 @@ export async function authJwt(ctx: ContextType): Promise<void | null | Response>
   }
 }
 
-app.use(cors({
-  origin: "http://localhost:3000",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-}))
+// app.use(cors({
+//   origin: "http://localhost:3000",
+//   methods: ["GET", "POST", "PUT", "DELETE"],
+//   allowedHeaders: ["Content-Type", "Authorization"],
+// }))
 
 // app.setupFilter()
 // .routeMatcher("/cookie",'/')
@@ -55,7 +57,7 @@ app.addHooks("onError", (error: any, req: Request, url: URL) => {
 //app.use(logger(app) as any)
 //  app.use(advancedLogger(app) as any)
 
-app.use(securityMiddleware)
+// app.use(securityMiddleware)
 
 
 app.addHooks('routeNotFound',async (ctx:ContextType) => {
@@ -99,7 +101,7 @@ app.serveStatic(`${import.meta.dirname}/public`)
  app.get("/", async (ctx: ContextType) => {
     //  await new Promise((resolve) => setTimeout(resolve, 100));
     // ctx.status = 400
-    return ctx.send("Hello world from /")
+    return ctx.text("Hello world")
    });
 
 app
