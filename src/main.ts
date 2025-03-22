@@ -46,8 +46,8 @@ export default class Diesel {
 
   constructor(
     {
-      jwtSecret,
-      baseApiUrl
+      jwtSecret = '',
+      baseApiUrl = ''
     }
       : {
         jwtSecret?: string,
@@ -229,14 +229,10 @@ export default class Diesel {
     }
 
     const projectRoot = process.cwd();
-    // console.log('project root:-> ', projectRoot)
     const routesPath = path.join(projectRoot, 'src', 'routes');
     if (fs?.existsSync(routesPath)) {
-      // console.log('calling loadroutes')
       this.loadRoutes(routesPath, '');
     }
-    // console.log('routesPath', routesPath)
-    // this.loadRoutes(routesPath,'')
     setTimeout(() => {
       this.tempRoutes = null
     }, 2000);
@@ -259,11 +255,12 @@ export default class Diesel {
 
     let routePath = baseRoute + '/' + pathRoute;
 
-    // Remove `/index` if present
     if (routePath.endsWith('/index')) {
       routePath = baseRoute
     }
-   
+    else if (routePath.endsWith('/api')) {
+      routePath = baseRoute
+    }
     // here we can check if routePath include [] like - user/[id] if yes then remove [] and add user:id
     routePath = routePath.replace(/\[(.*?)\]/g, ':$1');
 
@@ -276,7 +273,7 @@ export default class Diesel {
       if (module[method]) {
         const lowerMethod = method as HttpMethod;
         const handler = module[method] as handlerFunction;
-        this.trie.insert(`${this.baseApiUrl}${routePath}`, { handler, method: lowerMethod });
+        this[lowerMethod.toLocaleLowerCase()](`${this.baseApiUrl}${routePath}`, handler)
         // console.log(`${this.baseApiUrl}${routePath}`);
       }
     }
@@ -287,13 +284,10 @@ export default class Diesel {
     dirPath: string,
     baseRoute: string
   ) {
-    // console.log('\ncalled\n')
     const files = await fs.promises.readdir(dirPath);
 
     for (const file of files) {
-      // console.log('does file exist?', file)
       const filePath = path.join(dirPath, file);
-      // console.log('file path', filePath)
       const stat = await fs.promises.stat(filePath);
 
       if (stat.isDirectory()) {
@@ -336,17 +330,17 @@ export default class Diesel {
       hostname,
       fetch: async (req: Request, server: Server) => {
         const url: URL = new URL(req.url);
-        try {
-          if (this.hooks.onRequest) {
-            this.hooks.onRequest(req, url, server);
-          }
-          return await handleRequest(req, server, url, this as DieselT)
-        } catch (error: any) {
-          return this.hooks.onError
-            ? this.hooks.onError(error, req, url, server)
-            : new Response(JSON.stringify({ message: "Internal Server Error", error: error?.message, status: 500, }), { status: 500 });
-
+        // try {
+        if (this.hooks.onRequest) {
+          this.hooks.onRequest(req, url, server);
         }
+        return await handleRequest(req, server, url, this as DieselT)
+        // } catch (error: any) {
+        //   return this.hooks.onError
+        //     ? this.hooks.onError(error, req, url, server)
+        //     : new Response(JSON.stringify({ message: "Internal Server Error", error: error?.message, status: 500, }), { status: 500 });
+
+        // }
       },
       static: this.staticFiles,
       development: true,
@@ -363,7 +357,6 @@ export default class Diesel {
     if (options.sslCert && options.sslKey) {
       console.log(`HTTPS server is running on https://localhost:${port}`);
     }
-    // console.log('logging trie', this.trie.search("/user/videos",'GET'))
     if (callback) {
       return callback();
     }
