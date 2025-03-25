@@ -19,6 +19,7 @@ import {
 } from "./types.js";
 import { Server } from "bun";
 import { authenticateJwtDbMiddleware, authenticateJwtMiddleware } from "./utils.js";
+import { advancedLogger, logger } from "./middlewares/logger/logger.js";
 
 export default class Diesel {
 
@@ -43,18 +44,22 @@ export default class Diesel {
   staticFiles: any
   private user_jwt_secret: string
   private baseApiUrl: string
+  private enableFileRouter: boolean
 
   constructor(
     {
-      jwtSecret = '',
-      baseApiUrl = ''
+      jwtSecret,
+      baseApiUrl,
+      enableFileRouting
     }
       : {
         jwtSecret?: string,
-        baseApiUrl?: string
+        baseApiUrl?: string,
+        enableFileRouting?: boolean
       } = {}
   ) {
 
+    this.enableFileRouter = enableFileRouting ?? false
     this.baseApiUrl = baseApiUrl || ''
     this.user_jwt_secret = jwtSecret || process.env.DIESEL_JWT_SECRET || 'feault_diesel_secret_for_jwt'
     this.tempRoutes = new Map();
@@ -218,9 +223,11 @@ export default class Diesel {
   }
 
   private compile(): void {
+
     if (this.globalMiddlewares.length > 0) {
       this.hasMiddleware = true;
     }
+
     for (const [_, middlewares] of this.middlewares.entries()) {
       if (middlewares.length > 0) {
         this.hasMiddleware = true;
@@ -228,14 +235,18 @@ export default class Diesel {
       }
     }
 
-    const projectRoot = process.cwd();
-    const routesPath = path.join(projectRoot, 'src', 'routes');
-    if (fs?.existsSync(routesPath)) {
-      this.loadRoutes(routesPath, '');
+    if (this.enableFileRouter) {
+      const projectRoot = process.cwd();
+      const routesPath = path.join(projectRoot, 'src', 'routes');
+      if (fs?.existsSync(routesPath)) {
+        this.loadRoutes(routesPath, '');
+      }
     }
+
     setTimeout(() => {
       this.tempRoutes = null
     }, 2000);
+
   }
 
   private async registerFileRoutes(
@@ -300,6 +311,16 @@ export default class Diesel {
         this.registerFileRoutes(filePath, baseRoute, '.js');
       }
     }
+  }
+
+  useLogger(app:any){
+    logger(app)
+    return this
+  }
+
+  useAdvancedLogger(app:any){
+    advancedLogger(app)
+    return this
   }
 
   listen(

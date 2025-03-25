@@ -23,9 +23,11 @@ export default class Diesel {
     staticFiles: any;
     private user_jwt_secret;
     private baseApiUrl;
-    constructor({ jwtSecret, baseApiUrl }?: {
+    private enableFileRouter;
+    constructor({ jwtSecret, baseApiUrl, enableFileRouting }?: {
         jwtSecret?: string;
         baseApiUrl?: string;
+        enableFileRouting?: boolean;
     });
     setupFilter(): FilterMethods;
     redirect(incomingPath: string, redirectPath: string, statusCode?: 302): this;
@@ -35,6 +37,8 @@ export default class Diesel {
     private compile;
     private registerFileRoutes;
     private loadRoutes;
+    useLogger(app: any): this;
+    useAdvancedLogger(app: any): this;
     listen(port: any, ...args: listenArgsT[]): Server | void;
     close(callback?: () => void): void;
     /**

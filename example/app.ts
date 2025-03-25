@@ -10,7 +10,10 @@ import {fileSaveMiddleware} from './middleware/saveFile'
 import {advancedLogger, logger} from '../src/middlewares/logger/logger'
 // import {loadRoutes} from 'ex-router'
 
-const app = new Diesel();
+const app = new Diesel({
+  enableFileRouting:true
+});
+
 const SECRET_KEY = "linux";
 // this is my external lib fro file based routing
 // loadRoutes(app,{
@@ -42,9 +45,8 @@ export async function authJwt(ctx: ContextType): Promise<void | null | Response>
 // app.setupFilter()
 // .routeMatcher("/cookie",'/')
 // .permitAll()
-// .authenticateJwt(jwt)
-// .routeMatcher("/rt")
-// .authenticateJwt(jwt)
+
+
 
 // Error Handling Hook
 app.addHooks("onError", (error: any, req: Request, url: URL) => {
@@ -54,7 +56,8 @@ app.addHooks("onError", (error: any, req: Request, url: URL) => {
 });
 
 
-//app.use(logger(app) as any)
+// app.useLogger(app)
+// app.use(logger(app) as any)
 //  app.use(advancedLogger(app) as any)
 
 // app.use(securityMiddleware)
@@ -100,7 +103,7 @@ app.serveStatic(`${import.meta.dirname}/public`)
   
  app.get("/", async (ctx: ContextType) => {
     //  await new Promise((resolve) => setTimeout(resolve, 100));
-    // ctx.status = 400
+    ctx.status = 400
     return ctx.text("Hello world")
    });
 

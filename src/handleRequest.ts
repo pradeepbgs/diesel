@@ -28,20 +28,24 @@ export default async function handleRequest(
     }
 
     if (diesel.hasMiddleware) {
-      const globalMiddlewareResponse = await executeMiddlewares(
-        diesel.globalMiddlewares,
-        ctx,
-        server
-      );
-      if (globalMiddlewareResponse) return globalMiddlewareResponse;
+      if (diesel.globalMiddlewares.length) {
+        const globalMiddlewareResponse = await executeMiddlewares(
+          diesel.globalMiddlewares,
+          ctx,
+          server
+        );
+        if (globalMiddlewareResponse) return globalMiddlewareResponse;
+      }
 
       const pathMiddlewares = diesel.middlewares.get(url.pathname) || [];
-      const pathMiddlewareResponse = await executeMiddlewares(
-        pathMiddlewares,
-        ctx,
-        server
-      );
-      if (pathMiddlewareResponse) return pathMiddlewareResponse;
+      if (pathMiddlewares?.length) {
+        const pathMiddlewareResponse = await executeMiddlewares(
+          pathMiddlewares,
+          ctx,
+          server
+        );
+        if (pathMiddlewareResponse) return pathMiddlewareResponse;
+      }
     }
 
     if (!routeHandler?.handler || routeHandler.method !== req.method) {
@@ -89,7 +93,9 @@ export default async function handleRequest(
       ? diesel.hooks.onError(error, req, url, server)
       : generateErrorResponse(500, "Internal Server Error");
   } finally {
-    if (diesel.hooks.postHandler) diesel.hooks.postHandler(ctx);
+    if (diesel.hooks.postHandler) {
+      diesel.hooks.postHandler(ctx);
+    }
   }
 }
 
@@ -100,6 +106,7 @@ async function executeMiddlewares(
   server: Server
 ): Promise<Response | null> {
   for (const middleware of middlewares) {
+    console.log(`middlewares: `, middleware)
     const result = await middleware(ctx, server);
     if (result) return result;
   }
