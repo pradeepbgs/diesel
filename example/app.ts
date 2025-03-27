@@ -56,7 +56,8 @@ app.addHooks("onError", (error: any, req: Request, url: URL) => {
 });
 
 
-// app.useLogger(app)
+app.useLogger(app)
+// app.useAdvancedLogger(app)
 // app.use(logger(app) as any)
 //  app.use(advancedLogger(app) as any)
 
@@ -66,6 +67,7 @@ app.addHooks("onError", (error: any, req: Request, url: URL) => {
 app.addHooks('routeNotFound',async (ctx:ContextType) => {
   const file = await Bun.file(`${import.meta.dir}/templates/routenotfound.html`)
   // console.log(file)
+  ctx.status = 404
   return new Response(file,{status:404})
   // return ctx.file(`${import.meta.dir}/templates/routenotfound.html`)
 
@@ -97,14 +99,17 @@ app.get("/redirect/:name/:age",(ctx) => {
 //   console.log(params)
 // })
 
-app.serveStatic(`${import.meta.dirname}/public`)
+// app.serveStatic(`${import.meta.dirname}/public`)
  
 // app.get("*",() => new Response(Bun.file(`${import.meta.dirname}/public/index.html`)) )
   
  app.get("/", async (ctx: ContextType) => {
     //  await new Promise((resolve) => setTimeout(resolve, 100));
     ctx.status = 400
-    return ctx.text("Hello world")
+    const headers = ctx.headers
+    return ctx.json({
+      header:headers
+    })
    });
 
 app
