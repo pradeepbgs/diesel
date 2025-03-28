@@ -36,7 +36,12 @@ Bun.build({
 })
 
 Bun.build({
-    entrypoints: ['./src/middlewares/cors/cors.ts', './src/middlewares/security/security.ts','./src/middlewares/logger/logger.ts'],
+    entrypoints: [
+        './src/middlewares/cors/cors.ts', 
+        './src/middlewares/security/security.ts',
+        './src/middlewares/logger/logger.ts',
+        './src/middlewares/filesave/savefile.ts'
+    ],
     outdir: './dist/middlewares',
     minify: true,
 })

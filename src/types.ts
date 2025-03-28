@@ -28,19 +28,20 @@ export interface onRequest {
 }
 
 export interface Hooks {
-    onRequest: onRequest | null;
-    preHandler: HookFunction | null;
-    postHandler: HookFunction | null;
-    onSend: HookFunction | null;
-    onError: onError | null;
-    onClose: HookFunction | null;
-    routeNotFound:HookFunction | null
+    onRequest: onRequest[] | null;
+    preHandler: HookFunction[] | null;
+    postHandler: HookFunction[] | null;
+    onSend: HookFunction[] | null;
+    onError: onError[] | null;
+    onClose: HookFunction[] | null;
+    routeNotFound:HookFunction[] | null
 }
 
 export interface ContextType {
     req: Request;
     server: Server;
     url: URL;
+    headers:Headers
     status: number;
     setHeader: (key: string, value: any) => this;
     json: (data: Object, status?: number) => Response;

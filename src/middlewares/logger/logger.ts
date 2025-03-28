@@ -49,7 +49,7 @@ export const advancedLogger = (app: any) => {
             url: url.toString(),
             headers: {
                 "user-agent": req.headers.get("user-agent"),
-                "content-type": req.headers.get("content-type"),
+                "content-type": req.headers.get("Content-Type"),
             },
         });
     });
@@ -62,6 +62,9 @@ export const advancedLogger = (app: any) => {
             url: ctx.url,
             status: ctx.status,
             duration,
+            headers: {
+                "content-type": ctx.headers.get("Content-Type"),
+            },
         });
     });
 };
@@ -89,12 +92,7 @@ const timeElapsed = (start: number) => {
 };
 
 export const logger = (app:any) => {
-    // app.addHooks('preHandler', async (ctx: ContextType) => {
-    //     const { method, url } = ctx.req;
-    //     const path = new URL(url).pathname;
-    //     logFormatted( LogPrefix.Incoming, method, path);
-    //     ctx.req.startTime = Date.now();
-    // });
+    
     app.addHooks('onRequest', (req: Request, url: URL) => {
         req.startTime = Date.now();
         logFormatted( LogPrefix.Incoming, req.method, new URL(url).pathname);
@@ -104,7 +102,9 @@ export const logger = (app:any) => {
         const path = new URL(url).pathname;
         logFormatted( LogPrefix.Outgoing, method, path, ctx.status, timeElapsed(ctx.req.startTime));
     });
-
+    app.addHooks('routeNotFound', (ctx: ContextType) => {
+        logFormatted('routeNotFound' as LogPrefix, ctx.req.method, ctx.url.pathname, 404);
+    })
     app.addHooks('onError', (error: any, req: Request, url: URL) => {
         log("error", "Error occurred", {
             method: req.method,

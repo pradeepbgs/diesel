@@ -17,7 +17,7 @@ import {
   type Hooks,
   type HttpMethod,
 } from "./types.js";
-import { Server } from "bun";
+import { serve, Server } from "bun";
 import { authenticateJwtDbMiddleware, authenticateJwtMiddleware } from "./utils.js";
 import { advancedLogger, logger } from "./middlewares/logger/logger.js";
 
@@ -74,13 +74,13 @@ export default class Diesel {
     this.hasOnSendHook = false;
     this.hasOnError = false;
     this.hooks = {
-      onRequest: null,
-      preHandler: null,
-      postHandler: null,
-      onSend: null,
-      onError: null,
-      onClose: null,
-      routeNotFound: null,
+      onRequest: [],
+      preHandler: [],
+      postHandler: [],
+      onSend: [],
+      onError: [],
+      onClose: [],
+      routeNotFound: [],
     };
     this.FilterRoutes = [];
     this.filters = new Set<string>();
@@ -196,25 +196,25 @@ export default class Diesel {
 
     switch (typeOfHook) {
       case "onRequest":
-        this.hooks.onRequest = fnc as onRequest;
+        this.hooks.onRequest?.push(fnc as onRequest)
         break;
       case "preHandler":
-        this.hooks.preHandler = fnc as HookFunction;
+        this.hooks.preHandler?.push(fnc as HookFunction)
         break;
       case "postHandler":
-        this.hooks.postHandler = fnc as HookFunction;
+        this.hooks.postHandler?.push(fnc as HookFunction)
         break;
       case "onSend":
-        this.hooks.onSend = fnc as HookFunction;
+        this.hooks.onSend?.push(fnc as HookFunction)
         break;
       case "onError":
-        this.hooks.onError = fnc as onError;
+        this.hooks.onError?.push(fnc as onError)
         break;
       case "onClose":
-        this.hooks.onClose = fnc as HookFunction;
+        this.hooks.onClose?.push(fnc as HookFunction)
         break;
       case "routeNotFound":
-        this.hooks.routeNotFound = fnc as HookFunction
+        this.hooks.routeNotFound?.push(fnc as HookFunction)
         break;
       default:
         throw new Error(`Unknown hook type: ${typeOfHook}`);
@@ -313,12 +313,12 @@ export default class Diesel {
     }
   }
 
-  useLogger(app:any){
+  useLogger(app: any) {
     logger(app)
     return this
   }
 
-  useAdvancedLogger(app:any){
+  useAdvancedLogger(app: any) {
     advancedLogger(app)
     return this
   }
@@ -351,18 +351,17 @@ export default class Diesel {
       hostname,
       fetch: async (req: Request, server: Server) => {
         const url: URL = new URL(req.url);
-        // try {
-        if (this.hooks.onRequest) {
-          this.hooks.onRequest(req, url, server);
-        }
-        return await handleRequest(req, server, url, this as DieselT)
-        // } catch (error: any) {
-        //   return this.hooks.onError
-        //     ? this.hooks.onError(error, req, url, server)
-        //     : new Response(JSON.stringify({ message: "Internal Server Error", error: error?.message, status: 500, }), { status: 500 });
 
-        // }
+        if (this.hooks.onRequest) {
+          const handlers = this.hooks.onRequest;
+          for (let i = 0; i < handlers.length; i++) {
+            await handlers[i](req, url, server);
+          }
+        }
+
+        return await handleRequest(req, server, url, this as DieselT)
       },
+
       static: this.staticFiles,
       development: true,
 

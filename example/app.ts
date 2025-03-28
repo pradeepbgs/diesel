@@ -6,7 +6,7 @@ import homapge from './templates/index.html'
 import aboutpage from './templates/about.html'
 import {cors} from "../src/middlewares/cors/cors";
 import { securityMiddleware } from "../src/middlewares/security/security";
-import {fileSaveMiddleware} from './middleware/saveFile'
+import {fileSaveMiddleware} from '../src/middlewares/filesave/savefile'
 import {advancedLogger, logger} from '../src/middlewares/logger/logger'
 // import {loadRoutes} from 'ex-router'
 
@@ -46,6 +46,13 @@ export async function authJwt(ctx: ContextType): Promise<void | null | Response>
 // .routeMatcher("/cookie",'/')
 // .permitAll()
 
+app
+.addHooks('onRequest',(req:Request) => {
+  console.log('onRequest hook called for',req.url)
+})
+.addHooks('onRequest',(req:Request)  => {
+  console.log('onRequest hook called 2 for', req.url)
+})
 
 
 // Error Handling Hook
@@ -56,7 +63,10 @@ app.addHooks("onError", (error: any, req: Request, url: URL) => {
 });
 
 
+app.use('/body',fileSaveMiddleware({ fields: ["avatar"] }));
+
 // app.useLogger(app)
+// app.useAdvancedLogger(app)
 // app.use(logger(app) as any)
 //  app.use(advancedLogger(app) as any)
 
@@ -66,6 +76,7 @@ app.addHooks("onError", (error: any, req: Request, url: URL) => {
 app.addHooks('routeNotFound',async (ctx:ContextType) => {
   const file = await Bun.file(`${import.meta.dir}/templates/routenotfound.html`)
   // console.log(file)
+  ctx.status = 404
   return new Response(file,{status:404})
   // return ctx.file(`${import.meta.dir}/templates/routenotfound.html`)
 
@@ -97,14 +108,17 @@ app.get("/redirect/:name/:age",(ctx) => {
 //   console.log(params)
 // })
 
-app.serveStatic(`${import.meta.dirname}/public`)
+// app.serveStatic(`${import.meta.dirname}/public`)
  
 // app.get("*",() => new Response(Bun.file(`${import.meta.dirname}/public/index.html`)) )
   
  app.get("/", async (ctx: ContextType) => {
     //  await new Promise((resolve) => setTimeout(resolve, 100));
     ctx.status = 400
-    return ctx.text("Hello world")
+    const headers = ctx.headers
+    return ctx.json({
+      header:headers
+    })
    });
 
 app
@@ -142,20 +156,11 @@ app
   })
 
   .post("/body", async (ctx) => {
-    const body = await ctx.body;
-    if (body) {
-        return ctx.json({
-            name: body.name,
-            password: body.password,
-            avatar: body.avatar ? {
-                name: body.avatar.name,
-                type: body.avatar.type,
-                size: body.avatar.size
-            } : null
-        });
-    }
-
-    return ctx.text("No body found");
+    const avatar = ctx.req.files?.avatar
+    return ctx.json({
+      msg:"from body",
+      avatar:avatar
+    })
 })
 
 

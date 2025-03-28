@@ -4,7 +4,6 @@ import type { ContextType, CookieOptions, ParseBodyResult } from "./types";
 import { getMimeType } from "./utils";
 
 export default function createCtx(req: Request, server: Server, url: URL): ContextType {
-  const headers: Headers = new Headers({ "Cache-Control": "no-cache" });
   let parsedQuery: Record<string, string> | null = null;
   let parsedParams: Record<string, string> | null = null;
   let parsedCookies: Record<string, string> | null = null;
@@ -16,13 +15,14 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
     server,
     url,
     status: 200,
+    headers: new Headers({ "Cache-Control": "no-cache" }),
     setHeader(key: string, value: string): ContextType {
-      headers.set(key, value);
+      this.headers.set(key, value);
       return this;
     },
 
     removeHeader(key: string): ContextType {
-      headers.delete(key)
+      this.headers.delete(key)
       return this
     },
 
@@ -79,12 +79,12 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
 
     text(data: string, status?: number) {
       if(status) this.status = status
-      if (!headers.has("Content-Type")) {
-        headers.set("Content-Type", "text/plain; charset=utf-8")
+      if (!this.headers.has("Content-Type")) {
+        this.headers.set("Content-Type", "text/plain; charset=utf-8")
       }
       return new Response(data, {
         status: this.status,
-        headers
+        headers:this.headers
       });
     },
 
@@ -101,29 +101,29 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
         : data instanceof ArrayBuffer ? "ArrayBuffer"
           : typeof data;
 
-      if (!headers.has("Content-Type")) {
-        headers.set("Content-Type", typeMap.get(dataType) ?? "text/plain; charset=utf-8");
+      if (!this.headers.has("Content-Type")) {
+        this.headers.set("Content-Type", typeMap.get(dataType) ?? "text/plain; charset=utf-8");
       }
 
       const responseData = dataType === "object" && data !== null ? JSON.stringify(data) : (data as any);
-      return new Response(responseData, { status: this.status, headers });
+      return new Response(responseData, { status: this.status, headers:this.headers });
     },
 
     json<T>(data: T, status?:number): Response {
       if(status) this.status = status;
-      if (!headers.has("Content-Type")) {
-        headers.set("Content-Type", "application/json; charset=utf-8");
+      if (!this.headers.has("Content-Type")) {
+        this.headers.set("Content-Type", "application/json; charset=utf-8");
       }
-      return new Response(JSON.stringify(data), { status: this.status, headers });
+      return new Response(JSON.stringify(data), { status: this.status,headers:this.headers});
     },
 
     file(filePath: string, mime_Type?: string,status?: number): Response {
       if(status) this.status = status;
       const file = Bun.file(filePath);
-      if (!headers.has("Content-Type")) {
-        headers.set("Content-Type", mime_Type ?? getMimeType(filePath));
+      if (!this.headers.has("Content-Type")) {
+        this.headers.set("Content-Type", mime_Type ?? getMimeType(filePath));
       }
-      return new Response(file, { status: this.status, headers });
+      return new Response(file, { status: this.status, headers:this.headers });
     },
 
     async ejs(viewPath: string, data = {}, status?: number): Promise<Response> {
@@ -152,8 +152,8 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       if(status) this.status=status
       else this.status = 302;
       
-      headers.set("Location", path);
-      return new Response(null, { status: this.status, headers });
+      this.headers.set("Location", path);
+      return new Response(null, { status: this.status, headers:this.headers });
     },
 
     setCookie(
@@ -175,7 +175,7 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       if (options.httpOnly) cookieString += `; HttpOnly`;
       if (options.sameSite) cookieString += `; SameSite=${options.sameSite}`;
 
-      headers.append("Set-Cookie", cookieString);
+      this.headers.append("Set-Cookie", cookieString);
 
       return this;
     },
