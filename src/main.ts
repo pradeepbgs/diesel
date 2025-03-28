@@ -17,7 +17,7 @@ import {
   type Hooks,
   type HttpMethod,
 } from "./types.js";
-import { Server } from "bun";
+import { serve, Server } from "bun";
 import { authenticateJwtDbMiddleware, authenticateJwtMiddleware } from "./utils.js";
 import { advancedLogger, logger } from "./middlewares/logger/logger.js";
 
@@ -313,12 +313,12 @@ export default class Diesel {
     }
   }
 
-  useLogger(app:any){
+  useLogger(app: any) {
     logger(app)
     return this
   }
 
-  useAdvancedLogger(app:any){
+  useAdvancedLogger(app: any) {
     advancedLogger(app)
     return this
   }
@@ -351,20 +351,17 @@ export default class Diesel {
       hostname,
       fetch: async (req: Request, server: Server) => {
         const url: URL = new URL(req.url);
-        // try {
+
         if (this.hooks.onRequest) {
-          for (const fn of this.hooks.onRequest) {
-            fn(req, url, server);
+          const handlers = this.hooks.onRequest;
+          for (let i = 0; i < handlers.length; i++) {
+            await handlers[i](req, url, server);
           }
         }
-        return await handleRequest(req, server, url, this as DieselT)
-        // } catch (error: any) {
-        //   return this.hooks.onError
-        //     ? this.hooks.onError(error, req, url, server)
-        //     : new Response(JSON.stringify({ message: "Internal Server Error", error: error?.message, status: 500, }), { status: 500 });
 
-        // }
+        return await handleRequest(req, server, url, this as DieselT)
       },
+
       static: this.staticFiles,
       development: true,
 

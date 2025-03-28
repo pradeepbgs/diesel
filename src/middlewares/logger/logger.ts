@@ -95,7 +95,6 @@ export const logger = (app:any) => {
     
     app.addHooks('onRequest', (req: Request, url: URL) => {
         req.startTime = Date.now();
-        console.log('\n')
         logFormatted( LogPrefix.Incoming, req.method, new URL(url).pathname);
     })
     app.addHooks('postHandler', async (ctx: ContextType) => {

@@ -19,6 +19,7 @@ export default async function handleRequest(
   );
 
   req.routePattern = routeHandler?.path;
+
   try {
 
     if (diesel.hasFilterEnabled) {
@@ -48,6 +49,7 @@ export default async function handleRequest(
       }
     }
 
+    // if route not found
     if (!routeHandler?.handler || routeHandler.method !== req.method) {
       if (diesel.staticPath) {
         const staticResponse = await handleStaticFiles(diesel, url.pathname, ctx);
@@ -59,8 +61,9 @@ export default async function handleRequest(
         }
       }
       if (diesel.hooks.routeNotFound?.length && Array.isArray(diesel.hooks.routeNotFound) && !routeHandler?.handler) {
-        for (const routeNotFound of diesel.hooks.routeNotFound) {
-          const routeNotFoundResponse = await routeNotFound(ctx);
+        const handlers = diesel.hooks.routeNotFound;
+        for (let i = 0; i < handlers.length; i++) {
+          const routeNotFoundResponse = await handlers[i](ctx);
           if (routeNotFoundResponse) return routeNotFoundResponse;
         }
       }
@@ -75,9 +78,11 @@ export default async function handleRequest(
 
     }
 
+    // pre-handler
     if (diesel.hooks.preHandler?.length && Array.isArray(diesel.hooks.preHandler)) {
-      for (const preHandler of diesel.hooks.preHandler) {
-        const preHandlerResponse = await preHandler(ctx);
+      const handlers = diesel.hooks.preHandler;
+      for (let i = 0; i < handlers.length; i++) {
+        const preHandlerResponse = await handlers[i](ctx);
         if (preHandlerResponse) return preHandlerResponse;
       }
     }
@@ -86,21 +91,29 @@ export default async function handleRequest(
     const finalResult = result instanceof Promise ? await result : result;
 
     if (diesel.hooks.onSend?.length && Array.isArray(diesel.hooks.onSend)) {
-      for (const onSend of diesel.hooks.onSend) {
-        const hookResponse = await onSend(ctx, finalResult);
-        if (hookResponse) return hookResponse;
+      const handlers = diesel.hooks.onSend;
+      for (let i = 0; i < handlers.length; i++) {
+        const onSendResponse = await handlers[i](ctx);
+        if (onSendResponse) return onSendResponse;
       }
     }
 
     return finalResult ?? generateErrorResponse(204, "No response from this handler");
-  } catch (error: any) {
+
+  }
+
+  catch (error: any) {
     return diesel.hooks.onError?.length && Array.isArray(diesel.hooks.onError)
       ? diesel.hooks.onError[0](error, req, url, server)
       : generateErrorResponse(500, "Internal Server Error");
-  } finally {
+  }
+
+  finally {
     if (diesel.hooks.postHandler?.length && Array.isArray(diesel.hooks.postHandler)) {
-      for (const postHandler of diesel.hooks.postHandler) {
-        await postHandler(ctx);
+      const handlers = diesel.hooks.postHandler;
+      for (let i = 0; i < handlers.length; i++) {
+        const postHandlerResponse = await handlers[i](ctx);
+        if (postHandlerResponse) return postHandlerResponse;
       }
     }
   }
@@ -113,7 +126,6 @@ async function executeMiddlewares(
   server: Server
 ): Promise<Response | null> {
   for (const middleware of middlewares) {
-    console.log(`middlewares: `, middleware)
     const result = await middleware(ctx, server);
     if (result) return result;
   }
@@ -168,3 +180,4 @@ export async function handleStaticFiles(
 
   return null
 }
+
