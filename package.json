@@ -39,6 +39,16 @@
       "types": "./dist/middlewares/ratelimit/rate-limit.d.ts",
       "import": "./dist/middlewares/ratelimit/rate-limit.js",
       "require": "./dist/middlewares/ratelimit/rate-limit.js"
+    },
+    "./redisStore":{
+      "types": "./dist/middlewares/ratelimit/implementation.d.ts",
+      "import": "./dist/middlewares/ratelimit/implementation.js",
+      "require": "./dist/middlewares/ratelimit/implementation.js"
+    },
+    "./dicedbStore":{
+      "types": "./dist/middlewares/ratelimit/implementation.d.ts",
+      "import": "./dist/middlewares/ratelimit/implementation.js",
+      "require": "./dist/middlewares/ratelimit/implementation.js"
     }
   },
   "scripts": {
