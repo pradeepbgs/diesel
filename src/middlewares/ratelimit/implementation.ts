@@ -1,10 +1,14 @@
-import { RateLimitStore } from "./interface";
+export interface RateLimitStore{
+    get(key:string): Promise<number | null>;
+    set(key:string, value:string, ttlMs:number): Promise<void>
+    reset(key:string): Promise<void>
+}
 
-
-export class RedisStore implements RateLimitStore{
+class RedisStore implements RateLimitStore{
     constructor(private redis:any){
         
     }
+    
     async get(key:string){
         const value = await this.redis.get(key)
         return value ? parseInt(value) : null
@@ -20,7 +24,7 @@ export class RedisStore implements RateLimitStore{
     
 }
 
-export class DiceDbStore implements RateLimitStore{
+class DiceDbStore implements RateLimitStore{
     constructor(private dicedb:any){
         
     }
@@ -37,4 +41,10 @@ export class DiceDbStore implements RateLimitStore{
         await this.dicedb.del(key)
     }
     
+}
+
+
+export {
+    RedisStore,
+    DiceDbStore
 }

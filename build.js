@@ -40,7 +40,9 @@ Bun.build({
         './src/middlewares/cors/cors.ts', 
         './src/middlewares/security/security.ts',
         './src/middlewares/logger/logger.ts',
-        './src/middlewares/filesave/savefile.ts'
+        './src/middlewares/filesave/savefile.ts',
+        './src/middlewares/ratelimit/rate-limit.ts',
+        './src/middlewares/ratelimit/implementation.ts',
     ],
     outdir: './dist/middlewares',
     minify: true,
