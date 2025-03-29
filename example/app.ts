@@ -8,6 +8,7 @@ import {cors} from "../src/middlewares/cors/cors";
 import { securityMiddleware } from "../src/middlewares/security/security";
 import {fileSaveMiddleware} from '../src/middlewares/filesave/savefile'
 import {advancedLogger, logger} from '../src/middlewares/logger/logger'
+import {rateLimit} from '../src/middlewares/ratelimit/rate-limit'
 // import {loadRoutes} from 'ex-router'
 
 const app = new Diesel({
@@ -46,13 +47,11 @@ export async function authJwt(ctx: ContextType): Promise<void | null | Response>
 // .routeMatcher("/cookie",'/')
 // .permitAll()
 
-app
-.addHooks('onRequest',(req:Request) => {
-  console.log('onRequest hook called for',req.url)
-})
-.addHooks('onRequest',(req:Request)  => {
-  console.log('onRequest hook called 2 for', req.url)
-})
+app.use(rateLimit({
+  windowMs: 1 * 60 * 1000, 
+  max: 5,
+  message: "Too many requests, please try again later."
+}))
 
 
 // Error Handling Hook
