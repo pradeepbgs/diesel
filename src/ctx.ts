@@ -114,7 +114,7 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       if (!this.headers.has("Content-Type")) {
         this.headers.set("Content-Type", "application/json; charset=utf-8");
       }
-      return new Response(JSON.stringify(data), { status: this.status,headers:this.headers});
+      return Response.json(data, { status: this.status, headers:this.headers })
     },
 
     file(filePath: string, mime_Type?: string,status?: number): Response {
@@ -155,6 +155,32 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       this.headers.set("Location", path);
       return new Response(null, { status: this.status, headers:this.headers });
     },
+
+    stream(callback: (controller: ReadableStreamDefaultController) => void) {
+      const headers = new Headers(this.headers)
+      const stream = new ReadableStream({
+        async start(controller) {
+          await callback(controller);
+          controller.close();
+        },
+      });
+
+      return new Response(stream, {
+        headers
+      });
+    },
+
+    yieldStream(callback: () => AsyncIterable<any>): Response {
+      return new Response(
+        {
+          async *[Symbol.asyncIterator]() {
+            yield* callback();
+          },
+        },
+        { headers:this.headers }
+      );
+    },
+    
 
     setCookie(
       name: string,

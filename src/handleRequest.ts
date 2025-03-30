@@ -98,7 +98,7 @@ export default async function handleRequest(
       }
     }
 
-    return finalResult ?? generateErrorResponse(204, "No response from this handler");
+    return finalResult ?? generateErrorResponse(204, "");
 
   }
 

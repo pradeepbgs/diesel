@@ -45,20 +45,23 @@ export default class Diesel {
   private user_jwt_secret: string
   private baseApiUrl: string
   private enableFileRouter: boolean
+  idleTimeOut:number
 
   constructor(
     {
       jwtSecret,
       baseApiUrl,
-      enableFileRouting
+      enableFileRouting,
+      idleTimeOut,
     }
       : {
         jwtSecret?: string,
         baseApiUrl?: string,
-        enableFileRouting?: boolean
+        enableFileRouting?: boolean,
+        idleTimeOut?:number
       } = {}
   ) {
-
+    this.idleTimeOut = idleTimeOut ?? 10
     this.enableFileRouter = enableFileRouting ?? false
     this.baseApiUrl = baseApiUrl || ''
     this.user_jwt_secret = jwtSecret || process.env.DIESEL_JWT_SECRET || 'feault_diesel_secret_for_jwt'
@@ -349,6 +352,7 @@ export default class Diesel {
     const ServerOptions: any = {
       port,
       hostname,
+     idleTimeOut:this.idleTimeOut,
       fetch: async (req: Request, server: Server) => {
         const url: URL = new URL(req.url);
 

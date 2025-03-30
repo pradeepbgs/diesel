@@ -32,12 +32,26 @@ interface LogMeta {
 const log = (level: LogLevel, message: string, meta?: LogMeta) => {
     const color = COLORS[level] || COLORS.reset;
     const methodColor = meta?.method ? COLORS.method[meta.method as keyof typeof COLORS.method] || COLORS.reset : COLORS.reset;
+    const statusColor = meta?.status 
+        ? (meta.status >= 500 
+            ? COLORS.error 
+            : meta.status >= 400 
+            ? COLORS.warn 
+            : COLORS.info)
+        : COLORS.reset;
 
     console.log(
         `\n${color}[${level.toUpperCase()}]${COLORS.reset} ${message} - ${methodColor}${meta?.method || ""}${COLORS.reset}`
     );
 
-    console.log(JSON.stringify({ timestamp: new Date().toISOString(), ...meta }, null, 2) + "\n");
+    const formattedMeta = {
+        timestamp: new Date().toISOString(),
+        ...meta,
+        status: meta?.status ? `${statusColor}${meta.status}${COLORS.reset}` : undefined,
+        method: meta?.method ? `${methodColor}${meta.method}${COLORS.reset}` : undefined,
+    };
+
+    console.log(JSON.stringify(formattedMeta, null, 2) + "\n");
 };
 
 export const advancedLogger = (app: any) => {
@@ -72,17 +86,23 @@ export const advancedLogger = (app: any) => {
 type PrintFunc = (str: string, ...rest: string[]) => void;
 
 const logFormatted = (
-    // fn: PrintFunc,
     prefix: LogPrefix,
     method: string,
     path: string,
     status: number = 0,
     elapsed?: string
 ) => {
+    const methodColor = COLORS.method[method as keyof typeof COLORS.method] || COLORS.reset;
+    const statusColor = status >= 500 
+        ? COLORS.error 
+        : status >= 400 
+        ? COLORS.warn 
+        : COLORS.info;
+
     const message =
         prefix === LogPrefix.Incoming
-            ? `${prefix} ${method} ${path}`
-            : `${prefix} ${method} ${path} ${status} ${elapsed || ""}`;
+            ? `${prefix} ${methodColor}${method}${COLORS.reset} ${path}`
+            : `${prefix} ${methodColor}${method}${COLORS.reset} ${path} ${statusColor}${status}${COLORS.reset} ${elapsed || ""}`;
     console.log(message);
 };
 
@@ -106,9 +126,11 @@ export const logger = (app:any) => {
         logFormatted('routeNotFound' as LogPrefix, ctx.req.method, ctx.url.pathname, 404);
     })
     app.addHooks('onError', (error: any, req: Request, url: URL) => {
-        log("error", "Error occurred", {
-            method: req.method,
-            url: url.toString(),
-        });
+        logFormatted(error?.message as LogPrefix,
+            req.method,
+            url.toString(),
+            500
+        );
+        return new Response("Internal Server Error", { status: 500 });
     });
 };
