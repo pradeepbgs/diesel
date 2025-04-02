@@ -68,9 +68,8 @@ export const advancedLogger = (app: any) => {
         });
     });
 
-    app.addHooks("postHandler", (ctx: any) => {
+    app.addHooks("onSend", (ctx: any) => {
         const duration = `${Date.now() - ctx.req.startTime}ms`;
-
         log("info", "Response Sent", {
             method: ctx.req.method,
             url: ctx.url,
@@ -117,13 +116,13 @@ export const logger = (app:any) => {
         req.startTime = Date.now();
         logFormatted( LogPrefix.Incoming, req.method, new URL(url).pathname);
     })
-    app.addHooks('postHandler', async (ctx: ContextType) => {
+    app.addHooks('onSend', async (ctx: ContextType) => {
         const { method, url } = ctx.req;
         const path = new URL(url).pathname;
         logFormatted( LogPrefix.Outgoing, method, path, ctx.status, timeElapsed(ctx.req.startTime));
     });
     app.addHooks('routeNotFound', (ctx: ContextType) => {
-        logFormatted('routeNotFound' as LogPrefix, ctx.req.method, ctx.url.pathname, 404);
+        logFormatted('[routeNotFound]' as LogPrefix, ctx.req.method, ctx.url.pathname, 404);
     })
     app.addHooks('onError', (error: any, req: Request, url: URL) => {
         logFormatted(error?.message as LogPrefix,
@@ -131,6 +130,5 @@ export const logger = (app:any) => {
             url.toString(),
             500
         );
-        return new Response("Internal Server Error", { status: 500 });
     });
 };

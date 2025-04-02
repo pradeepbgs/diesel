@@ -17,7 +17,7 @@ import {
   type Hooks,
   type HttpMethod,
 } from "./types.js";
-import { serve, Server } from "bun";
+import {BunRequest, Server} from "bun";
 import { authenticateJwtDbMiddleware, authenticateJwtMiddleware } from "./utils.js";
 import { advancedLogger, logger } from "./middlewares/logger/logger.js";
 
@@ -61,6 +61,7 @@ export default class Diesel {
         idleTimeOut?:number
       } = {}
   ) {
+    
     this.idleTimeOut = idleTimeOut ?? 10
     this.enableFileRouter = enableFileRouting ?? false
     this.baseApiUrl = baseApiUrl || ''
@@ -257,6 +258,7 @@ export default class Diesel {
     baseRoute: string,
     extension: string
   ) {
+    
     const module = await import(filePath);
 
     let pathRoute;
@@ -285,10 +287,9 @@ export default class Diesel {
 
     for (const method of supportedMethods) {
       if (module[method]) {
-        const lowerMethod = method as HttpMethod;
+        const lowerMethod = method.toLowerCase() as HttpMethod;
         const handler = module[method] as handlerFunction;
-        this[lowerMethod.toLocaleLowerCase()](`${this.baseApiUrl}${routePath}`, handler)
-        // console.log(`${this.baseApiUrl}${routePath}`);
+        this[lowerMethod](`${this.baseApiUrl}${routePath}`, handler)
       }
     }
   }
@@ -353,21 +354,22 @@ export default class Diesel {
       port,
       hostname,
      idleTimeOut:this.idleTimeOut,
-      fetch: async (req: Request, server: Server) => {
+      
+     fetch: async (req: BunRequest, server: Server) => {
         const url: URL = new URL(req.url);
-
+        
         if (this.hooks.onRequest) {
           const handlers = this.hooks.onRequest;
           for (let i = 0; i < handlers.length; i++) {
             await handlers[i](req, url, server);
           }
         }
-
-        return await handleRequest(req, server, url, this as DieselT)
+        
+        return handleRequest(req, server, url, this as DieselT)
       },
 
       static: this.staticFiles,
-      development: true,
+      // development: false,
 
     };
 

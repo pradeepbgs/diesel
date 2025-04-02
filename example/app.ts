@@ -10,9 +10,9 @@ import {fileSaveMiddleware} from '../src/middlewares/filesave/savefile'
 import {advancedLogger, logger} from '../src/middlewares/logger/logger'
 import {rateLimit} from '../src/middlewares/ratelimit/rate-limit'
 // import {loadRoutes} from 'ex-router'
-
+import {poweredBy} from '../src/middlewares/powered-by/index'
 const app = new Diesel({
-  enableFileRouting:true
+  enableFileRouting:true,
 });
 
 const SECRET_KEY = "linux";
@@ -24,18 +24,18 @@ const port = process.env.PORT ?? 3000
 
 
 // Authentication Middleware
-export async function authJwt(ctx: ContextType): Promise<void | null | Response> {
-  const token = ctx.cookies?.accessToken
-  if (!token) {
-    return ctx.json({ message: "Authentication token missing" },401);
-  }
-  try {
-    const user = jwt.verify(token, SECRET_KEY);
-    ctx.set('user',user);
-  } catch (error) {
-    return ctx.json({ message: "Invalid token" },403);
-  }
-}
+// export async function authJwt(ctx: ContextType): Promise<void | null | Response> {
+//   const token = ctx.cookies?.accessToken
+//   if (!token) {
+//     return ctx.json({ message: "Authentication token missing" },401);
+//   }
+//   try {
+//     const user = jwt.verify(token, SECRET_KEY);
+//     ctx.set('user',user);
+//   } catch (error) {
+//     return ctx.json({ message: "Invalid token" },403);
+//   }
+// }
 
 // app.use(cors({
 //   origin: "http://localhost:3000",
@@ -43,9 +43,11 @@ export async function authJwt(ctx: ContextType): Promise<void | null | Response>
 //   allowedHeaders: ["Content-Type", "Authorization"],
 // }))
 
-// app.setupFilter()
-// .routeMatcher("/cookie",'/')
-// .permitAll()
+
+app.setupFilter()
+.routeMatcher("/cookie",'/')
+.permitAll()
+.authenticateJwt(jwt)
 
 // app.use(rateLimit({
 //   windowMs: 1 * 60 * 1000, 
@@ -55,9 +57,8 @@ export async function authJwt(ctx: ContextType): Promise<void | null | Response>
 
 
 app.use('/body',fileSaveMiddleware({ fields: ["avatar"] }));
-
-// app.useLogger(app)
-// app.useAdvancedLogger(app)
+app.useLogger(app)
+// app.useAdvancedLogger(app) 
 // app.use(logger(app) as any)
 //  app.use(advancedLogger(app) as any)
 
@@ -70,6 +71,7 @@ app.addHooks('routeNotFound',async (ctx:ContextType) => {
   return new Response(file,{status:404})
   // return ctx.file(`${import.meta.dir}/templates/routenotfound.html`)
 })
+
 
 // import homapge from './templates/index.html'
 // import aboutpage from './templates/about.html'
@@ -125,10 +127,10 @@ return c.text("txt")
 
 
  app.get("/", async (ctx: ContextType) => {
-    //  await new Promise((resolve) => setTimeout(resolve, 100));
     ctx.status = 400
     const headers = ctx.headers
     return ctx.json({
+      msg:"Sending headers",
       header:headers
     })
    });
@@ -155,7 +157,7 @@ app
   })
   .get("/err",(ctx) =>{
     ctx.status = 400
-    // throw new Error("Somethin`g went wrong yes");
+    throw new Error("Somethin`g went wrong yes");
     return ctx.send("Error",500);
   })
   .get("/query",async(ctx) =>{
