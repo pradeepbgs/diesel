@@ -37,7 +37,6 @@ function authenticateJwtMiddleware(jwt: any, user_jwt_secret: string) {
   return (ctx: ContextType) => {
     try {
       let token = ctx.cookies?.accessToken || ctx.req?.headers?.get("Authorization");
-
       if (!token) {
         return ctx.json({ message: "Unauthorized: No token provided" }, 401);
       }
@@ -46,15 +45,13 @@ function authenticateJwtMiddleware(jwt: any, user_jwt_secret: string) {
         token = token.slice(7);
       }
       const decoded = jwt?.verify(token, user_jwt_secret);
-
       if (!decoded) {
         return ctx.json({ message: "Unauthorized: Invalid token" }, 401);
       }
 
       ctx.set("user", decoded);
-      return;
     } catch (error:any) {
-      // console.error("JWT verification error:", error?.message);
+      console.error("JWT verification error:", error);
       return ctx.json({ message: "Unauthorized: Invalid token", error: error?.message }, 401);
     }
   };

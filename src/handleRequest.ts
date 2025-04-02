@@ -1,11 +1,11 @@
-import { Server } from "bun";
+import { BunRequest, Server } from "bun";
 import createCtx from "./ctx";
 import type { ContextType, DieselT, RouteHandlerT } from "./types";
 import { getMimeType } from "./utils";
 
 
 export default async function handleRequest(
-  req: Request,
+  req: BunRequest,
   server: Server,
   url: URL,
   diesel: DieselT
@@ -21,7 +21,9 @@ export default async function handleRequest(
   req.routePattern = routeHandler?.path;
 
   try {
-
+    if (url.pathname.startsWith("/favicon")) {
+      return;
+    }
     if (diesel.hasFilterEnabled) {
       const path = req.routePattern ?? url.pathname;
       const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
@@ -57,10 +59,10 @@ export default async function handleRequest(
 
         const wildCard = diesel.trie.search("*", req.method)
         if (wildCard?.handler) {
-          return (await wildCard.handler(ctx)) as Response;
+          return (await wildCard.handler(ctx));
         }
       }
-      if (diesel.hooks.routeNotFound?.length && Array.isArray(diesel.hooks.routeNotFound) && !routeHandler?.handler) {
+      if (diesel.hooks.routeNotFound && Array.isArray(diesel.hooks.routeNotFound) && !routeHandler?.handler) {
         const handlers = diesel.hooks.routeNotFound;
         for (let i = 0; i < handlers.length; i++) {
           const routeNotFoundResponse = await handlers[i](ctx);
@@ -89,31 +91,25 @@ export default async function handleRequest(
 
     const result = routeHandler.handler(ctx);
     const finalResult = result instanceof Promise ? await result : result;
+    return finalResult ?? generateErrorResponse(204, "");
 
-    if (diesel.hooks.onSend?.length && Array.isArray(diesel.hooks.onSend)) {
+  }
+  catch (error: any) {
+    if (diesel.hooks.onError && Array.isArray(diesel.hooks.onError)) {
+      const handlers = diesel.hooks.onError
+      for (let i = 0; i < handlers.length; i++) {
+        const onErrorHookResponse = diesel.hooks.onError[i](error, req, url, server)
+        if (onErrorHookResponse) return onErrorHookResponse;
+      }
+    }
+    return generateErrorResponse(500, "Internal Server Error");
+  }
+  finally {
+    if (diesel.hooks.onSend && Array.isArray(diesel.hooks.onSend)) {
       const handlers = diesel.hooks.onSend;
       for (let i = 0; i < handlers.length; i++) {
         const onSendResponse = await handlers[i](ctx);
         if (onSendResponse) return onSendResponse;
-      }
-    }
-
-    return finalResult ?? generateErrorResponse(204, "No response from this handler");
-
-  }
-
-  catch (error: any) {
-    return diesel.hooks.onError?.length && Array.isArray(diesel.hooks.onError)
-      ? diesel.hooks.onError[0](error, req, url, server)
-      : generateErrorResponse(500, "Internal Server Error");
-  }
-
-  finally {
-    if (diesel.hooks.postHandler?.length && Array.isArray(diesel.hooks.postHandler)) {
-      const handlers = diesel.hooks.postHandler;
-      for (let i = 0; i < handlers.length; i++) {
-        const postHandlerResponse = await handlers[i](ctx);
-        if (postHandlerResponse) return postHandlerResponse;
       }
     }
   }

@@ -42,6 +42,8 @@ export interface ContextType {
     cookies: any;
     removeHeader: (key: string) => this;
     ejs: (viewPath: string, data: {}) => Response | Promise<Response>;
+    stream: (callback: () => void) => Response;
+    yieldStream: (callback: () => AsyncIterable<any>) => Response;
 }
 export interface CookieOptions {
     maxAge?: number;

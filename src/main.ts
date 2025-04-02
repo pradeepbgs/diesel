@@ -17,7 +17,7 @@ import {
   type Hooks,
   type HttpMethod,
 } from "./types.js";
-import { serve, Server } from "bun";
+import {BunRequest, Server} from "bun";
 import { authenticateJwtDbMiddleware, authenticateJwtMiddleware } from "./utils.js";
 import { advancedLogger, logger } from "./middlewares/logger/logger.js";
 
@@ -45,20 +45,24 @@ export default class Diesel {
   private user_jwt_secret: string
   private baseApiUrl: string
   private enableFileRouter: boolean
+  idleTimeOut:number
 
   constructor(
     {
       jwtSecret,
       baseApiUrl,
-      enableFileRouting
+      enableFileRouting,
+      idleTimeOut,
     }
       : {
         jwtSecret?: string,
         baseApiUrl?: string,
-        enableFileRouting?: boolean
+        enableFileRouting?: boolean,
+        idleTimeOut?:number
       } = {}
   ) {
-
+    
+    this.idleTimeOut = idleTimeOut ?? 10
     this.enableFileRouter = enableFileRouting ?? false
     this.baseApiUrl = baseApiUrl || ''
     this.user_jwt_secret = jwtSecret || process.env.DIESEL_JWT_SECRET || 'feault_diesel_secret_for_jwt'
@@ -254,6 +258,7 @@ export default class Diesel {
     baseRoute: string,
     extension: string
   ) {
+    
     const module = await import(filePath);
 
     let pathRoute;
@@ -282,10 +287,9 @@ export default class Diesel {
 
     for (const method of supportedMethods) {
       if (module[method]) {
-        const lowerMethod = method as HttpMethod;
+        const lowerMethod = method.toLowerCase() as HttpMethod;
         const handler = module[method] as handlerFunction;
-        this[lowerMethod.toLocaleLowerCase()](`${this.baseApiUrl}${routePath}`, handler)
-        // console.log(`${this.baseApiUrl}${routePath}`);
+        this[lowerMethod](`${this.baseApiUrl}${routePath}`, handler)
       }
     }
   }
@@ -349,21 +353,23 @@ export default class Diesel {
     const ServerOptions: any = {
       port,
       hostname,
-      fetch: async (req: Request, server: Server) => {
+     idleTimeOut:this.idleTimeOut,
+      
+     fetch: async (req: BunRequest, server: Server) => {
         const url: URL = new URL(req.url);
-
+        
         if (this.hooks.onRequest) {
           const handlers = this.hooks.onRequest;
           for (let i = 0; i < handlers.length; i++) {
             await handlers[i](req, url, server);
           }
         }
-
-        return await handleRequest(req, server, url, this as DieselT)
+        
+        return handleRequest(req, server, url, this as DieselT)
       },
 
       static: this.staticFiles,
-      development: true,
+      // development: false,
 
     };
 

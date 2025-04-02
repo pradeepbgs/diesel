@@ -24,10 +24,12 @@ export default class Diesel {
     private user_jwt_secret;
     private baseApiUrl;
     private enableFileRouter;
-    constructor({ jwtSecret, baseApiUrl, enableFileRouting }?: {
+    idleTimeOut: number;
+    constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, }?: {
         jwtSecret?: string;
         baseApiUrl?: string;
         enableFileRouting?: boolean;
+        idleTimeOut?: number;
     });
     setupFilter(): FilterMethods;
     redirect(incomingPath: string, redirectPath: string, statusCode?: 302): this;
