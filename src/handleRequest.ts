@@ -1,7 +1,7 @@
 import { BunRequest, Server } from "bun";
 import createCtx from "./ctx";
 import type { ContextType, DieselT, RouteHandlerT } from "./types";
-import { getMimeType } from "./utils";
+import { getMimeType } from "./utils/mimeType";
 
 
 export default async function handleRequest(

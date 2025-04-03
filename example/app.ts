@@ -11,6 +11,8 @@ import {advancedLogger, logger} from '../src/middlewares/logger/logger'
 import {rateLimit} from '../src/middlewares/ratelimit/rate-limit'
 // import {loadRoutes} from 'ex-router'
 import {poweredBy} from '../src/middlewares/powered-by/index'
+import {authenticateJwt} from '../src/middlewares/jwt/index'
+
 const app = new Diesel({
   enableFileRouting:true,
 });
@@ -44,17 +46,23 @@ const port = process.env.PORT ?? 3000
 // }))
 
 
-app.setupFilter()
-.routeMatcher("/cookie",'/')
-.permitAll()
-.authenticateJwt(jwt)
+// app.setupFilter()
+// .routeMatcher("/cookie",'/')
+// .permitAll()
+// .authenticateJwt(jwt)
+
+
+// app.use(authenticateJwt({
+// app,
+// jwt,
+// routes:['/ok']
+// }))
 
 // app.use(rateLimit({
 //   windowMs: 1 * 60 * 1000, 
 //   max: 5,
 //   message: "Too many requests, please try again later."
 // }))
-
 
 app.use('/body',fileSaveMiddleware({ fields: ["avatar"] }));
 app.useLogger(app)
