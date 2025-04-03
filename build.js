@@ -29,11 +29,11 @@ Bun.build({
         './src/ctx.ts',
         './src/handleRequest.ts',
         './src/trie.ts',
-        './src/utils.ts',
     ],
     outdir: './dist',
     minify: true,
 })
+console.log('build complete')
 
 Bun.build({
     entrypoints: [
@@ -43,7 +43,20 @@ Bun.build({
         './src/middlewares/filesave/savefile.ts',
         './src/middlewares/ratelimit/rate-limit.ts',
         './src/middlewares/ratelimit/implementation.ts',
+        './src/middlewares/powered-by/index.ts',
+        './src/middlewares/jwt/index.ts'
     ],
     outdir: './dist/middlewares',
     minify: true,
 })
+console.log('build complete')
+
+Bun.build({
+    entrypoints:[
+        './src/utils/jwt.ts',
+        './src/utils/mimeType.ts'
+    ],
+    outdir: './dist/utils',
+    minify: true
+})
+console.log('build complete')

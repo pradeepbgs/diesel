@@ -1,5 +1,5 @@
 import { ContextType } from "../../types";
-import { RateLimitStore } from "./interface";
+import { RateLimitStore } from "./implementation";
 type Props = {
     windowMs?: number;
     max?: number;

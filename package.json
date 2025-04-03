@@ -1,6 +1,6 @@
 {
   "name": "diesel-core",
-  "version": "1.1.8",
+  "version": "1.1.9",
   "description": "Web framework built on Web Standards",
   "main": "index.js",
   "types": "index.d.ts",
@@ -49,6 +49,16 @@
       "types": "./dist/middlewares/ratelimit/implementation.d.ts",
       "import": "./dist/middlewares/ratelimit/implementation.js",
       "require": "./dist/middlewares/ratelimit/implementation.js"
+    },
+    "./jwt":{
+      "types": "./dist/middlewares/jwt/index.d.ts",
+      "import": "./dist/middlewares/jwt/index.js",
+      "require": "./dist/middlewares/jwt/index.js"    
+    },
+    "./powered-by":{
+      "types": "./dist/middlewares/powered-by/index.d.ts",
+      "import": "./dist/middlewares/powered-by/index.js",
+      "require": "./dist/middlewares/powered-by/index.js"    
     }
   },
   "scripts": {

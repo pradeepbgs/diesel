@@ -21,7 +21,7 @@ export default class Diesel {
     private serverInstance;
     staticPath: any;
     staticFiles: any;
-    private user_jwt_secret;
+    user_jwt_secret: string;
     private baseApiUrl;
     private enableFileRouter;
     idleTimeOut: number;

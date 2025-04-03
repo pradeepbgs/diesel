@@ -18,8 +18,8 @@ import {
   type HttpMethod,
 } from "./types.js";
 import {BunRequest, Server} from "bun";
-import { authenticateJwtDbMiddleware, authenticateJwtMiddleware } from "./utils.js";
 import { advancedLogger, logger } from "./middlewares/logger/logger.js";
+import { authenticateJwtDbMiddleware, authenticateJwtMiddleware } from "./utils/jwt.js";
 
 export default class Diesel {
 
@@ -42,7 +42,7 @@ export default class Diesel {
   private serverInstance: Server | null;
   staticPath: any;
   staticFiles: any
-  private user_jwt_secret: string
+  user_jwt_secret: string
   private baseApiUrl: string
   private enableFileRouter: boolean
   idleTimeOut:number
@@ -164,7 +164,8 @@ export default class Diesel {
 
       const queryParams = ctx.url.search;
       if (queryParams)
-        finalPathToRedirect += queryParams
+        finalPathToRedirect += queryParams;
+
       return ctx.redirect(finalPathToRedirect, statusCode)
     })
     return this

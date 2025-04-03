@@ -1,7 +1,7 @@
 import { Server } from "bun";
 
 import type { ContextType, CookieOptions, ParseBodyResult } from "./types";
-import { getMimeType } from "./utils";
+import { getMimeType } from "./utils/mimeType";
 
 export default function createCtx(req: Request, server: Server, url: URL): ContextType {
   let parsedQuery: Record<string, string> | null = null;
@@ -16,6 +16,7 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
     url,
     status: 200,
     headers: new Headers({ "Cache-Control": "no-cache" }),
+    
     setHeader(key: string, value: string): ContextType {
       this.headers.set(key, value);
       return this;
