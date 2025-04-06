@@ -2,6 +2,7 @@ import Trie from "./trie.js";
 import { corsT, FilterMethods, HookFunction, HookType, listenArgsT, middlewareFunc, onError, onRequest, type handlerFunction, type Hooks } from "./types.js";
 import { Server } from "bun";
 export default class Diesel {
+    routes: Record<string, Function>;
     private tempRoutes;
     globalMiddlewares: middlewareFunc[];
     middlewares: Map<string, middlewareFunc[]>;
@@ -41,6 +42,7 @@ export default class Diesel {
     private loadRoutes;
     useLogger(app: any): this;
     useAdvancedLogger(app: any): this;
+    BunRoute(method: string, path: string, ...handlers: any[]): void;
     listen(port: any, ...args: listenArgsT[]): Server | void;
     close(callback?: () => void): void;
     /**
