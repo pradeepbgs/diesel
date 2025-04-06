@@ -23,8 +23,8 @@ export const authenticateJwt = (options:authenticateJwtT) => {
 
     if (!options.jwtSecret) options.jwtSecret = options.app.user_jwt_secret
     
-    const routes = options.routes
-    const app = options.app
+    const routes: undefined | string[] = options.routes
+    // const app = options.app
     const jwt = options.jwt
     const jwtSecret = options.jwtSecret
     
@@ -40,7 +40,8 @@ export const authenticateJwt = (options:authenticateJwtT) => {
     //     }
     // }
     return (ctx:ContextType) => {
-        if (routes?.length === 0 || routes?.includes(ctx.url.pathname)) {
+        // console.log(routes?.length)
+        if (!routes?.length || routes?.includes(ctx.url.pathname)) {
           return middleware(ctx);
         }
     }
@@ -61,7 +62,7 @@ export const authenticateJwtDB = (options:authenticateJwtDBT) => {
     }
 
     const routes = options.routes
-    const app = options.app
+    // const app = options.app
     const jwt = options.jwt
     const jwtSecret = options.jwtSecret
     const userModel = options.userModel
