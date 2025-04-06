@@ -1,5 +1,5 @@
 import Trie from "./trie.js";
-import handleRequest from "./handleRequest.js";
+import handleRequest, { executeBunMiddlewares} from "./handleRequest.js";
 import path from 'path'
 import fs from 'fs'
 
@@ -17,12 +17,13 @@ import {
   type Hooks,
   type HttpMethod,
 } from "./types.js";
-import {BunRequest, Server} from "bun";
+import { BunRequest, Server } from "bun";
 import { advancedLogger, logger } from "./middlewares/logger/logger.js";
 import { authenticateJwtDbMiddleware, authenticateJwtMiddleware } from "./utils/jwt.js";
 
 export default class Diesel {
 
+  routes: Record<string, Function>
   private tempRoutes: Map<string, any> | null;
   globalMiddlewares: middlewareFunc[];
   middlewares: Map<string, middlewareFunc[]>;
@@ -45,7 +46,7 @@ export default class Diesel {
   user_jwt_secret: string
   private baseApiUrl: string
   private enableFileRouter: boolean
-  idleTimeOut:number
+  idleTimeOut: number
 
   constructor(
     {
@@ -58,10 +59,11 @@ export default class Diesel {
         jwtSecret?: string,
         baseApiUrl?: string,
         enableFileRouting?: boolean,
-        idleTimeOut?:number
+        idleTimeOut?: number
       } = {}
   ) {
-    
+
+    this.routes = {}
     this.idleTimeOut = idleTimeOut ?? 10
     this.enableFileRouter = enableFileRouting ?? false
     this.baseApiUrl = baseApiUrl || ''
@@ -259,7 +261,7 @@ export default class Diesel {
     baseRoute: string,
     extension: string
   ) {
-    
+
     const module = await import(filePath);
 
     let pathRoute;
@@ -328,6 +330,94 @@ export default class Diesel {
     return this
   }
 
+
+  BunRoute(method: string, path: string, ...handlers: any[]) {
+    if (!path || typeof path !== 'string') throw new Error("give a path in string format")
+
+    if (handlers.length === 1) 
+    {
+      const singleHandler = handlers[0];
+      this.routes[path] = async (req: BunRequest, server: Server) => {
+      
+        // if (this.hasFilterEnabled) {
+        //   const url = new URL(req.url)
+        //   const _path = req.routePattern ?? url.pathname;
+        //   const filterResponse = await handleBunFilterRequest(this as DieselT,_path,req,server);
+        //   if (filterResponse) return filterResponse;
+        // }
+
+        if (this.hasMiddleware) {
+          if (this.globalMiddlewares.length) {
+            const globalMiddlewareResponse = await executeBunMiddlewares(
+              this.globalMiddlewares,
+              req,
+              server
+            );
+            if (globalMiddlewareResponse) return globalMiddlewareResponse;
+          }
+    
+          const pathMiddlewares = this.middlewares.get(path) || [];
+          if (pathMiddlewares?.length) {
+            const pathMiddlewareResponse = await executeBunMiddlewares(
+              pathMiddlewares,
+              req,
+              server
+            );
+            if (pathMiddlewareResponse) return pathMiddlewareResponse;
+          }
+        }
+
+        if (method !== req.method) return new Response("Method Not Allowed", { status: 405 });
+
+        const response = await singleHandler(req,server)
+        if (response instanceof Promise) {
+          const resolved = await response;
+          return resolved ?? new Response("Not Found", { status: 404 });
+        }
+        return response ?? new Response("Not Found", { status: 404 });
+
+      }
+    } 
+    
+    else {
+      this.routes[path] = async (req: BunRequest, server: Server) => {
+
+        if (this.hasMiddleware) {
+          if (this.globalMiddlewares.length) {
+            const globalMiddlewareResponse = await executeBunMiddlewares(
+              this.globalMiddlewares,
+              req,
+              server
+            );
+            if (globalMiddlewareResponse) return globalMiddlewareResponse;
+          }
+    
+          const pathMiddlewares = this.middlewares.get(path) || [];
+          if (pathMiddlewares?.length) {
+            const pathMiddlewareResponse = await executeBunMiddlewares(
+              pathMiddlewares,
+              req,
+              server
+            );
+            if (pathMiddlewareResponse) return pathMiddlewareResponse;
+          }
+        }
+
+        if (method !== req.method) return new Response("Method Not Allowed", { status: 405 });
+
+        for (let i = 0; i < handlers.length; i++) {
+          const response = handlers[i](req, server)
+          if (response instanceof Promise) {
+            const resolved = await response;
+            return resolved ?? new Response("Not Found", { status: 404 });
+          }
+          return response ?? new Response("Not Found", { status: 404 });
+        }
+      }
+    }
+
+  }
+
   listen(
     port: any,
     ...args: listenArgsT[]
@@ -354,23 +444,23 @@ export default class Diesel {
     const ServerOptions: any = {
       port,
       hostname,
-     idleTimeOut:this.idleTimeOut,
-      
-     fetch: async (req: BunRequest, server: Server) => {
+      idleTimeOut: this.idleTimeOut,
+
+      fetch: async (req: BunRequest, server: Server) => {
         const url: URL = new URL(req.url);
-        
+
         if (this.hooks.onRequest) {
           const handlers = this.hooks.onRequest;
           for (let i = 0; i < handlers.length; i++) {
             await handlers[i](req, url, server);
           }
         }
-        
+
         return handleRequest(req, server, url, this as DieselT)
       },
 
       static: this.staticFiles,
-      // development: false,
+      routes: this.routes,
 
     };
 

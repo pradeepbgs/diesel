@@ -52,11 +52,11 @@ const port = process.env.PORT ?? 3000
 // .authenticateJwt(jwt)
 
 
-app.use(authenticateJwt({
-app,
-jwt,
-routes:['/ok']
-}))
+// app.use(authenticateJwt({
+// app,
+// jwt,
+// routes:['/ok']
+// }))
 
 // app.use(rateLimit({
 //   windowMs: 1 * 60 * 1000, 

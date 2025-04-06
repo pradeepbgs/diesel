@@ -21,11 +21,11 @@ export default async function handleRequest(
   req.routePattern = routeHandler?.path;
 
   try {
-    
+
     if (url.pathname.startsWith("/favicon")) {
       return ctx.text('')
     }
-    
+
     if (diesel.hasFilterEnabled) {
       const path = req.routePattern ?? url.pathname;
       const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
@@ -118,7 +118,7 @@ export default async function handleRequest(
 }
 
 
-async function executeMiddlewares(
+export async function executeMiddlewares(
   middlewares: Function[],
   ctx: ContextType,
   server: Server
@@ -130,6 +130,15 @@ async function executeMiddlewares(
   return null;
 }
 
+export async function executeBunMiddlewares(
+  middlewares: Function[],
+  req: BunRequest,
+  server: Server) {
+  for (const middleware of middlewares) {
+    const result = await middleware(req, server);
+    if (result) return result;
+  }
+}
 
 export async function handleFilterRequest(
   diesel: DieselT,
@@ -144,10 +153,27 @@ export async function handleFilterRequest(
         if (filterResult) return filterResult;
       }
     } else {
-      return ctx.json({ error: true, message: "Protected route, authentication required", status: 401 }, 401);
+      return Response.json({ error: true, message: "Protected route, authentication required", status: 401 }, {status:401});
     }
   }
+}
 
+export async function handleBunFilterRequest(
+  diesel: DieselT,
+  path: string,
+  req:BunRequest,
+  server: Server) {
+
+  if (!diesel.filters.has(path)) {
+    if (diesel.filterFunction.length) {
+      for (const filterFunction of diesel.filterFunction) {
+        const filterResult = await filterFunction(req as any, server);
+        if (filterResult) return filterResult;
+      }
+    } else {
+      return Response.json({ error: true, message: "Protected route, authentication required", status: 401 }, {status:401});
+    }
+  }
 }
 
 export function generateErrorResponse(
