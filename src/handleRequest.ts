@@ -21,9 +21,11 @@ export default async function handleRequest(
   req.routePattern = routeHandler?.path;
 
   try {
+    
     if (url.pathname.startsWith("/favicon")) {
-      return;
+      return ctx.text('')
     }
+    
     if (diesel.hasFilterEnabled) {
       const path = req.routePattern ?? url.pathname;
       const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
