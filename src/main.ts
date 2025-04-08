@@ -18,7 +18,7 @@ import {
   type HttpMethod,
 } from "./types.js";
 import { BunRequest, Server } from "bun";
-import { advancedLogger, logger } from "./middlewares/logger/logger.js";
+import { advancedLogger, AdvancedLoggerOptions, logger, LoggerOptions } from "./middlewares/logger/logger.js";
 import { authenticateJwtDbMiddleware, authenticateJwtMiddleware } from "./utils/jwt.js";
 
 export default class Diesel {
@@ -156,13 +156,6 @@ export default class Diesel {
           finalPathToRedirect = finalPathToRedirect.replace(`:${key}`, params[key])
         }
       }
-      // const query = ctx?.query
-      // if(query){
-      //   finalPathToRedirect = finalPathToRedirect+"?"
-      //   for (const key in query){
-      //     finalPathToRedirect = `${finalPathToRedirect}${key}=${query[key]}&`
-      //   }
-      // }
 
       const queryParams = ctx.url.search;
       if (queryParams)
@@ -181,7 +174,7 @@ export default class Diesel {
   }
 
 
-  static(
+  staticHtml(
     args: Record<string, string>
   ): this {
     this.staticFiles = { ...this.staticFiles, ...args };
@@ -320,13 +313,13 @@ export default class Diesel {
     }
   }
 
-  useLogger(app: any) {
-    logger(app)
+  useLogger(options:LoggerOptions) {
+    logger(options)
     return this
   }
 
-  useAdvancedLogger(app: any) {
-    advancedLogger(app)
+  useAdvancedLogger(options: AdvancedLoggerOptions) {
+    advancedLogger(options)
     return this
   }
 
@@ -339,13 +332,6 @@ export default class Diesel {
       const singleHandler = handlers[0];
       this.routes[path] = async (req: BunRequest, server: Server) => {
       
-        // if (this.hasFilterEnabled) {
-        //   const url = new URL(req.url)
-        //   const _path = req.routePattern ?? url.pathname;
-        //   const filterResponse = await handleBunFilterRequest(this as DieselT,_path,req,server);
-        //   if (filterResponse) return filterResponse;
-        // }
-
         if (this.hasMiddleware) {
           if (this.globalMiddlewares.length) {
             const globalMiddlewareResponse = await executeBunMiddlewares(

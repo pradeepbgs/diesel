@@ -65,10 +65,10 @@ const port = process.env.PORT ?? 3000
 // }))
 
 app.use('/body',fileSaveMiddleware({ fields: ["avatar"] }));
-app.useLogger(app)
-// app.useAdvancedLogger(app) 
-// app.use(logger(app) as any)
-//  app.use(advancedLogger(app) as any)
+
+app.useLogger({
+  app
+})
 
 // app.use(securityMiddleware)
 
@@ -83,12 +83,12 @@ app.addHooks('routeNotFound',async (ctx:ContextType) => {
 
 // import homapge from './templates/index.html'
 // import aboutpage from './templates/about.html'
-// app.static(
-//   {
-//     "/":homapge,
-//     "/about":aboutpage
-//   }
-// )
+app.staticHtml(
+  {
+    "/":homapge,
+    "/about":aboutpage
+  }
+)
 
 app.redirect("/name/:name/:age","/redirect/:name/:age")
 app.get("/redirect/:name/:age",(ctx) => {

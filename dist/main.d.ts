@@ -1,6 +1,7 @@
 import Trie from "./trie.js";
 import { corsT, FilterMethods, HookFunction, HookType, listenArgsT, middlewareFunc, onError, onRequest, type handlerFunction, type Hooks } from "./types.js";
 import { Server } from "bun";
+import { AdvancedLoggerOptions, LoggerOptions } from "./middlewares/logger/logger.js";
 export default class Diesel {
     routes: Record<string, Function>;
     private tempRoutes;
@@ -35,13 +36,13 @@ export default class Diesel {
     setupFilter(): FilterMethods;
     redirect(incomingPath: string, redirectPath: string, statusCode?: 302): this;
     serveStatic(filePath: string): this;
-    static(args: Record<string, string>): this;
+    staticHtml(args: Record<string, string>): this;
     addHooks(typeOfHook: HookType, fnc: HookFunction | onError | onRequest): this;
     private compile;
     private registerFileRoutes;
     private loadRoutes;
-    useLogger(app: any): this;
-    useAdvancedLogger(app: any): this;
+    useLogger(options: LoggerOptions): this;
+    useAdvancedLogger(options: AdvancedLoggerOptions): this;
     BunRoute(method: string, path: string, ...handlers: any[]): void;
     listen(port: any, ...args: listenArgsT[]): Server | void;
     close(callback?: () => void): void;
