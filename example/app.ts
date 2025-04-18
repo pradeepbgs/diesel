@@ -12,6 +12,8 @@ import {rateLimit} from '../src/middlewares/ratelimit/rate-limit'
 // import {loadRoutes} from 'ex-router'
 import {poweredBy} from '../src/middlewares/powered-by/index'
 import {authenticateJwt} from '../src/middlewares/jwt/index'
+import {redis} from './src/utils/redis'
+import { RedisStore } from "../src/middlewares/ratelimit/implementation";
 
 const app = new Diesel({
   enableFileRouting:true,
@@ -57,11 +59,12 @@ const port = process.env.PORT ?? 3000
 // jwt,
 // routes:['/ok']
 // }))
-
+// const redisStore = new RedisStore(redis)
 // app.use(rateLimit({
-//   windowMs: 1 * 60 * 1000, 
+//   windowMs: 10000, 
 //   max: 5,
-//   message: "Too many requests, please try again later."
+//   message: "Too many requests, please try again later.",
+//   store: redisStore
 // }))
 
 app.use('/body',fileSaveMiddleware({ fields: ["avatar"] }));
