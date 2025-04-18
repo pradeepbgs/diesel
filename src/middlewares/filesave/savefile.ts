@@ -20,13 +20,11 @@ export const fileSaveMiddleware = (options: { dest?: string, fields?: string[] }
     return async (ctx:ContextType) => {
         try {
             const body = await ctx.body
-            if (!ctx.req.files) {
-                ctx.req.files = {};
-            }
+            ctx.req.files ??= {};
             
             for ( const field of options?.fields ?? []){
                 const file = body[field]
-                if (!file || !file.name) continue;
+                if (!file.name) continue;
                 
                 const filename = `${field}_${uuid4()}${path.extname(file?.name)}`
                 const savefilepath = path.join(uploadDir,filename)

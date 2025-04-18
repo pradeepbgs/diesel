@@ -102,7 +102,7 @@ export default class Diesel {
     this.hasFilterEnabled = true;
 
     return {
-      routeMatcher: (
+      publicRoutes: (
         ...routes: string[]
       ) => {
         this.FilterRoutes = routes;
@@ -126,18 +126,21 @@ export default class Diesel {
           }
         }
       },
+      
       authenticateJwt: (jwt: any) => {
         this.filterFunction
           .push(
             authenticateJwtMiddleware(jwt, this.user_jwt_secret) as middlewareFunc
           );
       },
+      
       authenticateJwtDB: (jwt: any, User: any) => {
         this.filterFunction
           .push(
             authenticateJwtDbMiddleware(jwt, User, this.user_jwt_secret) as middlewareFunc
           );
       }
+    
     };
   }
 
@@ -146,6 +149,7 @@ export default class Diesel {
     redirectPath: string,
     statusCode?: 302
   ): this {
+    
     this.any(incomingPath, (ctx) => {
 
       const params = ctx.params
@@ -269,8 +273,7 @@ export default class Diesel {
 
     if (routePath.endsWith('/index')) {
       routePath = baseRoute
-    }
-    else if (routePath.endsWith('/api')) {
+    }else if (routePath.endsWith('/api')) {
       routePath = baseRoute
     }
     // here we can check if routePath include [] like - user/[id] if yes then remove [] and add user:id
@@ -399,6 +402,7 @@ export default class Diesel {
           }
           return response ?? new Response("Not Found", { status: 404 });
         }
+
       }
     }
 
@@ -437,6 +441,8 @@ export default class Diesel {
 
         if (this.hooks.onRequest) {
           const handlers = this.hooks.onRequest;
+          // using for a loop because it would be faster than for of
+          // although for of looks clean
           for (let i = 0; i < handlers.length; i++) {
             await handlers[i](req, url, server);
           }

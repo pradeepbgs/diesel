@@ -21,17 +21,17 @@ export default async function handleRequest(
   req.routePattern = routeHandler?.path;
 
   try {
+    
+    // PipeLines such as filters , middlewares,hooks
 
-    if (url.pathname.startsWith("/favicon")) {
-      return ctx.text('')
-    }
-
+    // pipepline 1- filter execution
     if (diesel.hasFilterEnabled) {
       const path = req.routePattern ?? url.pathname;
       const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
       if (filterResponse) return filterResponse;
     }
-
+    
+    // pipeline2 - middleware execution
     if (diesel.hasMiddleware) {
       if (diesel.globalMiddlewares.length) {
         const globalMiddlewareResponse = await executeMiddlewares(

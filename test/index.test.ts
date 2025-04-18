@@ -9,7 +9,7 @@ beforeAll(async () => {
     console.log('Server running on '+port)
   })
   console.log(`is server started ? -> ${port}`)
-  await Bun.sleep(1000)
+  await Bun.sleep(100)
 })
 afterAll(async () => {
   //await Bun.sleep(100)

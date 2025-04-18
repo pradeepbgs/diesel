@@ -177,10 +177,11 @@ app
   })
 
   .post("/body", async (ctx) => {
-    const avatar = ctx.req.files?.avatar
+    const {name} = await ctx.body
+console.log(name)
     return ctx.json({
       msg:"from body",
-      avatar:avatar
+      name:name
     })
 })
 

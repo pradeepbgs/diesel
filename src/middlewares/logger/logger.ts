@@ -119,16 +119,16 @@ export const advancedLogger = (options?: AdvancedLoggerOptions) => {
         if (res instanceof Response) return res;
     });
 
-    app?.addHooks('routeNotFound', async (ctx: ContextType) => {
-        logger?.() ?? log('warn', 'Route Not Found', {
-            method: ctx.req.method,
-            url: ctx.url.toString(),
-            status: 404,
-        });
+    // app?.addHooks('routeNotFound', async (ctx: ContextType) => {
+    //     logger?.() ?? log('warn', 'Route Not Found', {
+    //         method: ctx.req.method,
+    //         url: ctx.url.toString(),
+    //         status: 404,
+    //     });
 
-        const res = await routeNotFound?.(ctx);
-        if (res instanceof Response) return res;
-    });
+    //     const res = await routeNotFound?.(ctx);
+    //     if (res instanceof Response) return res;
+    // });
 
     app?.addHooks('onError', async (error: Error, req: Request, url: URL) => {
         logger?.() ?? log('error', 'Unhandled Error', {
@@ -209,18 +209,18 @@ export const logger = (options: LoggerOptions) => {
         if (res instanceof Response) return res;
     });
 
-    app.addHooks("routeNotFound", async (ctx: ContextType) => {
-        log?.() ??
-            logFormatted(
-                "[routeNotFound]" as LogPrefix,
-                ctx.req.method,
-                ctx.url.pathname,
-                404
-            );
+    // app.addHooks("routeNotFound", async (ctx: ContextType) => {
+    //     log?.() ??
+    //         logFormatted(
+    //             "[routeNotFound]" as LogPrefix,
+    //             ctx.req.method,
+    //             ctx.url.pathname,
+    //             404
+    //         );
 
-        const res = await routeNotFound?.(ctx);
-        if (res instanceof Response) return res;
-    });
+    //     const res = await routeNotFound?.(ctx);
+    //     if (res instanceof Response) return res;
+    // });
 
     app.addHooks("onError", async (error: Error, req: Request, url: URL) => {
         log?.() ??
