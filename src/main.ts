@@ -18,7 +18,7 @@ import {
   type HttpMethod,
 } from "./types.js";
 import { BunRequest, Server } from "bun";
-import { advancedLogger, logger } from "./middlewares/logger/logger.js";
+import { advancedLogger, AdvancedLoggerOptions, logger, LoggerOptions } from "./middlewares/logger/logger.js";
 import { authenticateJwtDbMiddleware, authenticateJwtMiddleware } from "./utils/jwt.js";
 
 export default class Diesel {
@@ -102,7 +102,7 @@ export default class Diesel {
     this.hasFilterEnabled = true;
 
     return {
-      routeMatcher: (
+      publicRoutes: (
         ...routes: string[]
       ) => {
         this.FilterRoutes = routes;
@@ -126,18 +126,21 @@ export default class Diesel {
           }
         }
       },
+      
       authenticateJwt: (jwt: any) => {
         this.filterFunction
           .push(
             authenticateJwtMiddleware(jwt, this.user_jwt_secret) as middlewareFunc
           );
       },
+      
       authenticateJwtDB: (jwt: any, User: any) => {
         this.filterFunction
           .push(
             authenticateJwtDbMiddleware(jwt, User, this.user_jwt_secret) as middlewareFunc
           );
       }
+    
     };
   }
 
@@ -146,6 +149,7 @@ export default class Diesel {
     redirectPath: string,
     statusCode?: 302
   ): this {
+    
     this.any(incomingPath, (ctx) => {
 
       const params = ctx.params
@@ -156,13 +160,6 @@ export default class Diesel {
           finalPathToRedirect = finalPathToRedirect.replace(`:${key}`, params[key])
         }
       }
-      // const query = ctx?.query
-      // if(query){
-      //   finalPathToRedirect = finalPathToRedirect+"?"
-      //   for (const key in query){
-      //     finalPathToRedirect = `${finalPathToRedirect}${key}=${query[key]}&`
-      //   }
-      // }
 
       const queryParams = ctx.url.search;
       if (queryParams)
@@ -181,7 +178,7 @@ export default class Diesel {
   }
 
 
-  static(
+  staticHtml(
     args: Record<string, string>
   ): this {
     this.staticFiles = { ...this.staticFiles, ...args };
@@ -276,8 +273,7 @@ export default class Diesel {
 
     if (routePath.endsWith('/index')) {
       routePath = baseRoute
-    }
-    else if (routePath.endsWith('/api')) {
+    }else if (routePath.endsWith('/api')) {
       routePath = baseRoute
     }
     // here we can check if routePath include [] like - user/[id] if yes then remove [] and add user:id
@@ -320,13 +316,13 @@ export default class Diesel {
     }
   }
 
-  useLogger(app: any) {
-    logger(app)
+  useLogger(options:LoggerOptions) {
+    logger(options)
     return this
   }
 
-  useAdvancedLogger(app: any) {
-    advancedLogger(app)
+  useAdvancedLogger(options: AdvancedLoggerOptions) {
+    advancedLogger(options)
     return this
   }
 
@@ -339,13 +335,6 @@ export default class Diesel {
       const singleHandler = handlers[0];
       this.routes[path] = async (req: BunRequest, server: Server) => {
       
-        // if (this.hasFilterEnabled) {
-        //   const url = new URL(req.url)
-        //   const _path = req.routePattern ?? url.pathname;
-        //   const filterResponse = await handleBunFilterRequest(this as DieselT,_path,req,server);
-        //   if (filterResponse) return filterResponse;
-        // }
-
         if (this.hasMiddleware) {
           if (this.globalMiddlewares.length) {
             const globalMiddlewareResponse = await executeBunMiddlewares(
@@ -413,6 +402,7 @@ export default class Diesel {
           }
           return response ?? new Response("Not Found", { status: 404 });
         }
+
       }
     }
 
@@ -451,6 +441,8 @@ export default class Diesel {
 
         if (this.hooks.onRequest) {
           const handlers = this.hooks.onRequest;
+          // using for a loop because it would be faster than for of
+          // although for of looks clean
           for (let i = 0; i < handlers.length; i++) {
             await handlers[i](req, url, server);
           }

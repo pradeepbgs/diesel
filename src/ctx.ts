@@ -98,15 +98,22 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
         ["ArrayBuffer", "application/octet-stream"],
       ]);
 
-      const dataType = data instanceof Uint8Array ? "Uint8Array"
-        : data instanceof ArrayBuffer ? "ArrayBuffer"
-          : typeof data;
+      // const dataType = data instanceof Uint8Array ? "Uint8Array"
+      //   : data instanceof ArrayBuffer ? "ArrayBuffer"
+      //     : typeof data;
+
+      let dataType:string
+
+      if (data instanceof Uint8Array) dataType = "Uint8Array"
+      else if(data instanceof ArrayBuffer) dataType = 'ArrayBuffer'
+      else dataType = typeof data
 
       if (!this.headers.has("Content-Type")) {
         this.headers.set("Content-Type", typeMap.get(dataType) ?? "text/plain; charset=utf-8");
       }
 
-      const responseData = dataType === "object" && data !== null ? JSON.stringify(data) : (data as any);
+      const responseData = 
+        dataType === "object" && data !== null ? JSON.stringify(data) : (data as any);
       return new Response(responseData, { status: this.status, headers:this.headers });
     },
 
