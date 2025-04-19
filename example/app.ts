@@ -67,13 +67,14 @@ const port = process.env.PORT ?? 3000
 //   store: redisStore
 // }))
 
+
+
 app.use('/body',fileSaveMiddleware({ fields: ["avatar"] }));
 
 app.useLogger({
   app
 })
-
-// app.use(securityMiddleware)
+app.use(securityMiddleware)
 
 
 app.addHooks('routeNotFound',async (ctx:ContextType) => {
@@ -104,7 +105,7 @@ app.get("/redirect/:name/:age",(ctx) => {
   })
 })
 
-// app.serveStatic(`${import.meta.dirname}/public`)
+app.serveStatic(`${import.meta.dirname}/public`)
  
 // app.get("*",() => new Response(Bun.file(`${import.meta.dirname}/public/index.html`)) )
 

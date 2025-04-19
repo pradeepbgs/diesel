@@ -452,9 +452,12 @@ export default class Diesel {
       },
 
       static: this.staticFiles,
-      routes: this.routes,
-
     };
+
+    if (this.routes && Object.keys(this.routes).length > 0) {
+      console.log(this.routes)
+      ServerOptions.routes = this.routes;
+    }
 
     if (options.sslCert && options.sslKey) {
       ServerOptions.certFile = options.sslCert;
