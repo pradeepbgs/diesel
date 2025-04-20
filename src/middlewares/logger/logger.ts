@@ -59,7 +59,7 @@ const log = (level: LogLevel, message: string, meta?: LogMeta) => {
             ? `${statusColor}${meta.status}${COLORS.reset}`
             : undefined,
         method: meta?.method
-            ? `${methodColor}${meta.method}${COLORS.reset}`
+            ? `${methodColor>color}${meta.method}${COLORS.reset}`
             : undefined,
     };
 
@@ -110,6 +110,7 @@ export const advancedLogger = (options?: AdvancedLoggerOptions) => {
             url: ctx.url.toString(),
             status: ctx.status,
             duration,
+            reqId:ctx.get?.('requestId'),
             headers: {
                 'content-type': ctx.headers.get('content-type'),
             },
@@ -119,16 +120,12 @@ export const advancedLogger = (options?: AdvancedLoggerOptions) => {
         if (res instanceof Response) return res;
     });
 
-    // app?.addHooks('routeNotFound', async (ctx: ContextType) => {
-    //     logger?.() ?? log('warn', 'Route Not Found', {
-    //         method: ctx.req.method,
-    //         url: ctx.url.toString(),
-    //         status: 404,
-    //     });
+    app?.addHooks('routeNotFound', async (ctx: ContextType) => {
+        logger?.() && logger()
 
-    //     const res = await routeNotFound?.(ctx);
-    //     if (res instanceof Response) return res;
-    // });
+        const res = await routeNotFound?.(ctx);
+        if (res instanceof Response) return res;
+    });
 
     app?.addHooks('onError', async (error: Error, req: Request, url: URL) => {
         logger?.() ?? log('error', 'Unhandled Error', {
@@ -150,18 +147,20 @@ const logFormatted = (
     method: string,
     path: string,
     status: number = 0,
-    elapsed?: string
+    elapsed?: string,
+    reqId?: string
 ) => {
     const methodColor =
         COLORS.method[method as keyof typeof COLORS.method] || COLORS.reset;
     const statusColor =
         status >= 500 ? COLORS.error : status >= 400 ? COLORS.warn : COLORS.info;
 
+        const reqIdTag = reqId ? `[${reqId}] ` : "";
     const message =
         prefix === LogPrefix.Incoming
-            ? `${prefix} ${methodColor}${method}${COLORS.reset} ${path}`
-            : `${prefix} ${methodColor}${method}${COLORS.reset
-            } ${path} ${statusColor}${status}${COLORS.reset} ${elapsed || ""}`;
+            ? `${prefix} ${methodColor}${method}${COLORS.reset} ${path} ${reqIdTag}`
+            : `${prefix} ${methodColor}${method}${COLORS.reset 
+            } ${path} ${statusColor}${status}${COLORS.reset} ${elapsed ?? ""} ${reqIdTag}`;
     console.log(message);
 };
 
@@ -196,31 +195,27 @@ export const logger = (options: LoggerOptions) => {
     app.addHooks("onSend", async (ctx: ContextType) => {
         const { method, url } = ctx.req;
         const path = new URL(url).pathname;
+        const reqId = ctx.get?.('requestId')
         log?.() ??
             logFormatted(
                 LogPrefix.Outgoing,
                 method,
                 path,
                 ctx.status,
-                timeElapsed(ctx.req.startTime)
+                timeElapsed(ctx.req.startTime),
+                reqId as string
             );
 
         const res = await onSend?.(ctx);
         if (res instanceof Response) return res;
     });
 
-    // app.addHooks("routeNotFound", async (ctx: ContextType) => {
-    //     log?.() ??
-    //         logFormatted(
-    //             "[routeNotFound]" as LogPrefix,
-    //             ctx.req.method,
-    //             ctx.url.pathname,
-    //             404
-    //         );
+    app.addHooks("routeNotFound", async (ctx: ContextType) => {
+        log?.() && log()
 
-    //     const res = await routeNotFound?.(ctx);
-    //     if (res instanceof Response) return res;
-    // });
+        const res = await routeNotFound?.(ctx);
+        if (res instanceof Response) return res;
+    });
 
     app.addHooks("onError", async (error: Error, req: Request, url: URL) => {
         log?.() ??

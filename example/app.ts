@@ -14,7 +14,7 @@ import {poweredBy} from '../src/middlewares/powered-by/index'
 import {authenticateJwt} from '../src/middlewares/jwt/index'
 import {redis} from './src/utils/redis'
 import { RedisStore } from "../src/middlewares/ratelimit/implementation";
-
+import {requestId} from '../src/middlewares/request-id/index'
 const app = new Diesel({
   enableFileRouting:true,
 });
@@ -71,11 +71,21 @@ const port = process.env.PORT ?? 3000
 
 app.use('/body',fileSaveMiddleware({ fields: ["avatar"] }));
 
-app.useLogger({
-  app
-})
 app.use(securityMiddleware)
 
+app.useLogger({
+  app,
+  routeNotFound:() => new Response("Route not found", {status:404})
+})
+
+// app.useAdvancedLogger({app})
+
+app.use(requestId())
+
+app.get('/reqid', (ctx) => {
+  const reqId = ctx.get('requestId')
+  return ctx.json({reqId:reqId})
+})
 
 app.addHooks('routeNotFound',async (ctx:ContextType) => {
   const file = await Bun.file(`${import.meta.dir}/templates/routenotfound.html`)
@@ -87,12 +97,12 @@ app.addHooks('routeNotFound',async (ctx:ContextType) => {
 
 // import homapge from './templates/index.html'
 // import aboutpage from './templates/about.html'
-app.staticHtml(
-  {
-    "/":homapge,
-    "/about":aboutpage
-  }
-)
+// app.staticHtml(
+//   {
+//     "/":homapge,
+//     "/about":aboutpage
+//   }
+// )
 
 app.redirect("/name/:name/:age","/redirect/:name/:age")
 app.get("/redirect/:name/:age",(ctx) => {

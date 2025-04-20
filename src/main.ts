@@ -417,7 +417,7 @@ export default class Diesel {
 
     let hostname = "0.0.0.0";
     let callback: (() => void) | undefined = undefined;
-    let options: { sslCert?: string; sslKey?: string } = {};
+    let options: { cert?: string; key?: string } = {};
 
     for (const arg of args) {
       if (typeof arg === "string") {
@@ -459,16 +459,13 @@ export default class Diesel {
       ServerOptions.routes = this.routes;
     }
 
-    if (options.sslCert && options.sslKey) {
-      ServerOptions.certFile = options.sslCert;
-      ServerOptions.keyFile = options.sslKey;
+    if (options.cert && options.key) {
+      ServerOptions.certFile = options.cert;
+      ServerOptions.keyFile = options.key;
     }
 
     this.serverInstance = Bun?.serve(ServerOptions);
 
-    if (options.sslCert && options.sslKey) {
-      console.log(`HTTPS server is running on https://localhost:${port}`);
-    }
     if (callback) {
       return callback();
     }
