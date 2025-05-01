@@ -48,10 +48,10 @@ const port = process.env.PORT ?? 3000
 // }))
 
 
-// app.setupFilter()
-// .routeMatcher("/cookie",'/')
-// .permitAll()
-// .authenticateJwt(jwt)
+app.setupFilter()
+.publicRoutes("/cookie",'/', '/api/user/')
+.permitAll()
+.authenticateJwt(jwt)
 
 
 // app.use(authenticateJwt({
@@ -71,16 +71,16 @@ const port = process.env.PORT ?? 3000
 
 app.use('/body',fileSaveMiddleware({ fields: ["avatar"] }));
 
-app.use(securityMiddleware)
+// app.use(securityMiddleware)
 
-app.useLogger({
-  app,
-  routeNotFound:() => new Response("Route not found", {status:404})
-})
+// app.useLogger({
+//   app,
+//   routeNotFound:() => new Response("Route not found", {status:404})
+// })
 
 // app.useAdvancedLogger({app})
 
-app.use(requestId())
+// app.use(requestId())
 
 app.get('/reqid', (ctx) => {
   const reqId = ctx.get('requestId')
@@ -218,19 +218,20 @@ console.log(name)
     return ctx.json({ message: "Cookies set successfully" });
   });
 
-// app.route("/api/user", userRoute)
+  
+  app.get("/too",(ctx) => {return ctx.send("GETTT too")})
+  app.post('/too',(ctx) =>{return ctx.send("Send posstt")})
+  
+  app.get("/ejs",async(ctx:ContextType) =>{
+    return await ctx.ejs(`${import.meta.dirname}/templates/look.ejs`,{name:"linux"})
+  })
+  
+  app.route("/api/user", userRoute)
 
-app.get("/too",(ctx) => {return ctx.send("GETTT too")})
-app.post('/too',(ctx) =>{return ctx.send("Send posstt")})
-
-app.get("/ejs",async(ctx:ContextType) =>{
-  return await ctx.ejs(`${import.meta.dirname}/templates/look.ejs`,{name:"linux"})
-})
-
-app.listen(port,() => {
-  console.log(`Server is running on port ${port}`);
-})
-
+  app.listen(port,() => {
+    console.log(`Server is running on port ${port}`);
+  })
+  
 
 const shutdown = ():any => {
   app.close();

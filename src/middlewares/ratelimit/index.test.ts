@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import Diesel from "../../main";
 import { rateLimit } from "./rate-limit";
 import { RedisStore } from "./implementation";
-import {redis} from '../../../example/src/utils/redis'
+// import {redis} from '../../../example/src/utils/redis'
 
 
 describe('rate limit testing', () => {
@@ -14,9 +14,9 @@ describe('rate limit testing', () => {
     }))
 
     // redis rate-limit
-    const redisStore = new RedisStore(redis)
+    // const redisStore = new RedisStore(redis)
     app.use("/redis", rateLimit({
-        store: redisStore,
+        // store: redisStore,
         windowMs: 1000,
         max: 5,
     }))

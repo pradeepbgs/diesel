@@ -11,8 +11,8 @@ const options = {
     cert: './server.crt',
 }
 
-// app.use(requestId())
-app.useLogger({app})
+app.use(requestId())
+app.use(logger({app}))
 
 app.get('/',(ctx) => ctx.send("hello world"))
 

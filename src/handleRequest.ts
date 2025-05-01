@@ -29,7 +29,7 @@ export default async function handleRequest(
       const path = req.routePattern ?? url.pathname;
       const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
       const finalResult = filterResponse instanceof Promise ? await filterResponse : filterResponse;
-        if (finalResult) return finalResult;
+      if (finalResult) return finalResult;
     }
 
     // pipeline2 - middleware execution
@@ -70,7 +70,7 @@ export default async function handleRequest(
         for (let i = 0; i < handlers.length; i++) {
           const routeNotFoundResponse = handlers[i](ctx);
           const finalResult = routeNotFoundResponse instanceof Promise ? await routeNotFoundResponse : routeNotFoundResponse;
-        if (finalResult) return finalResult;
+          if (finalResult) return finalResult;
         }
       }
 
@@ -161,6 +161,9 @@ export async function handleFilterRequest(
   path: string,
   ctx: ContextType,
   server: Server) {
+  if (path.endsWith("/")) {
+    path = path.slice(0, -1);
+  }
 
   if (!diesel.filters.has(path)) {
     if (diesel.filterFunction.length) {
