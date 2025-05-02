@@ -23,16 +23,7 @@ export default async function handleRequest(
   try {
 
     // PipeLines such as filters , middlewares,hooks
-
-    // pipepline 1- filter execution
-    if (diesel.hasFilterEnabled) {
-      const path = req.routePattern ?? url.pathname;
-      const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
-      const finalResult = filterResponse instanceof Promise ? await filterResponse : filterResponse;
-      if (finalResult) return finalResult;
-    }
-
-    // pipeline2 - middleware execution
+    // pipeline 1 - middleware execution
     if (diesel.hasMiddleware) {
       if (diesel.globalMiddlewares.length) {
         const globalMiddlewareResponse = await executeMiddlewares(
@@ -53,6 +44,15 @@ export default async function handleRequest(
         if (pathMiddlewareResponse) return pathMiddlewareResponse;
       }
     }
+
+        // pipepline 2 - filter execution
+        if (diesel.hasFilterEnabled) {
+          const path = req.routePattern ?? url.pathname;
+          const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
+          const finalResult = filterResponse instanceof Promise ? await filterResponse : filterResponse;
+          if (finalResult) return finalResult;
+        }
+    
 
     // if route not found
     if (!routeHandler?.handler || routeHandler.method !== req.method) {
