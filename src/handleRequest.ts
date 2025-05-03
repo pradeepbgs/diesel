@@ -1,6 +1,6 @@
 import { BunRequest, Server } from "bun";
 import createCtx from "./ctx";
-import type { ContextType, DieselT, RouteHandlerT } from "./types";
+import type { ContextType, DieselT, middlewareFunc, RouteHandlerT } from "./types";
 import { getMimeType } from "./utils/mimeType";
 
 
@@ -21,17 +21,9 @@ export default async function handleRequest(
   req.routePattern = routeHandler?.path;
 
   try {
-    
-    // PipeLines such as filters , middlewares,hooks
 
-    // pipepline 1- filter execution
-    if (diesel.hasFilterEnabled) {
-      const path = req.routePattern ?? url.pathname;
-      const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
-      if (filterResponse) return filterResponse;
-    }
-    
-    // pipeline2 - middleware execution
+    // PipeLines such as filters , middlewares,hooks
+    // pipeline 1 - middleware execution
     if (diesel.hasMiddleware) {
       if (diesel.globalMiddlewares.length) {
         const globalMiddlewareResponse = await executeMiddlewares(
@@ -53,6 +45,15 @@ export default async function handleRequest(
       }
     }
 
+        // pipepline 2 - filter execution
+        if (diesel.hasFilterEnabled) {
+          const path = req.routePattern ?? url.pathname;
+          const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
+          const finalResult = filterResponse instanceof Promise ? await filterResponse : filterResponse;
+          if (finalResult) return finalResult;
+        }
+    
+
     // if route not found
     if (!routeHandler?.handler || routeHandler.method !== req.method) {
       if (diesel.staticPath) {
@@ -67,8 +68,9 @@ export default async function handleRequest(
       if (diesel.hooks.routeNotFound && Array.isArray(diesel.hooks.routeNotFound) && !routeHandler?.handler) {
         const handlers = diesel.hooks.routeNotFound;
         for (let i = 0; i < handlers.length; i++) {
-          const routeNotFoundResponse = await handlers[i](ctx);
-          if (routeNotFoundResponse) return routeNotFoundResponse;
+          const routeNotFoundResponse = handlers[i](ctx);
+          const finalResult = routeNotFoundResponse instanceof Promise ? await routeNotFoundResponse : routeNotFoundResponse;
+          if (finalResult) return finalResult;
         }
       }
 
@@ -86,8 +88,9 @@ export default async function handleRequest(
     if (diesel.hooks.preHandler?.length && Array.isArray(diesel.hooks.preHandler)) {
       const handlers = diesel.hooks.preHandler;
       for (let i = 0; i < handlers.length; i++) {
-        const preHandlerResponse = await handlers[i](ctx);
-        if (preHandlerResponse) return preHandlerResponse;
+        const preHandlerResponse = handlers[i](ctx);
+        const finalResult = preHandlerResponse instanceof Promise ? await preHandlerResponse : preHandlerResponse;
+        if (finalResult) return finalResult;
       }
     }
 
@@ -101,7 +104,8 @@ export default async function handleRequest(
       const handlers = diesel.hooks.onError
       for (let i = 0; i < handlers.length; i++) {
         const onErrorHookResponse = diesel.hooks.onError[i](error, req, url, server)
-        if (onErrorHookResponse) return onErrorHookResponse;
+        const finalResult = onErrorHookResponse instanceof Promise ? await onErrorHookResponse : onErrorHookResponse;
+        if (finalResult) return finalResult;
       }
     }
     return generateErrorResponse(500, "Internal Server Error");
@@ -110,13 +114,25 @@ export default async function handleRequest(
     if (diesel.hooks.onSend && Array.isArray(diesel.hooks.onSend)) {
       const handlers = diesel.hooks.onSend;
       for (let i = 0; i < handlers.length; i++) {
-        const onSendResponse = await handlers[i](ctx);
-        if (onSendResponse) return onSendResponse;
+        const onSendResponse = handlers[i](ctx);
+        const finalResult = onSendResponse instanceof Promise ? await onSendResponse : onSendResponse;
+        if (finalResult) return finalResult;
       }
     }
   }
 }
 
+
+async function executeHooks(
+  handlers: middlewareFunc[],
+  args: any
+) {
+  for (let i = 0; i < handlers.length; i++) {
+    const result = handlers[i](args);
+    const finalResult = result instanceof Promise ? await result : result;
+    if (finalResult) return finalResult;
+  }
+};
 
 export async function executeMiddlewares(
   middlewares: Function[],
@@ -145,6 +161,9 @@ export async function handleFilterRequest(
   path: string,
   ctx: ContextType,
   server: Server) {
+  if (path.endsWith("/")) {
+    path = path.slice(0, -1);
+  }
 
   if (!diesel.filters.has(path)) {
     if (diesel.filterFunction.length) {
@@ -153,7 +172,7 @@ export async function handleFilterRequest(
         if (filterResult) return filterResult;
       }
     } else {
-      return Response.json({ error: true, message: "Protected route, authentication required", status: 401 }, {status:401});
+      return Response.json({ error: true, message: "Protected route, authentication required", status: 401 }, { status: 401 });
     }
   }
 }
@@ -161,7 +180,7 @@ export async function handleFilterRequest(
 export async function handleBunFilterRequest(
   diesel: DieselT,
   path: string,
-  req:BunRequest,
+  req: BunRequest,
   server: Server) {
 
   if (!diesel.filters.has(path)) {
@@ -171,7 +190,7 @@ export async function handleBunFilterRequest(
         if (filterResult) return filterResult;
       }
     } else {
-      return Response.json({ error: true, message: "Protected route, authentication required", status: 401 }, {status:401});
+      return Response.json({ error: true, message: "Protected route, authentication required", status: 401 }, { status: 401 });
     }
   }
 }

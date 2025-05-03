@@ -7,16 +7,18 @@ app.addHooks("routeNotFound",(ctx) => {
     return ctx.file(`${import.meta.dirname}/templates/404.html`)
 })
 
-// app
-// .static(
-//         {
-//             "/": homepage,
-//             "/about": aboutPage
-//         }
-//     )
+app
+.staticHtml(
+        {
+            "/": homepage,
+        }
+    )
 
+    app.staticHtml({
+        "/about": aboutPage
+    })
 
-// app.serveStatic(`${import.meta.dirname}/public`);
+app.serveStatic(`${import.meta.dirname}/public`);
 
 app.get("/", (ctx) => {
     return ctx.json({

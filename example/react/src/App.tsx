@@ -8,7 +8,8 @@ function App() {
 
   useEffect(() => {
     async function api() {
-      const res = await fetch("http://localhost:3000/")
+      const res = await fetch("http://localhost:3001/reqid")
+      console.log(res)
       const data = await res.json()
     }
     api()

@@ -118,7 +118,7 @@ export type corsT = {
     optionsSuccessStatus?: number;
 } | null;
 export interface FilterMethods {
-    routeMatcher: (...routes: string[]) => FilterMethods;
+    publicRoutes: (...routes: string[]) => FilterMethods;
     permitAll: () => FilterMethods;
     authenticate: (fnc?: middlewareFunc[]) => Response | Promise<Response | null> | void;
     authenticateJwt: (jwt: any) => Response | Promise<Response | null> | void;

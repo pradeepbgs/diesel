@@ -14,7 +14,7 @@ import {poweredBy} from '../src/middlewares/powered-by/index'
 import {authenticateJwt} from '../src/middlewares/jwt/index'
 import {redis} from './src/utils/redis'
 import { RedisStore } from "../src/middlewares/ratelimit/implementation";
-
+import {requestId} from '../src/middlewares/request-id/index'
 const app = new Diesel({
   enableFileRouting:true,
 });
@@ -24,7 +24,7 @@ const SECRET_KEY = "linux";
 // loadRoutes(app,{
 //   routeDir:process.cwd()+'/src/routes'
 // })
-const port = process.env.PORT ?? 3000
+const port = 3001
 
 
 // Authentication Middleware
@@ -41,17 +41,15 @@ const port = process.env.PORT ?? 3000
 //   }
 // }
 
-// app.use(cors({
-//   origin: "http://localhost:3000",
-//   methods: ["GET", "POST", "PUT", "DELETE"],
-//   allowedHeaders: ["Content-Type", "Authorization"],
-// }))
+app.use(cors({
+  origin: "http://localhost:5173",
+}))
 
 
-// app.setupFilter()
-// .routeMatcher("/cookie",'/')
-// .permitAll()
-// .authenticateJwt(jwt)
+app.setupFilter()
+.publicRoutes("/cookie",'/', '/api/user/')
+.permitAll()
+.authenticateJwt(jwt)
 
 
 // app.use(authenticateJwt({
@@ -67,14 +65,25 @@ const port = process.env.PORT ?? 3000
 //   store: redisStore
 // }))
 
-app.use('/body',fileSaveMiddleware({ fields: ["avatar"] }));
 
-app.useLogger({
-  app
-})
+
+app.use('/body',fileSaveMiddleware({ fields: ["avatar"] }));
 
 // app.use(securityMiddleware)
 
+// app.useLogger({
+//   app,
+//   routeNotFound:() => new Response("Route not found", {status:404})
+// })
+
+// app.useAdvancedLogger({app})
+
+// app.use(requestId())
+
+app.get('/reqid', (ctx) => {
+  const reqId = ctx.get('requestId')
+  return ctx.json({reqId:reqId})
+})
 
 app.addHooks('routeNotFound',async (ctx:ContextType) => {
   const file = await Bun.file(`${import.meta.dir}/templates/routenotfound.html`)
@@ -86,12 +95,12 @@ app.addHooks('routeNotFound',async (ctx:ContextType) => {
 
 // import homapge from './templates/index.html'
 // import aboutpage from './templates/about.html'
-app.staticHtml(
-  {
-    "/":homapge,
-    "/about":aboutpage
-  }
-)
+// app.staticHtml(
+//   {
+//     "/":homapge,
+//     "/about":aboutpage
+//   }
+// )
 
 app.redirect("/name/:name/:age","/redirect/:name/:age")
 app.get("/redirect/:name/:age",(ctx) => {
@@ -104,7 +113,7 @@ app.get("/redirect/:name/:age",(ctx) => {
   })
 })
 
-// app.serveStatic(`${import.meta.dirname}/public`)
+app.serveStatic(`${import.meta.dirname}/public`)
  
 // app.get("*",() => new Response(Bun.file(`${import.meta.dirname}/public/index.html`)) )
 
@@ -207,19 +216,20 @@ console.log(name)
     return ctx.json({ message: "Cookies set successfully" });
   });
 
-// app.route("/api/user", userRoute)
+  
+  app.get("/too",(ctx) => {return ctx.send("GETTT too")})
+  app.post('/too',(ctx) =>{return ctx.send("Send posstt")})
+  
+  app.get("/ejs",async(ctx:ContextType) =>{
+    return await ctx.ejs(`${import.meta.dirname}/templates/look.ejs`,{name:"linux"})
+  })
+  
+  app.route("/api/user", userRoute)
 
-app.get("/too",(ctx) => {return ctx.send("GETTT too")})
-app.post('/too',(ctx) =>{return ctx.send("Send posstt")})
-
-app.get("/ejs",async(ctx:ContextType) =>{
-  return await ctx.ejs(`${import.meta.dirname}/templates/look.ejs`,{name:"linux"})
-})
-
-app.listen(port,() => {
-  console.log(`Server is running on port ${port}`);
-})
-
+  app.listen(port,() => {
+    console.log(`Server is running on port ${port}`);
+  })
+  
 
 const shutdown = ():any => {
   app.close();

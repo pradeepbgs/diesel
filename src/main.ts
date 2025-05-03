@@ -1,5 +1,5 @@
 import Trie from "./trie.js";
-import handleRequest, { executeBunMiddlewares} from "./handleRequest.js";
+import handleRequest, { executeBunMiddlewares } from "./handleRequest.js";
 import path from 'path'
 import fs from 'fs'
 
@@ -110,7 +110,10 @@ export default class Diesel {
       },
 
       permitAll: () => {
-        for (const route of this?.FilterRoutes!) {
+        for (let route of this?.FilterRoutes!) {
+          if (route.endsWith("/")) {
+            route = route.slice(0, -1);
+          }
           this.filters.add(route);
         }
         this.FilterRoutes = null;
@@ -126,21 +129,21 @@ export default class Diesel {
           }
         }
       },
-      
+
       authenticateJwt: (jwt: any) => {
         this.filterFunction
           .push(
             authenticateJwtMiddleware(jwt, this.user_jwt_secret) as middlewareFunc
           );
       },
-      
+
       authenticateJwtDB: (jwt: any, User: any) => {
         this.filterFunction
           .push(
             authenticateJwtDbMiddleware(jwt, User, this.user_jwt_secret) as middlewareFunc
           );
       }
-    
+
     };
   }
 
@@ -149,7 +152,7 @@ export default class Diesel {
     redirectPath: string,
     statusCode?: 302
   ): this {
-    
+
     this.any(incomingPath, (ctx) => {
 
       const params = ctx.params
@@ -177,6 +180,12 @@ export default class Diesel {
     return this;
   }
 
+  static(
+    path: string
+  ) {
+    this.staticPath = path;
+    return this;
+  }
 
   staticHtml(
     args: Record<string, string>
@@ -273,7 +282,7 @@ export default class Diesel {
 
     if (routePath.endsWith('/index')) {
       routePath = baseRoute
-    }else if (routePath.endsWith('/api')) {
+    } else if (routePath.endsWith('/api')) {
       routePath = baseRoute
     }
     // here we can check if routePath include [] like - user/[id] if yes then remove [] and add user:id
@@ -316,7 +325,7 @@ export default class Diesel {
     }
   }
 
-  useLogger(options:LoggerOptions) {
+  useLogger(options: LoggerOptions) {
     logger(options)
     return this
   }
@@ -330,11 +339,10 @@ export default class Diesel {
   BunRoute(method: string, path: string, ...handlers: any[]) {
     if (!path || typeof path !== 'string') throw new Error("give a path in string format")
 
-    if (handlers.length === 1) 
-    {
+    if (handlers.length === 1) {
       const singleHandler = handlers[0];
       this.routes[path] = async (req: BunRequest, server: Server) => {
-      
+
         if (this.hasMiddleware) {
           if (this.globalMiddlewares.length) {
             const globalMiddlewareResponse = await executeBunMiddlewares(
@@ -344,7 +352,7 @@ export default class Diesel {
             );
             if (globalMiddlewareResponse) return globalMiddlewareResponse;
           }
-    
+
           const pathMiddlewares = this.middlewares.get(path) || [];
           if (pathMiddlewares?.length) {
             const pathMiddlewareResponse = await executeBunMiddlewares(
@@ -358,7 +366,7 @@ export default class Diesel {
 
         if (method !== req.method) return new Response("Method Not Allowed", { status: 405 });
 
-        const response = await singleHandler(req,server)
+        const response = await singleHandler(req, server)
         if (response instanceof Promise) {
           const resolved = await response;
           return resolved ?? new Response("Not Found", { status: 404 });
@@ -366,8 +374,8 @@ export default class Diesel {
         return response ?? new Response("Not Found", { status: 404 });
 
       }
-    } 
-    
+    }
+
     else {
       this.routes[path] = async (req: BunRequest, server: Server) => {
 
@@ -380,7 +388,7 @@ export default class Diesel {
             );
             if (globalMiddlewareResponse) return globalMiddlewareResponse;
           }
-    
+
           const pathMiddlewares = this.middlewares.get(path) || [];
           if (pathMiddlewares?.length) {
             const pathMiddlewareResponse = await executeBunMiddlewares(
@@ -417,7 +425,7 @@ export default class Diesel {
 
     let hostname = "0.0.0.0";
     let callback: (() => void) | undefined = undefined;
-    let options: { sslCert?: string; sslKey?: string } = {};
+    let options: { cert?: string; key?: string } = {};
 
     for (const arg of args) {
       if (typeof arg === "string") {
@@ -452,20 +460,19 @@ export default class Diesel {
       },
 
       static: this.staticFiles,
-      routes: this.routes,
-
     };
 
-    if (options.sslCert && options.sslKey) {
-      ServerOptions.certFile = options.sslCert;
-      ServerOptions.keyFile = options.sslKey;
+    if (this.routes && Object.keys(this.routes).length > 0) {
+      ServerOptions.routes = this.routes;
+    }
+
+    if (options.cert && options.key) {
+      ServerOptions.certFile = options.cert;
+      ServerOptions.keyFile = options.key;
     }
 
     this.serverInstance = Bun?.serve(ServerOptions);
 
-    if (options.sslCert && options.sslKey) {
-      console.log(`HTTPS server is running on https://localhost:${port}`);
-    }
     if (callback) {
       return callback();
     }

@@ -1,6 +1,6 @@
 {
   "name": "diesel-core",
-  "version": "1.2.1",
+  "version": "1.2.7",
   "description": "Web framework built on Web Standards",
   "main": "index.js",
   "types": "index.d.ts",
@@ -59,7 +59,12 @@
       "types": "./dist/middlewares/powered-by/index.d.ts",
       "import": "./dist/middlewares/powered-by/index.js",
       "require": "./dist/middlewares/powered-by/index.js"    
-    }
+    },
+      "./requestid":{
+        "types": "./dist/middlewares/request-id/index.d.ts",
+        "import": "./dist/middlewares/request-id/index.js",
+        "require": "./dist/middlewares/request-id/index.js"    
+      }
   },
   "scripts": {
     "build": "bun run build.js",
