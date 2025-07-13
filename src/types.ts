@@ -4,6 +4,8 @@ export type listenCalllBackType = () => void;
 export type handlerFunction = (ctx: ContextType, server?: Server) => Response | Promise<Response | null | void>;
 export type middlewareFunc = (ctx: ContextType, server?: Server | undefined) => null | void | Response | Promise<Response | void | null>
 export type HookFunction = (ctx: ContextType, result?: Response | null | void, server?: Server) => Response | Promise<Response | null | void> | void | null
+export type RouteNotFoundHandler = (ctx: ContextType) => void | Response | Promise<void> | Promise<Response>;
+
 // export type onSendHookFunc = (result?: Response | null | void, ctx?:ContextType) => Response | Promise<Response | null | void>
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD" | "ANY" | "PROPFIND";
 
@@ -16,7 +18,7 @@ export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS"
 //     onClose = "onClose",
 // }
 
-export type HookType = 'routeNotFound' | 'onRequest' | 'preHandler' | 'postHandler' | 'onSend' | 'onError' | 'onClose';
+export type HookType = 'onRequest' | 'preHandler' | 'postHandler' | 'onSend' | 'onError' | 'onClose';
 
 
 export interface onError {
@@ -34,7 +36,6 @@ export interface Hooks {
     onSend: HookFunction[] | null;
     onError: onError[] | null;
     onClose: HookFunction[] | null;
-    routeNotFound:HookFunction[] | null
 }
 
 export interface ContextType {
@@ -118,6 +119,7 @@ export interface DieselT {
         search: (pathname: string, method: string) => RouteHandlerT | undefined;
     };
     staticPath: string | null
+    routeNotFoundFunc: (c:ContextType) => void | Promise<void> | Promise<Response> | Response;
 }
 
 // export interface routerT  {
