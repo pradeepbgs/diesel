@@ -4,19 +4,19 @@ import { ContextType, CookieOptions } from "../src/types";
 import { newRoute, userRoute } from "./route";
 import homapge from './templates/index.html'
 import aboutpage from './templates/about.html'
-import {cors} from "../src/middlewares/cors/cors";
+import { cors } from "../src/middlewares/cors/cors";
 import { securityMiddleware } from "../src/middlewares/security/security";
-import {fileSaveMiddleware} from '../src/middlewares/filesave/savefile'
-import {advancedLogger, logger} from '../src/middlewares/logger/logger'
-import {rateLimit} from '../src/middlewares/ratelimit/rate-limit'
+import { fileSaveMiddleware } from '../src/middlewares/filesave/savefile'
+import { advancedLogger, logger } from '../src/middlewares/logger/logger'
+import { rateLimit } from '../src/middlewares/ratelimit/rate-limit'
 // import {loadRoutes} from 'ex-router'
-import {poweredBy} from '../src/middlewares/powered-by/index'
-import {authenticateJwt} from '../src/middlewares/jwt/index'
-import {redis} from './src/utils/redis'
+import { poweredBy } from '../src/middlewares/powered-by/index'
+import { authenticateJwt } from '../src/middlewares/jwt/index'
+import { redis } from './src/utils/redis'
 import { RedisStore } from "../src/middlewares/ratelimit/implementation";
-import {requestId} from '../src/middlewares/request-id/index'
+import { requestId } from '../src/middlewares/request-id/index'
 const app = new Diesel({
-  enableFileRouting:true,
+  enableFileRouting: true,
 });
 
 const SECRET_KEY = "linux";
@@ -24,7 +24,7 @@ const SECRET_KEY = "linux";
 // loadRoutes(app,{
 //   routeDir:process.cwd()+'/src/routes'
 // })
-const port = 3001
+const port = 3000
 
 
 // Authentication Middleware
@@ -42,14 +42,15 @@ const port = 3001
 // }
 
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: 'http://localhost:3000',
+  credentials: true
 }))
 
 
-app.setupFilter()
-.publicRoutes("/cookie",'/', '/api/user/')
-.permitAll()
-.authenticateJwt(jwt)
+// app.setupFilter()
+// .publicRoutes("/cookie",'/', '/api/user/','/health')
+// .permitAll()
+// .authenticateJwt(jwt)
 
 
 // app.use(authenticateJwt({
@@ -67,14 +68,13 @@ app.setupFilter()
 
 
 
-app.use('/body',fileSaveMiddleware({ fields: ["avatar"] }));
+app.use('/body', fileSaveMiddleware({ fields: ["avatar"] }));
 
 // app.use(securityMiddleware)
 
-// app.useLogger({
-//   app,
-//   routeNotFound:() => new Response("Route not found", {status:404})
-// })
+app.useLogger({
+  app
+})
 
 // app.useAdvancedLogger({app})
 
@@ -82,15 +82,16 @@ app.use('/body',fileSaveMiddleware({ fields: ["avatar"] }));
 
 app.get('/reqid', (ctx) => {
   const reqId = ctx.get('requestId')
-  return ctx.json({reqId:reqId})
+  return ctx.json({ reqId: reqId })
 })
 
-app.addHooks('routeNotFound',async (ctx:ContextType) => {
-  const file = await Bun.file(`${import.meta.dir}/templates/routenotfound.html`)
-  ctx.status = 404
-  return new Response(file,{status:404})
-  // return ctx.file(`${import.meta.dir}/templates/routenotfound.html`)
-})
+
+
+// app.routeNotFound(async (ctx) => {
+//   const file = await Bun.file(`${import.meta.dir}/templates/routenotfound.html`)
+//   ctx.status = 404
+//   return new Response(file, { status: 404 })
+// })
 
 
 // import homapge from './templates/index.html'
@@ -102,32 +103,36 @@ app.addHooks('routeNotFound',async (ctx:ContextType) => {
 //   }
 // )
 
-app.redirect("/name/:name/:age","/redirect/:name/:age")
-app.get("/redirect/:name/:age",(ctx) => {
+app.redirect("/name/:name/:age", "/redirect/:name/:age")
+app.get("/redirect/:name/:age", (ctx) => {
   const params = ctx.params
   const query = ctx.query
   return ctx.json({
-    msg:"from redirect",
-    params:params,
-    query:query
+    msg: "from redirect",
+    params: params,
+    query: query
   })
 })
 
-app.serveStatic(`${import.meta.dirname}/public`)
- 
+// app.serveStatic(`${import.meta.dirname}/public`)
+
 // app.get("*",() => new Response(Bun.file(`${import.meta.dirname}/public/index.html`)) )
+
+app.get('/health', (ctx: ContextType) => {
+  return ctx.send("lady boy im healthy")
+})
 
 app.get("/str", async (c) => {
   return c.yieldStream(async function* () {
     yield "Hello",
-    yield " ",
-    yield "World!";
+      yield " ",
+      yield "World!";
   })
 });
 
 app.get("/stream", async (c) => {
   const stream = new ReadableStream({
-   async start(controller) {
+    async start(controller) {
       controller.enqueue("hello ");
       await Bun.sleep(2000)
       controller.enqueue("world");
@@ -138,64 +143,64 @@ app.get("/stream", async (c) => {
 });
 
 app.get('/r', () => {
-  return Response.json({msg:"Hello world"})
+  return Response.json({ msg: "Hello world" })
 })
 
 app.get('/txt', (c) => {
-return c.text("txt")
+  return c.text("txt")
 })
 
 
- app.get("/", async (ctx: ContextType) => {
-    const headers = ctx.headers
-    return ctx.json({
-      msg:"Sending headers",
-      header:headers
-    })
-   });
+app.get("/", async (ctx: ContextType) => {
+  const headers = ctx.headers
+  return ctx.json({
+    msg: "Sending headers",
+    header: headers
+  })
+});
 
 app
-.get('/rd',(ctx) => {
-  return ctx.redirect('/test/pradeep/23')
-})
-  .head("/", (ctx:ContextType) => {
+  .get('/rd', (ctx) => {
+    return ctx.redirect('/test/pradeep/23')
+  })
+  .head("/", (ctx: ContextType) => {
     return ctx.send("")
   })
-  .post("/",(ctx) => ctx.json({status:true,message:"from post"}))
-  .any("/any",(ctx) => {
-    return ctx.json({msg:"any"})
+  .post("/", (ctx) => ctx.json({ status: true, message: "from post" }))
+  .any("/any", (ctx) => {
+    return ctx.json({ msg: "any" })
   })
-  .post("/post",fileSaveMiddleware, (ctx) =>{
-    return ctx.json({msg:"post"})
+  .post("/post", fileSaveMiddleware, (ctx) => {
+    return ctx.json({ msg: "post" })
   })
-  .get("/test/:id/:name", (ctx:ContextType) => {
-    const id  = ctx.params.id
+  .get("/test/:id/:name", (ctx: ContextType) => {
+    const id = ctx.params.id
     const name = ctx.params.name
     console.log(ctx.params.name)
-    return ctx.text("How are you? "+id+name);
+    return ctx.text("How are you? " + id + name);
   })
-  .get("/err",(ctx) =>{
+  .get("/err", (ctx) => {
     ctx.status = 400
     throw new Error("Somethin`g went wrong yes");
-    return ctx.send("Error",500);
+    return ctx.send("Error", 500);
   })
-  .get("/query",async(ctx) =>{
+  .get("/query", async (ctx) => {
     const name = ctx.query.name
     const age = ctx.query.age
     const q = ctx.query
     // console.log(name,age)
     const cookie = ctx.cookies.accessToken
-    return ctx.json({ name , age , Allquery:q})
+    return ctx.json({ name, age, Allquery: q })
   })
 
   .post("/body", async (ctx) => {
-    const {name} = await ctx.body
-console.log(name)
+    const { name } = await ctx.body
+    console.log(name)
     return ctx.json({
-      msg:"from body",
-      name:name
+      msg: "from body",
+      name: name
     })
-})
+  })
 
 
   .get("/cookie", (ctx: ContextType) => {
@@ -207,7 +212,7 @@ console.log(name)
       httpOnly: true,
       secure: true,
       sameSite: 'Strict',
-      maxAge: 7 * 24 * 60 * 60, 
+      maxAge: 7 * 24 * 60 * 60,
     };
 
     ctx.setCookie('accessToken', accessToken, cookieOptions);
@@ -216,22 +221,22 @@ console.log(name)
     return ctx.json({ message: "Cookies set successfully" });
   });
 
-  
-  app.get("/too",(ctx) => {return ctx.send("GETTT too")})
-  app.post('/too',(ctx) =>{return ctx.send("Send posstt")})
-  
-  app.get("/ejs",async(ctx:ContextType) =>{
-    return await ctx.ejs(`${import.meta.dirname}/templates/look.ejs`,{name:"linux"})
-  })
-  
-  app.route("/api/user", userRoute)
 
-  app.listen(port,() => {
-    console.log(`Server is running on port ${port}`);
-  })
-  
+app.get("/too", (ctx) => { return ctx.send("GETTT too") })
+app.post('/too', (ctx) => { return ctx.send("Send posstt") })
 
-const shutdown = ():any => {
+app.get("/ejs", async (ctx: ContextType) => {
+  return await ctx.ejs(`${import.meta.dirname}/templates/look.ejs`, { name: "linux" })
+})
+
+app.route("/api/user", userRoute)
+
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+})
+
+
+const shutdown = (): any => {
   app.close();
   process.exit()
 };

@@ -1,5 +1,5 @@
 import Trie from "./trie.js";
-import { corsT, FilterMethods, HookFunction, HookType, listenArgsT, middlewareFunc, onError, onRequest, type handlerFunction, type Hooks } from "./types.js";
+import { ContextType, corsT, FilterMethods, HookFunction, HookType, listenArgsT, middlewareFunc, onError, onRequest, RouteNotFoundHandler, type handlerFunction, type Hooks } from "./types.js";
 import { Server } from "bun";
 import { AdvancedLoggerOptions, LoggerOptions } from "./middlewares/logger/logger.js";
 export default class Diesel {
@@ -27,6 +27,7 @@ export default class Diesel {
     private baseApiUrl;
     private enableFileRouter;
     idleTimeOut: number;
+    routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
     constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, }?: {
         jwtSecret?: string;
         baseApiUrl?: string;
@@ -76,7 +77,7 @@ export default class Diesel {
      * - app.use(["/home", "/user"], [h1, h2]) -> Adds `h1` and `h2` to `/home` and `/user`.
      * - app.use(h1, [h2, h1]) -> Runs `h1`, then `h2`, and `h1` again as specified.
      */
-    use(pathORHandler?: string | string[] | middlewareFunc | middlewareFunc[], handlers?: middlewareFunc | middlewareFunc[]): this | void;
+    use(pathORHandler?: string | string[] | middlewareFunc | middlewareFunc[], handlers?: middlewareFunc | middlewareFunc[]): this;
     get(path: string, ...handlers: handlerFunction[]): this;
     post(path: string, ...handlers: handlerFunction[]): this;
     put(path: string, ...handlers: handlerFunction[]): this;
@@ -86,4 +87,5 @@ export default class Diesel {
     head(path: string, ...handlers: handlerFunction[]): this;
     options(path: string, ...handlers: handlerFunction[]): this;
     propfind(path: string, ...handlers: handlerFunction[]): this;
+    routeNotFound(handler: RouteNotFoundHandler): this;
 }

@@ -4,6 +4,7 @@ import path from 'path'
 import fs from 'fs'
 
 import {
+  ContextType,
   corsT,
   DieselT,
   FilterMethods,
@@ -13,6 +14,7 @@ import {
   middlewareFunc,
   onError,
   onRequest,
+  RouteNotFoundHandler,
   type handlerFunction,
   type Hooks,
   type HttpMethod,
@@ -47,6 +49,8 @@ export default class Diesel {
   private baseApiUrl: string
   private enableFileRouter: boolean
   idleTimeOut: number
+  routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
+
 
   constructor(
     {
@@ -86,7 +90,6 @@ export default class Diesel {
       onSend: [],
       onError: [],
       onClose: [],
-      routeNotFound: [],
     };
     this.FilterRoutes = [];
     this.filters = new Set<string>();
@@ -95,6 +98,7 @@ export default class Diesel {
     this.serverInstance = null;
     this.staticPath = null;
     this.staticFiles = {};
+    this.routeNotFoundFunc = () => { }
 
   }
 
@@ -225,9 +229,6 @@ export default class Diesel {
         break;
       case "onClose":
         this.hooks.onClose?.push(fnc as HookFunction)
-        break;
-      case "routeNotFound":
-        this.hooks.routeNotFound?.push(fnc as HookFunction)
         break;
       default:
         throw new Error(`Unknown hook type: ${typeOfHook}`);
@@ -449,8 +450,6 @@ export default class Diesel {
 
         if (this.hooks.onRequest) {
           const handlers = this.hooks.onRequest;
-          // using for a loop because it would be faster than for of
-          // although for of looks clean
           for (let i = 0; i < handlers.length; i++) {
             await handlers[i](req, url, server);
           }
@@ -633,7 +632,7 @@ export default class Diesel {
   use(
     pathORHandler?: string | string[] | middlewareFunc | middlewareFunc[],
     handlers?: middlewareFunc | middlewareFunc[]
-  ): this | void {
+  ): this {
     /**
      * First, we check if the user has passed an array of global middlewares.
      * Example: app.use([h1, h2])
@@ -682,7 +681,7 @@ export default class Diesel {
           // }
         });
       }
-      return;
+      return this;
     }
 
     /**
@@ -788,6 +787,13 @@ export default class Diesel {
     ...handlers: handlerFunction[]
   ): this {
     this.addRoute("PROPFIND", path, handlers);
+    return this;
+  }
+
+  routeNotFound(
+    handler: RouteNotFoundHandler
+  ) {
+    this.routeNotFoundFunc = handler;
     return this;
   }
 }

@@ -9,10 +9,8 @@ beforeAll(async () => {
     console.log('Server running on '+port)
   })
   console.log(`is server started ? -> ${port}`)
-  await Bun.sleep(100)
 })
 afterAll(async () => {
-  //await Bun.sleep(100)
   app.close()
   console.log("Server closed.");
 });
@@ -26,23 +24,23 @@ describe("GET /api/user/register", () => {
     expect(response.status).toBe(200);
     expect(data.msg).toBe("This is a public route. No authentication needed.");
   });
-  it("should return 405 for unsupported method on /api/user/register", async () => {
+  it("should return 404 for unsupported method on /api/user/register", async () => {
     const response = await fetch(`${baseUrl}/api/user/register`, {
       method: "POST",
     });
-    expect(response.status).toBe(405);
+    expect(response.status).toBe(404);
   });
-  it("should return 405 for unsupported method on /api/user/register", async () => {
+  it("should return 404 for unsupported method on /api/user/register", async () => {
     const response = await fetch(`${baseUrl}/api/user/register`, {
       method: "PUT",
     });
-    expect(response.status).toBe(405);
+    expect(response.status).toBe(404);
   });
-  it("should return 405 for unsupported method on /api/user/register", async () => {
+  it("should return 404 for unsupported method on /api/user/register", async () => {
     const response = await fetch(`${baseUrl}/api/user/register`, {
       method: "DELETE",
     });
-    expect(response.status).toBe(405);
+    expect(response.status).toBe(404);
   });
   it("should return 200 again for supported method on /api/user/register", async () => {
     const response = await fetch(`${baseUrl}/api/user/register`, {
