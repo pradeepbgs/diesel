@@ -8,7 +8,7 @@ export type RouteNotFoundHandler = (ctx: ContextType) => void | Response | Promi
 
 // export type onSendHookFunc = (result?: Response | null | void, ctx?:ContextType) => Response | Promise<Response | null | void>
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD" | "ANY" | "PROPFIND";
-
+export type HttpMethodOfApp = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | 'head' | 'any' | 'propfind'
 // export enum HookType {
 //     onRequest = "onRequest",
 //     preHandler = "preHandler",
@@ -171,7 +171,7 @@ export interface FilterMethods {
     authenticateJwtDB: (jwt:any,UserModel:any) => Response | Promise<Response | null> | void
 }
 
-export type listenArgsT = string | (() => void) | { sslCert?: string; sslKey?: string };
+export type listenArgsT = string | (() => void) | { cert?: string; key?: string };
 
 interface ListenType {
     port: number;

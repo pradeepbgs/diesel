@@ -8,7 +8,6 @@ export type AdvancedLoggerOptions = {
     onRequest?: (req: Request, url: URL) => void;
     onSend?: (ctx: ContextType) => Response | void | Promise<Response | void>;
     onError?: (error: Error, req: Request, url: URL) => Response | void | Promise<Response | void>;
-    routeNotFound?: (ctx: ContextType) => Response | void | Promise<Response | void>;
 };
 export declare const advancedLogger: (options?: AdvancedLoggerOptions) => void;
 export type LoggerOptions = {
@@ -17,7 +16,6 @@ export type LoggerOptions = {
     onRequest?: (req: Request, url: URL) => void;
     onSend?: (ctx: ContextType) => Response | Promise<Response> | void;
     onError?: (error: Error, req: Request, url: URL) => Response | Promise<Response> | void;
-    routeNotFound?: (ctx: ContextType) => Response | Promise<Response> | void;
 };
 export declare const logger: (options: LoggerOptions) => void;
 export {};

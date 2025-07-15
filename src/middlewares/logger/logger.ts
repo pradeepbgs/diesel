@@ -16,6 +16,7 @@ type LogMeta = {
     duration?: string
     error?: string
     headers?: Record<string, string | null>
+    reqId?:string
 }
 
 const COLORS = {
@@ -73,7 +74,6 @@ export type AdvancedLoggerOptions = {
     onRequest?: (req: Request, url: URL) => void
     onSend?: (ctx: ContextType) => Response | void | Promise<Response | void>
     onError?: (error: Error, req: Request, url: URL) => Response | void | Promise<Response | void>
-    routeNotFound?: (ctx: ContextType) => Response | void | Promise<Response | void>
 }
 
 export const advancedLogger = (options?: AdvancedLoggerOptions) => {
@@ -84,7 +84,6 @@ export const advancedLogger = (options?: AdvancedLoggerOptions) => {
         onRequest,
         onSend,
         onError,
-        routeNotFound,
     } = options || {};
 
     app?.addHooks('onRequest',(req: Request, url: URL) => {
@@ -117,13 +116,6 @@ export const advancedLogger = (options?: AdvancedLoggerOptions) => {
         });
 
         const res = await onSend?.(ctx);
-        if (res instanceof Response) return res;
-    });
-
-    app?.addHooks('routeNotFound', async (ctx: ContextType) => {
-        logger?.() && logger()
-
-        const res = await routeNotFound?.(ctx);
         if (res instanceof Response) return res;
     });
 
@@ -179,11 +171,10 @@ export type LoggerOptions = {
         req: Request,
         url: URL
     ) => Response | Promise<Response> | void;
-    routeNotFound?: (ctx: ContextType) => Response | Promise<Response> | void;
 };
 
 export const logger = (options: LoggerOptions) => {
-    const { app, log, onRequest, onSend, onError, routeNotFound } = options;
+    const { app, log, onRequest, onSend, onError } = options;
 
     app.addHooks("onRequest", (req: Request, url: URL) => {
         req.startTime = Date.now();
@@ -207,13 +198,6 @@ export const logger = (options: LoggerOptions) => {
             );
 
         const res = await onSend?.(ctx);
-        if (res instanceof Response) return res;
-    });
-
-    app.addHooks("routeNotFound", async (ctx: ContextType) => {
-        log?.() && log()
-
-        const res = await routeNotFound?.(ctx);
         if (res instanceof Response) return res;
     });
 

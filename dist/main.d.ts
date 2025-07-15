@@ -1,8 +1,10 @@
 import Trie from "./trie.js";
 import { ContextType, corsT, FilterMethods, HookFunction, HookType, listenArgsT, middlewareFunc, onError, onRequest, RouteNotFoundHandler, type handlerFunction, type Hooks } from "./types.js";
-import { Server } from "bun";
+import { BunRequest, Server } from "bun";
 import { AdvancedLoggerOptions, LoggerOptions } from "./middlewares/logger/logger.js";
+import { ServerOptions } from "http";
 export default class Diesel {
+    fecth: ServerOptions['fecth'];
     routes: Record<string, Function>;
     private tempRoutes;
     globalMiddlewares: middlewareFunc[];
@@ -47,6 +49,7 @@ export default class Diesel {
     useAdvancedLogger(options: AdvancedLoggerOptions): this;
     BunRoute(method: string, path: string, ...handlers: any[]): void;
     listen(port: any, ...args: listenArgsT[]): Server | void;
+    fetch(): (req: BunRequest, server: Server) => Promise<any>;
     close(callback?: () => void): void;
     /**
      * Registers a router instance for subrouting.

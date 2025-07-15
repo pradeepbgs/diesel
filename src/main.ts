@@ -10,6 +10,7 @@ import {
   FilterMethods,
   HookFunction,
   HookType,
+  HttpMethodOfApp,
   listenArgsT,
   middlewareFunc,
   onError,
@@ -22,9 +23,11 @@ import {
 import { BunRequest, Server } from "bun";
 import { advancedLogger, AdvancedLoggerOptions, logger, LoggerOptions } from "./middlewares/logger/logger.js";
 import { authenticateJwtDbMiddleware, authenticateJwtMiddleware } from "./utils/jwt.js";
+import { ServerOptions } from "http";
+import { requestId } from "./middlewares/request-id/index.js";
 
 export default class Diesel {
-
+  fecth: ServerOptions['fecth']
   routes: Record<string, Function>
   private tempRoutes: Map<string, any> | null;
   globalMiddlewares: middlewareFunc[];
@@ -66,7 +69,7 @@ export default class Diesel {
         idleTimeOut?: number
       } = {}
   ) {
-
+    this.fetch = this.fetch.bind(this);
     this.routes = {}
     this.idleTimeOut = idleTimeOut ?? 10
     this.enableFileRouter = enableFileRouting ?? false
@@ -237,19 +240,18 @@ export default class Diesel {
   }
 
   private compile(): void {
-
-    if (this.globalMiddlewares.length > 0) {
+    if (this?.globalMiddlewares?.length > 0) {
       this.hasMiddleware = true;
     }
 
-    for (const [_, middlewares] of this.middlewares.entries()) {
+    for (const [_, middlewares] of this?.middlewares.entries()) {
       if (middlewares.length > 0) {
         this.hasMiddleware = true;
         break;
       }
     }
 
-    if (this.enableFileRouter) {
+    if (this?.enableFileRouter) {
       const projectRoot = process.cwd();
       const routesPath = path.join(projectRoot, 'src', 'routes');
       if (fs?.existsSync(routesPath)) {
@@ -296,7 +298,7 @@ export default class Diesel {
 
     for (const method of supportedMethods) {
       if (module[method]) {
-        const lowerMethod = method.toLowerCase() as HttpMethod;
+        const lowerMethod = method.toLowerCase() as HttpMethodOfApp;
         const handler = module[method] as handlerFunction;
         this[lowerMethod](`${this.baseApiUrl}${routePath}`, handler)
       }
@@ -445,19 +447,7 @@ export default class Diesel {
       hostname,
       idleTimeOut: this.idleTimeOut,
 
-      fetch: async (req: BunRequest, server: Server) => {
-        const url: URL = new URL(req.url);
-
-        if (this.hooks.onRequest) {
-          const handlers = this.hooks.onRequest;
-          for (let i = 0; i < handlers.length; i++) {
-            await handlers[i](req, url, server);
-          }
-        }
-
-        return handleRequest(req, server, url, this as DieselT)
-      },
-
+      fetch: this.fetch(),
       static: this.staticFiles,
     };
 
@@ -477,6 +467,22 @@ export default class Diesel {
     }
 
     return this.serverInstance;
+  }
+
+  fetch() {
+    this.compile();
+    return async (req: BunRequest, server: Server) => {
+      const url: URL = new URL(req.url);
+
+      if (this.hooks.onRequest) {
+        const handlers = this.hooks.onRequest;
+        for (let i = 0; i < handlers.length; i++) {
+          await handlers[i](req, url, server);
+        }
+      }
+
+      return handleRequest(req, server, url, this as DieselT)
+    }
   }
 
   close(
