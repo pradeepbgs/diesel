@@ -72,10 +72,8 @@ app.use('/body', fileSaveMiddleware({ fields: ["avatar"] }));
 
 // app.use(securityMiddleware)
 
-app.useLogger({
-  app
-})
-
+app.use(requestId())
+app.useLogger({app})
 // app.useAdvancedLogger({app})
 
 // app.use(requestId())
@@ -231,15 +229,22 @@ app.get("/ejs", async (ctx: ContextType) => {
 
 app.route("/api/user", userRoute)
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-})
+// app.listen(port, () => {
+//   console.log(`Server is running on port ${port}`);
+// })
 
 
 const shutdown = (): any => {
   app.close();
   process.exit()
 };
+
+Bun.serve({
+  port,
+  fetch: app.fetch() as any
+})
+console.log(`Server is running on port ${port}`);
+
 
 process.on('SIGTERM', shutdown)
 process.on("SIGINT", shutdown);

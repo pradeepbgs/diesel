@@ -5,6 +5,7 @@ export type middlewareFunc = (ctx: ContextType, server?: Server | undefined) => 
 export type HookFunction = (ctx: ContextType, result?: Response | null | void, server?: Server) => Response | Promise<Response | null | void> | void | null;
 export type RouteNotFoundHandler = (ctx: ContextType) => void | Response | Promise<void> | Promise<Response>;
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD" | "ANY" | "PROPFIND";
+export type HttpMethodOfApp = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | 'head' | 'any' | 'propfind';
 export type HookType = 'onRequest' | 'preHandler' | 'postHandler' | 'onSend' | 'onError' | 'onClose';
 export interface onError {
     (error: Error, req: Request, url: URL, server: Server): void | null | Response | Promise<Response | null | void>;
@@ -126,6 +127,6 @@ export interface FilterMethods {
     authenticateJwtDB: (jwt: any, UserModel: any) => Response | Promise<Response | null> | void;
 }
 export type listenArgsT = string | (() => void) | {
-    sslCert?: string;
-    sslKey?: string;
+    cert?: string;
+    key?: string;
 };

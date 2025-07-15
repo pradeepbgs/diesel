@@ -1,6 +1,6 @@
 import { BunRequest, Server } from "bun";
 import createCtx from "./ctx";
-import type { ContextType, DieselT, middlewareFunc, RouteHandlerT } from "./types";
+import type { ContextType, DieselT, RouteHandlerT } from "./types";
 import { getMimeType } from "./utils/mimeType";
 
 
@@ -10,6 +10,7 @@ export default async function handleRequest(
   url: URL,
   diesel: DieselT
 ) {
+  // console.log('deisel ', diesel)
   const ctx: ContextType = createCtx(req, server, url);
 
   const routeHandler: RouteHandlerT | undefined = diesel.trie.search(
