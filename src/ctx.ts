@@ -9,14 +9,20 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
   let parsedCookies: Record<string, string> | null = null;
   let parsedBody: Promise<any> | null = null;
   let contextData: Record<string, any> = {};
-
+  const typeMap = new Map<string, string>([
+    ["string", "text/plain; charset=utf-8"],
+    ["object", "application/json; charset=utf-8"],
+    ["Uint8Array", "application/octet-stream"],
+    ["ArrayBuffer", "application/octet-stream"],
+  ]);
+  
   return {
     req,
     server,
     url,
     status: 200,
     headers: new Headers({ "Cache-Control": "no-cache" }),
-    
+
     setHeader(key: string, value: string): ContextType {
       this.headers.set(key, value);
       return this;
@@ -79,63 +85,56 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
     },
 
     text(data: string, status?: number) {
-      if(status) this.status = status
+      if (status) this.status = status
       if (!this.headers.has("Content-Type")) {
         this.headers.set("Content-Type", "text/plain; charset=utf-8")
       }
       return new Response(data, {
         status: this.status,
-        headers:this.headers
+        headers: this.headers
       });
     },
 
     send<T>(data: T, status?: number): Response {
-      if(status) this.status = status;
-      const typeMap = new Map<string, string>([
-        ["string", "text/plain; charset=utf-8"],
-        ["object", "application/json; charset=utf-8"],
-        ["Uint8Array", "application/octet-stream"],
-        ["ArrayBuffer", "application/octet-stream"],
-      ]);
-
+      if (status) this.status = status;
       // const dataType = data instanceof Uint8Array ? "Uint8Array"
       //   : data instanceof ArrayBuffer ? "ArrayBuffer"
       //     : typeof data;
 
-      let dataType:string
+      let dataType: string
 
       if (data instanceof Uint8Array) dataType = "Uint8Array"
-      else if(data instanceof ArrayBuffer) dataType = 'ArrayBuffer'
+      else if (data instanceof ArrayBuffer) dataType = 'ArrayBuffer'
       else dataType = typeof data
 
       if (!this.headers.has("Content-Type")) {
         this.headers.set("Content-Type", typeMap.get(dataType) ?? "text/plain; charset=utf-8");
       }
 
-      const responseData = 
+      const responseData =
         dataType === "object" && data !== null ? JSON.stringify(data) : (data as any);
-      return new Response(responseData, { status: this.status, headers:this.headers });
+      return new Response(responseData, { status: this.status, headers: this.headers });
     },
 
-    json<T>(data: T, status?:number): Response {
-      if(status) this.status = status;
+    json<T>(data: T, status?: number): Response {
+      if (status) this.status = status;
       if (!this.headers.has("Content-Type")) {
         this.headers.set("Content-Type", "application/json; charset=utf-8");
       }
-      return Response.json(data, { status: this.status, headers:this.headers })
+      return Response.json(data, { status: this.status, headers: this.headers })
     },
 
-    file(filePath: string, mime_Type?: string,status?: number): Response {
-      if(status) this.status = status;
+    file(filePath: string, mime_Type?: string, status?: number): Response {
+      if (status) this.status = status;
       const file = Bun.file(filePath);
       if (!this.headers.has("Content-Type")) {
         this.headers.set("Content-Type", mime_Type ?? getMimeType(filePath));
       }
-      return new Response(file, { status: this.status, headers:this.headers });
+      return new Response(file, { status: this.status, headers: this.headers });
     },
 
     async ejs(viewPath: string, data = {}, status?: number): Promise<Response> {
-      if(status) this.status = status;
+      if (status) this.status = status;
       let ejs;
       try {
         ejs = await import('ejs')
@@ -157,11 +156,11 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
     },
 
     redirect(path: string, status?: number): Response {
-      if(status) this.status=status
+      if (status) this.status = status
       else this.status = 302;
-      
+
       this.headers.set("Location", path);
-      return new Response(null, { status: this.status, headers:this.headers });
+      return new Response(null, { status: this.status, headers: this.headers });
     },
 
     stream(callback: (controller: ReadableStreamDefaultController) => void) {
@@ -185,10 +184,10 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
             yield* callback();
           },
         },
-        { headers:this.headers }
+        { headers: this.headers }
       );
     },
-    
+
 
     setCookie(
       name: string,
