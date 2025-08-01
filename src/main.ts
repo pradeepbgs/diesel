@@ -473,14 +473,6 @@ export default class Diesel {
     this.compile();
     return async (req: BunRequest, server: Server) => {
       const url: URL = new URL(req.url);
-
-      if (this.hooks.onRequest) {
-        const handlers = this.hooks.onRequest;
-        for (let i = 0; i < handlers.length; i++) {
-          await handlers[i](req, url, server);
-        }
-      }
-
       return handleRequest(req, server, url, this as DieselT)
     }
   }

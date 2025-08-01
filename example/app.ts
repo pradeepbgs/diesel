@@ -73,7 +73,7 @@ app.use('/body', fileSaveMiddleware({ fields: ["avatar"] }));
 // app.use(securityMiddleware)
 
 app.use(requestId())
-app.useLogger({app})
+app.useLogger({ app })
 // app.useAdvancedLogger({app})
 
 // app.use(requestId())
@@ -83,7 +83,12 @@ app.get('/reqid', (ctx) => {
   return ctx.json({ reqId: reqId })
 })
 
-
+// app.use((ctx) => ctx.send("hhhh"))
+app.addHooks('onRequest',() => console.log('first'))
+app.addHooks('onRequest', () => console.log('second'))
+app.get("/ok", (ctx) => {
+  // return "hello world";
+})
 
 // app.routeNotFound(async (ctx) => {
 //   const file = await Bun.file(`${import.meta.dir}/templates/routenotfound.html`)
