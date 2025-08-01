@@ -1,6 +1,6 @@
 import { BunRequest, Server } from "bun";
 import createCtx from "./ctx";
-import type { ContextType, DieselT, RouteHandlerT } from "./types";
+import type { ContextType, DieselT, HookType, RouteHandlerT } from "./types";
 import { getMimeType } from "./utils/mimeType";
 
 
@@ -10,105 +10,94 @@ export default async function handleRequest(
   url: URL,
   diesel: DieselT
 ) {
-  // console.log('deisel ', diesel)
   const ctx: ContextType = createCtx(req, server, url);
 
   const routeHandler: RouteHandlerT | undefined = diesel.trie.search(
     url.pathname,
     req.method
   );
-
   req.routePattern = routeHandler?.path;
 
   try {
 
-    // PipeLines such as filters , middlewares,hooks
-    // pipeline 1 - middleware execution
-    if (diesel.hasMiddleware) {
-      if (diesel.globalMiddlewares.length) {
-        const globalMiddlewareResponse = await executeMiddlewares(
-          diesel.globalMiddlewares,
-          ctx,
-          server
-        );
-        if (globalMiddlewareResponse) return globalMiddlewareResponse;
-      }
+    // PipeLines such as filters , middlewares, hooks
 
-      const pathMiddlewares = diesel.middlewares.get(url.pathname) || [];
-      if (pathMiddlewares?.length) {
-        const pathMiddlewareResponse = await executeMiddlewares(
-          pathMiddlewares,
-          ctx,
-          server
-        );
-        if (pathMiddlewareResponse) return pathMiddlewareResponse;
-      }
+    if (diesel.hooks.onRequest) await runHooks('onRequest', diesel.hooks.onRequest, [req, url, server])
+
+    // middleware execution
+    if (diesel.hasMiddleware) {
+      const mwResult = await runMiddlewares(diesel, url.pathname, ctx, server);
+      if (mwResult) return mwResult;
     }
 
-    // pipepline 2 - filter execution
+    // filter execution
     if (diesel.hasFilterEnabled) {
       const path = req.routePattern ?? url.pathname;
-      const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
-      const finalResult = filterResponse instanceof Promise ? await filterResponse : filterResponse;
-      if (finalResult) return finalResult;
+      const filterResponse = await runFilter(diesel, path, ctx, server);
+      if (filterResponse) return filterResponse;
     }
 
 
     // if route not found
-    if (!routeHandler?.handler || routeHandler.method !== req.method) {
-      if (diesel.staticPath) {
-        const staticResponse = await handleStaticFiles(diesel, url.pathname, ctx);
-        if (staticResponse) return staticResponse;
-
-        const wildCard = diesel.trie.search("*", req.method)
-        if (wildCard?.handler) {
-          return (await wildCard.handler(ctx));
-        }
-      }
-
-      const routeNotFoundResponse = diesel.routeNotFoundFunc(ctx);
-      if (routeNotFoundResponse) return routeNotFoundResponse
-      return generateErrorResponse(404, `Route not found for ${url.pathname}`);
-    }
+    if (!routeHandler) return await handleRouteNotFound(diesel, ctx, url.pathname)
 
     // pre-handler
-    if (diesel.hooks.preHandler?.length && Array.isArray(diesel.hooks.preHandler)) {
-      const handlers = diesel.hooks.preHandler;
-      for (let i = 0; i < handlers.length; i++) {
-        const preHandlerResponse = handlers[i](ctx);
-        const finalResult = preHandlerResponse instanceof Promise ? await preHandlerResponse : preHandlerResponse;
-        if (finalResult) return finalResult;
-      }
+    if (diesel.hooks.preHandler) {
+      const result = await runHooks('preHandler', diesel.hooks.preHandler, [ctx, server]);
+      if (result) return result;
     }
 
     const result = routeHandler.handler(ctx);
     const finalResult = result instanceof Promise ? await result : result;
-    return finalResult ?? generateErrorResponse(204, "");
+
+    // onSend
+    if (diesel.hasOnSendHook) {
+      const response = await runHooks('onSend', diesel.hooks.onSend, [ctx, finalResult, server]);
+      if (response) return response;
+    }
+    if (finalResult instanceof Response) {
+      return finalResult;
+    }
+
+    // if we dont return a response then by default Bun shows a err 
+    return generateErrorResponse(500, "No response returned from handler.");
 
   }
+
   catch (error: any) {
-    if (diesel.hooks.onError && Array.isArray(diesel.hooks.onError)) {
-      const handlers = diesel.hooks.onError
-      for (let i = 0; i < handlers.length; i++) {
-        const onErrorHookResponse = diesel.hooks.onError[i](error, req, url, server)
-        const finalResult = onErrorHookResponse instanceof Promise ? await onErrorHookResponse : onErrorHookResponse;
-        if (finalResult) return finalResult;
-      }
-    }
-    return generateErrorResponse(500, "Internal Server Error");
+    const errorResult = await runHooks("onError", diesel.hooks.onError, [error, req, url, server]);
+    return errorResult || generateErrorResponse(500, "Internal Server Error");
   }
-  finally {
-    if (diesel.hooks.onSend && Array.isArray(diesel.hooks.onSend)) {
-      const handlers = diesel.hooks.onSend;
-      for (let i = 0; i < handlers.length; i++) {
-        const onSendResponse = handlers[i](ctx);
-        const finalResult = onSendResponse instanceof Promise ? await onSendResponse : onSendResponse;
-        if (finalResult) return finalResult;
-      }
-    }
+
+}
+
+async function runHooks<T extends any[]>(
+  label: HookType,
+  hooksArray: any,
+  args: T): Promise<any> {
+  if (!hooksArray?.length) return;
+  for (let i = 0; i < hooksArray.length; i++) {
+    const result = hooksArray[i](...args);
+    const finalResult = result instanceof Promise ? await result : result;
+    if (finalResult && label !== 'onRequest') return finalResult
   }
 }
 
+async function runMiddlewares(diesel: DieselT, pathname: string, ctx: ContextType, server: Server) {
+
+  if (diesel.globalMiddlewares.length) {
+    const res = await executeMiddlewares(diesel.globalMiddlewares, ctx, server);
+    if (res) return res;
+  }
+
+  const local = diesel.middlewares.get(pathname) || [];
+  if (local.length) {
+    const res = await executeMiddlewares(local, ctx, server);
+    if (res) return res;
+  }
+
+  return null;
+}
 
 export async function executeMiddlewares(
   middlewares: Function[],
@@ -130,6 +119,12 @@ export async function executeBunMiddlewares(
     const result = await middleware(req, server);
     if (result) return result;
   }
+}
+
+async function runFilter(diesel: DieselT, path: string, ctx: ContextType, server: Server) {
+  const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
+  const finalResult = filterResponse instanceof Promise ? await filterResponse : filterResponse;
+  if (finalResult) return finalResult;
 }
 
 export async function handleFilterRequest(
@@ -170,6 +165,20 @@ export async function handleBunFilterRequest(
     }
   }
 }
+
+async function handleRouteNotFound(diesel: DieselT, ctx: ContextType, pathname: string) {
+  if (diesel.staticPath) {
+    const staticRes = await handleStaticFiles(diesel, pathname, ctx);
+    if (staticRes) return staticRes;
+
+    const wildcard = diesel.trie.search("*", ctx.req.method);
+    if (wildcard?.handler) return await wildcard.handler(ctx);
+  }
+
+  const fallback = diesel.routeNotFoundFunc(ctx);
+  return fallback || generateErrorResponse(404, `Route not found for ${pathname}`);
+}
+
 
 export function generateErrorResponse(
   status: number,

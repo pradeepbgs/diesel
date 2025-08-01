@@ -112,14 +112,15 @@ class TrieNode {
           method: node.method[routeMethodIndex]
         };
       }
-    
-      return {
-        path: node.path,
-        handler: node.handler,
-        isDynamic: node.isDynamic,
-        pattern: node.pattern,
-        method: node.method[routeMethodIndex]
-      };
+      
+      return null
+      // return {
+      //   path: node.path,
+      //   handler: node.handler,
+      //   isDynamic: node.isDynamic,
+      //   pattern: node.pattern,
+      //   method: node.method[routeMethodIndex]
+      // };
     }
     
   }
