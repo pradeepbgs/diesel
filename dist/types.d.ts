@@ -6,6 +6,7 @@ export type HookFunction = (ctx: ContextType, result?: Response | null | void, s
 export type RouteNotFoundHandler = (ctx: ContextType) => void | Response | Promise<void> | Promise<Response>;
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD" | "ANY" | "PROPFIND";
 export type HttpMethodOfApp = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | 'head' | 'any' | 'propfind';
+export type HttpMethodLower = Lowercase<HttpMethod>;
 export type HookType = 'onRequest' | 'preHandler' | 'postHandler' | 'onSend' | 'onError' | 'onClose';
 export interface onError {
     (error: Error, req: Request, url: URL, server: Server): void | null | Response | Promise<Response | null | void>;
@@ -65,6 +66,10 @@ export interface RouteHandlerT {
     handler: (ctx: ContextType) => Promise<Response | null | void>;
     isDynamic?: boolean;
     path?: string;
+}
+export interface TempRouteEntry {
+    method: string;
+    handlers: handlerFunction[];
 }
 export interface DieselT {
     hasOnReqHook: boolean;

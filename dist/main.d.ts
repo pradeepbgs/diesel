@@ -1,5 +1,5 @@
 import Trie from "./trie.js";
-import { ContextType, corsT, FilterMethods, HookFunction, HookType, listenArgsT, middlewareFunc, onError, onRequest, RouteNotFoundHandler, type handlerFunction, type Hooks } from "./types.js";
+import { ContextType, corsT, FilterMethods, HookFunction, HookType, listenArgsT, middlewareFunc, onError, onRequest, RouteNotFoundHandler, type handlerFunction, type Hooks, type HttpMethod } from "./types.js";
 import { BunRequest, Server } from "bun";
 import { AdvancedLoggerOptions, LoggerOptions } from "./middlewares/logger/logger.js";
 import { ServerOptions } from "http";
@@ -91,4 +91,5 @@ export default class Diesel {
     options(path: string, ...handlers: handlerFunction[]): this;
     propfind(path: string, ...handlers: handlerFunction[]): this;
     routeNotFound(handler: RouteNotFoundHandler): this;
+    on(methods: string | (HttpMethod | string)[], path: string, ...handlers: handlerFunction[]): void;
 }

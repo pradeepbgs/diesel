@@ -10,12 +10,14 @@ import {
   FilterMethods,
   HookFunction,
   HookType,
+  HttpMethodLower,
   HttpMethodOfApp,
   listenArgsT,
   middlewareFunc,
   onError,
   onRequest,
   RouteNotFoundHandler,
+  TempRouteEntry,
   type handlerFunction,
   type Hooks,
   type HttpMethod,
@@ -29,7 +31,7 @@ import { requestId } from "./middlewares/request-id/index.js";
 export default class Diesel {
   fecth: ServerOptions['fecth']
   routes: Record<string, Function>
-  private tempRoutes: Map<string, any> | null;
+  private tempRoutes: Map<string, TempRouteEntry> | null;
   globalMiddlewares: middlewareFunc[];
   middlewares: Map<string, middlewareFunc[]>;
   trie: Trie;
@@ -499,6 +501,7 @@ export default class Diesel {
     basePath: string,
     routerInstance: any
   ): this {
+
     if (!basePath || typeof basePath !== "string")
       throw new Error("Path must be a string");
 
@@ -563,15 +566,12 @@ export default class Diesel {
     path: string,
     handlers: handlerFunction[]
   ): void {
+
     if (typeof path !== "string")
-      throw new Error(
-        `Error in ${handlers[handlers.length - 1]
-        }: Path must be a string. Received: ${typeof path}`
-      );
+      throw new Error(`Error in ${handlers[handlers.length - 1]}: Path must be a string. Received: ${typeof path}`);
+
     if (typeof method !== "string")
-      throw new Error(
-        `Error in addRoute: Method must be a string. Received: ${typeof method}`
-      );
+      throw new Error(`Error in addRoute: Method must be a string. Received: ${typeof method}`);
 
     this.tempRoutes?.set(path + "::" + method, { method, handlers });
     const middlewareHandlers = handlers.slice(0, -1) as middlewareFunc[];
@@ -604,8 +604,8 @@ export default class Diesel {
           "HEAD",
           "PROPFIND",
         ];
-        for (const m of allMethods) {
-          this.trie.insert(path, { handler, method: m });
+        for (const method of allMethods) {
+          this.trie.insert(path, { handler, method: method });
         }
       }
       this.trie.insert(path, { handler, method });
@@ -794,4 +794,21 @@ export default class Diesel {
     this.routeNotFoundFunc = handler;
     return this;
   }
+
+
+  on(methods: string | (HttpMethod | string)[], path: string, ...handlers: handlerFunction[]) {
+    const methodArray = Array.isArray(methods) ? methods : [methods]
+
+    for (const method of methodArray) {
+      const methodNormalized = method.toUpperCase();
+      if (methodNormalized.toLocaleLowerCase() in this) {
+        this[methodNormalized.toLocaleLowerCase() as HttpMethodLower](path, ...handlers)
+      }
+      else {
+        this.addRoute(methodNormalized as HttpMethod, path, handlers)
+      }
+    }
+
+  }
 }
+
