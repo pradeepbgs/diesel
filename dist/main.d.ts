@@ -4,6 +4,7 @@ import { BunRequest, Server } from "bun";
 import { AdvancedLoggerOptions, LoggerOptions } from "./middlewares/logger/logger.js";
 import { ServerOptions } from "http";
 export default class Diesel {
+    private static instance;
     fecth: ServerOptions['fecth'];
     routes: Record<string, Function>;
     private tempRoutes;
@@ -30,12 +31,15 @@ export default class Diesel {
     private enableFileRouter;
     idleTimeOut: number;
     routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
-    constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, }?: {
+    private prefixApiUrl;
+    constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, prefixApiUrl }?: {
         jwtSecret?: string;
         baseApiUrl?: string;
         enableFileRouting?: boolean;
         idleTimeOut?: number;
+        prefixApiUrl?: string;
     });
+    static router(apiPath: string): Diesel;
     setupFilter(): FilterMethods;
     redirect(incomingPath: string, redirectPath: string, statusCode?: 302): this;
     serveStatic(filePath: string): this;
@@ -57,7 +61,7 @@ export default class Diesel {
      *   const userRoute = new Diesel();
      *   app.route("/api/v1/user", userRoute);
      */
-    route(basePath: string, routerInstance: any): this;
+    route(basePath?: string | undefined, routerInstance: Diesel): this;
     /**
      * Registers a router instance for subrouting.
      * Allows defining subroutes like:
@@ -66,7 +70,7 @@ export default class Diesel {
      *   userRoute.post("/register", handlerFunction)
      *   app.register("/api/v1/user", userRoute);
      */
-    register(basePath: string, routerInstance: any): this;
+    register(basePath: string | undefined, routerInstance: Diesel): this;
     private addRoute;
     /**
      * Adds middleware to the application.

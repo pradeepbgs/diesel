@@ -29,6 +29,7 @@ import { ServerOptions } from "http";
 import { requestId } from "./middlewares/request-id/index.js";
 
 export default class Diesel {
+  private static instance: Diesel
   fecth: ServerOptions['fecth']
   routes: Record<string, Function>
   private tempRoutes: Map<string, TempRouteEntry> | null;
@@ -55,7 +56,7 @@ export default class Diesel {
   private enableFileRouter: boolean
   idleTimeOut: number
   routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
-
+  private prefixApiUrl: string | null
 
   constructor(
     {
@@ -63,14 +64,22 @@ export default class Diesel {
       baseApiUrl,
       enableFileRouting,
       idleTimeOut,
+      prefixApiUrl
     }
       : {
         jwtSecret?: string,
         baseApiUrl?: string,
         enableFileRouting?: boolean,
-        idleTimeOut?: number
+        idleTimeOut?: number,
+        prefixApiUrl?: string
       } = {}
   ) {
+
+    if (!Diesel.instance) {
+      Diesel.instance = this
+    }
+
+    this.prefixApiUrl = prefixApiUrl ?? ''
     this.fetch = this.fetch.bind(this);
     this.routes = {}
     this.idleTimeOut = idleTimeOut ?? 10
@@ -105,6 +114,16 @@ export default class Diesel {
     this.staticFiles = {};
     this.routeNotFoundFunc = () => { }
 
+  }
+
+  // experimental for sub routing using single ton
+  static router(apiPath: string) {
+    this.instance.prefixApiUrl = apiPath;
+    if (!this.instance) {
+      console.log('no instance')
+      this.instance = new Diesel()
+    }
+    return this.instance;
   }
 
   setupFilter(): FilterMethods {
@@ -498,12 +517,23 @@ export default class Diesel {
    *   app.route("/api/v1/user", userRoute);
    */
   route(
-    basePath: string,
-    routerInstance: any
+    basePath?: string | undefined ,
+    routerInstance: Diesel
+    // ...args:any
   ): this {
+    // let basePath
+    // let routerInstance;
+    // for (const arg of args) {
+    //   if (typeof arg === 'string') basePath = arg
+    //   routerInstance = arg
+    // }
 
-    if (!basePath || typeof basePath !== "string")
-      throw new Error("Path must be a string");
+    basePath = (basePath && basePath.length > 0)
+      ? basePath
+      : routerInstance?.prefixApiUrl;
+
+      // if (!basePath || typeof basePath !== "string")
+      // throw new Error("Path must be a string");
 
     // Extract routes and convert them into an array of entries.
     const routes = Object.fromEntries(routerInstance.tempRoutes);
@@ -512,7 +542,6 @@ export default class Diesel {
     routesArray.forEach(([path, args]) => {
       const cleanedPath = path.replace(/::\w+$/, "")
       const fullpath = `${basePath}${cleanedPath}`; // Construct the full path.
-
       // Ensure the middleware array is initialized for the path.
       if (!this.middlewares.has(fullpath)) {
         this.middlewares.set(fullpath, []);
@@ -541,7 +570,7 @@ export default class Diesel {
     });
     // Nullify the router instance to prevent accidental reuse.
     // and to prevent memory leak
-    routerInstance = null;
+    // routerInstance = null;
     return this;
   }
   /**
@@ -553,10 +582,9 @@ export default class Diesel {
    *   app.register("/api/v1/user", userRoute);
    */
   register(
-    basePath: string,
-    routerInstance: any
+    basePath: string | undefined,
+    routerInstance: Diesel
   ): this {
-    // Simply delegate to the `route` method.
     return this.route(basePath, routerInstance);
   }
 
@@ -566,6 +594,7 @@ export default class Diesel {
     path: string,
     handlers: handlerFunction[]
   ): void {
+    // path = this.prefixApiUrl ? this.prefixApiUrl + path : path;
 
     if (typeof path !== "string")
       throw new Error(`Error in ${handlers[handlers.length - 1]}: Path must be a string. Received: ${typeof path}`);
