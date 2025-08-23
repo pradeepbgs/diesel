@@ -96,6 +96,8 @@ export interface DieselT {
     };
     staticPath: string | null;
     routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
+    routerInstance: DieselT;
+    tempRoutes: Map<string, TempRouteEntry>;
 }
 export interface RouteCache {
     [key: string]: RouteHandlerT | undefined;

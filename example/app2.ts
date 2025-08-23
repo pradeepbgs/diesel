@@ -15,4 +15,6 @@ app.on(['GET', 'POST', 'BREW', 'QUERY'], '/', (c) => c.send("Hello from /"))
 app.route('', userRouter)
 app.register('/api/user2', userRouter2)
 
-app.listen(port, () => console.log(`server running on port: ${port}`))
+
+
+app.listen(port, () => console.log(`server running on ports: ${port}`))

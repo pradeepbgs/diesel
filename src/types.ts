@@ -96,8 +96,8 @@ export interface RouteHandlerT {
     path?: string;
 }
 
-export interface TempRouteEntry { 
-    method:string,
+export interface TempRouteEntry {
+    method: string,
     handlers: handlerFunction[]
 }
 
@@ -126,6 +126,8 @@ export interface DieselT {
     };
     staticPath: string | null
     routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
+    routerInstance: DieselT
+    tempRoutes: Map<string, TempRouteEntry>
 }
 
 // export interface routerT  {

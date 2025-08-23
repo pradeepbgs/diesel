@@ -5,7 +5,7 @@ import { AdvancedLoggerOptions, LoggerOptions } from "./middlewares/logger/logge
 import { ServerOptions } from "http";
 export default class Diesel {
     private static instance;
-    fecth: ServerOptions['fecth'];
+    fecth: ServerOptions['fetch'];
     routes: Record<string, Function>;
     private tempRoutes;
     globalMiddlewares: middlewareFunc[];
@@ -32,7 +32,7 @@ export default class Diesel {
     idleTimeOut: number;
     routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
     private prefixApiUrl;
-    constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, prefixApiUrl }?: {
+    constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, prefixApiUrl, }?: {
         jwtSecret?: string;
         baseApiUrl?: string;
         enableFileRouting?: boolean;
@@ -40,6 +40,12 @@ export default class Diesel {
         prefixApiUrl?: string;
     });
     static router(apiPath: string): Diesel;
+    /**
+     this filter is like user once specify which routes needs to be public and for rest routes use a global
+      auth middleware .
+  
+      and this provides built in middleware to authenticate using jwt
+    */
     setupFilter(): FilterMethods;
     redirect(incomingPath: string, redirectPath: string, statusCode?: 302): this;
     serveStatic(filePath: string): this;
@@ -61,7 +67,7 @@ export default class Diesel {
      *   const userRoute = new Diesel();
      *   app.route("/api/v1/user", userRoute);
      */
-    route(basePath?: string | undefined, routerInstance: Diesel): this;
+    route(basePath: string | undefined, routerInstance: Diesel | null): this;
     /**
      * Registers a router instance for subrouting.
      * Allows defining subroutes like:

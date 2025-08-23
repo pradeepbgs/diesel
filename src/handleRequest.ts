@@ -21,7 +21,6 @@ export default async function handleRequest(
   try {
 
     // PipeLines such as filters , middlewares, hooks
-
     if (diesel.hooks.onRequest) await runHooks('onRequest', diesel.hooks.onRequest, [req, url, server])
 
     // middleware execution
@@ -36,7 +35,6 @@ export default async function handleRequest(
       const filterResponse = await runFilter(diesel, path, ctx, server);
       if (filterResponse) return filterResponse;
     }
-
 
     // if route not found
     if (!routeHandler) return await handleRouteNotFound(diesel, ctx, url.pathname)
@@ -63,7 +61,6 @@ export default async function handleRequest(
     return generateErrorResponse(500, "No response returned from handler.");
 
   }
-
   catch (error: any) {
     const errorResult = await runHooks("onError", diesel.hooks.onError, [error, req, url, server]);
     return errorResult || generateErrorResponse(500, "Internal Server Error");
