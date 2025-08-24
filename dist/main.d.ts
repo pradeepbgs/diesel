@@ -39,7 +39,7 @@ export default class Diesel {
         idleTimeOut?: number;
         prefixApiUrl?: string;
     });
-    static router(apiPath: string): Diesel;
+    static router(prefix: string): Diesel;
     /**
      this filter is like user once specify which routes needs to be public and for rest routes use a global
       auth middleware .

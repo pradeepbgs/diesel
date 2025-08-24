@@ -131,13 +131,26 @@ export default class Diesel {
   }
 
   // experimental for sub routing using single ton
-  static router(apiPath: string) {
-    this.instance.prefixApiUrl = apiPath;
+  static router(prefix: string) {
+    // this.instance.prefixApiUrl = apiPath;
     if (!this.instance) {
       console.log('no instance')
       this.instance = new Diesel()
     }
-    return this.instance;
+
+    // creating proxy to intercept router and add prefix url only for this
+    return new Proxy(this.instance, {
+      get(target, prop, reciever) {
+        return (path: string, handler: any) => {
+          const fullPath = prefix + path
+          return (target as any)[prop](fullPath, handler)
+          // if (typeof path === 'string') return (target as any)[prop](fullPath, handler)
+          // else if (typeof path === 'function') return (target as any)[prop](path)
+
+        }
+      }
+    })
+
   }
 
   /**
@@ -286,7 +299,7 @@ export default class Diesel {
       this.hasMiddleware = true;
     }
 
-    for (const [_, middlewares] of this?.middlewares.entries()) {
+    for (const [_, middlewares] of this?.middlewares?.entries()) {
       if (middlewares.length > 0) {
         this.hasMiddleware = true;
         break;
@@ -646,13 +659,6 @@ export default class Diesel {
          * and ensure they are not already added to globalMiddlewares.
          */
         if (typeof handler === "function") {
-          /**
-           * this algorithm was for removing duplicates midl but now user has freedom...
-           * if thet wanna run same middleware multilple times
-           * if (!this.globalMiddlewares.includes(handler as middlewareFunc)) {
-           * this.globalMiddlewares.push(handler as middlewareFunc) }
-           */
-
           this.globalMiddlewares.push(handler);
         }
       });
@@ -663,13 +669,6 @@ export default class Diesel {
      * Example: app.use(h1)
      */
     if (typeof pathORHandler === "function") {
-
-      /**
-       * this algorithm was for removing duplicates midl but now user has freedom...
-       * if they wanna run same middleware multilple times
-       * if (!this.globalMiddlewares.includes(handler as middlewareFunc)) {
-       * this.globalMiddlewares.push(handler as middlewareFunc) }
-       */
 
       this.globalMiddlewares.push(pathORHandler);
 
@@ -703,11 +702,9 @@ export default class Diesel {
         this.middlewares.set(path, []);
       }
       if (handlers) {
-        // Convert a single middleware into an array for consistency.
         // Example: app.use('/home', h1) -> handlers becomes [h1].
         const handlerArray = Array.isArray(handlers) ? handlers : [handlers];
 
-        // Add each handler to the middleware list for the path.
         handlerArray.forEach((handler: middlewareFunc) => {
           // if (!this.middlewares.get(path)?.includes(handler)) {
           this.middlewares.get(path)?.push(handler);
@@ -716,7 +713,6 @@ export default class Diesel {
       }
     });
 
-    // Finally, return `this` to allow method chaining.
     return this;
   }
 
@@ -791,6 +787,8 @@ export default class Diesel {
     this.addRoute("PROPFIND", path, handlers);
     return this;
   }
+
+
 
   routeNotFound(
     handler: RouteNotFoundHandler

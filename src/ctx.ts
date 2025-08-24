@@ -9,19 +9,13 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
   let parsedCookies: Record<string, string> | null = null;
   let parsedBody: Promise<any> | null = null;
   let contextData: Record<string, any> = {};
-  const typeMap = new Map<string, string>([
-    ["string", "text/plain; charset=utf-8"],
-    ["object", "application/json; charset=utf-8"],
-    ["Uint8Array", "application/octet-stream"],
-    ["ArrayBuffer", "application/octet-stream"],
-  ]);
-  
+
   return {
     req,
     server,
     url,
     status: 200,
-    headers: new Headers({ "Cache-Control": "no-cache" }),
+    headers: new Headers(),
 
     setHeader(key: string, value: string): ContextType {
       this.headers.set(key, value);
@@ -97,10 +91,18 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
 
     send<T>(data: T, status?: number): Response {
       if (status) this.status = status;
+
+      const typeMap = new Map<string, string>([
+        ["string", "text/plain; charset=utf-8"],
+        ["object", "application/json; charset=utf-8"],
+        ["Uint8Array", "application/octet-stream"],
+        ["ArrayBuffer", "application/octet-stream"],
+      ]);
+
       // const dataType = data instanceof Uint8Array ? "Uint8Array"
       //   : data instanceof ArrayBuffer ? "ArrayBuffer"
       //     : typeof data;
-
+      
       let dataType: string
 
       if (data instanceof Uint8Array) dataType = "Uint8Array"
