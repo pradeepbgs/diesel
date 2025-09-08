@@ -7,16 +7,19 @@ import { getMimeType } from "./utils/mimeType";
 export default async function handleRequest(
   req: BunRequest,
   server: Server,
-  url: URL,
   diesel: DieselT
 ) {
+  // initilalize it first so every req wiill have predefined so v8 doesn't deoptimise it.
+  req.routePattern = undefined
+  const url = new URL(req.url)
+  
   const ctx: ContextType = createCtx(req, server, url);
 
   const routeHandler: RouteHandlerT | undefined = diesel.trie.search(
     url.pathname,
     req.method
   );
-  req.routePattern = routeHandler?.path;
+  req.routePattern = routeHandler?.path
 
   try {
 

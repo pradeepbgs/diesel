@@ -502,8 +502,7 @@ export default class Diesel {
   fetch() {
     this.compile();
     return async (req: BunRequest, server: Server) => {
-      const url: URL = new URL(req.url);
-      return handleRequest(req, server, url, this as DieselT)
+      return handleRequest(req, server, this as DieselT)
     }
   }
 

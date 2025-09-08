@@ -1,6 +1,6 @@
 import { BunRequest, Server } from "bun";
 import type { ContextType, DieselT } from "./types";
-export default function handleRequest(req: BunRequest, server: Server, url: URL, diesel: DieselT): Promise<any>;
+export default function handleRequest(req: BunRequest, server: Server, diesel: DieselT): Promise<any>;
 export declare function executeMiddlewares(middlewares: Function[], ctx: ContextType, server: Server): Promise<Response | null>;
 export declare function executeBunMiddlewares(middlewares: Function[], req: BunRequest, server: Server): Promise<any>;
 export declare function handleFilterRequest(diesel: DieselT, path: string, ctx: ContextType, server: Server): Promise<Response | undefined>;

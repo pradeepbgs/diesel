@@ -84,8 +84,8 @@ app.get('/reqid', (ctx) => {
 })
 
 // app.use((ctx) => ctx.send("hhhh"))
-app.addHooks('onRequest', () => console.log('first'))
-app.addHooks('onRequest', () => console.log('second'))
+//app.addHooks('onRequest', () => console.log('first'))
+//app.addHooks('onRequest', () => console.log('second'))
 app.get("/ok", (ctx) => {
   return ctx.send({ msg: "hello world" })
 })
