@@ -3,6 +3,25 @@ import { Server } from "bun";
 import type { ContextType, CookieOptions, ParseBodyResult } from "./types";
 import { getMimeType } from "./utils/mimeType";
 
+let ejsInstance: any = null;
+
+async function getEjs() {
+  if (!ejsInstance) {
+    const mod = await import("ejs");
+    ejsInstance = mod.default || mod;
+  }
+  return ejsInstance;
+}
+
+
+const typeMap = {
+  string: "text/plain; charset=utf-8",
+  object: "application/json; charset=utf-8",
+  Uint8Array: "application/octet-stream",
+  ArrayBuffer: "application/octet-stream",
+};
+
+
 export default function createCtx(req: Request, server: Server, url: URL): ContextType {
   let parsedQuery: Record<string, string> | null = null;
   let parsedParams: Record<string, string> | null = null;
@@ -15,8 +34,8 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
     server,
     url,
     status: 200,
-    headers: new Headers({ "Cache-Control": "no-cache" }),
-    
+    headers: new Headers(),
+
     setHeader(key: string, value: string): ContextType {
       this.headers.set(key, value);
       return this;
@@ -33,11 +52,8 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
 
     get query(): Record<string, string> {
       if (!parsedQuery) {
-        try {
-          parsedQuery = Object.fromEntries(this.url.searchParams);
-        } catch (error) {
-          throw new Error("Failed to parse query parameters");
-        }
+        if (!this.url.search) return {};
+        parsedQuery = Object.fromEntries(this.url.searchParams);
       }
       return parsedQuery;
     },
@@ -47,7 +63,8 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
         try {
           parsedParams = extractDynamicParams(this.req.routePattern, this.url.pathname);
         } catch (error) {
-          throw new Error("Failed to extract route parameters");
+          const message = error instanceof Error ? error.message : String(error)
+          throw new Error(`Failed to extract route parameters: ${message}`);
         }
       }
       return parsedParams ?? {};
@@ -57,13 +74,19 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       if (this.req.method === "GET") {
         return Promise.resolve({});
       }
+
       if (!parsedBody) {
         parsedBody = (async () => {
-          const result = await parseBody(this.req);
-          if (result.error) {
-            throw new Error(result.error);
+          try {
+            const result = await parseBody(this.req);
+            if (result.error) {
+              throw new Error(result.error);
+            }
+            return Object.keys(result).length === 0 ? null : result;
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            throw new Error(`Failed to parse request body: ${message}`);
           }
-          return Object.keys(result).length === 0 ? null : result;
         })();
       }
       return parsedBody;
@@ -78,90 +101,74 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
       return contextData[key];
     },
 
-    text(data: string, status?: number) {
-      if(status) this.status = status
+    text(data: string, status: number = 200) {
+      this.status = status
       if (!this.headers.has("Content-Type")) {
         this.headers.set("Content-Type", "text/plain; charset=utf-8")
       }
       return new Response(data, {
-        status: this.status,
-        headers:this.headers
+        status,
+        headers: this.headers
       });
     },
 
-    send<T>(data: T, status?: number): Response {
-      if(status) this.status = status;
-      const typeMap = new Map<string, string>([
-        ["string", "text/plain; charset=utf-8"],
-        ["object", "application/json; charset=utf-8"],
-        ["Uint8Array", "application/octet-stream"],
-        ["ArrayBuffer", "application/octet-stream"],
-      ]);
+    send<T>(data: T, status: number = 200): Response {
+      this.status = status;
 
       // const dataType = data instanceof Uint8Array ? "Uint8Array"
       //   : data instanceof ArrayBuffer ? "ArrayBuffer"
       //     : typeof data;
 
-      let dataType:string
+      let dataType: string
 
       if (data instanceof Uint8Array) dataType = "Uint8Array"
-      else if(data instanceof ArrayBuffer) dataType = 'ArrayBuffer'
+      else if (data instanceof ArrayBuffer) dataType = 'ArrayBuffer'
       else dataType = typeof data
 
       if (!this.headers.has("Content-Type")) {
-        this.headers.set("Content-Type", typeMap.get(dataType) ?? "text/plain; charset=utf-8");
+        this.headers.set("Content-Type", typeMap[dataType] ?? "text/plain; charset=utf-8");
       }
 
-      const responseData = 
+      const responseData =
         dataType === "object" && data !== null ? JSON.stringify(data) : (data as any);
-      return new Response(responseData, { status: this.status, headers:this.headers });
+      return new Response(responseData, { status, headers: this.headers });
     },
 
-    json<T>(data: T, status?:number): Response {
-      if(status) this.status = status;
+    json<T>(data: T, status: number = 200): Response {
+      this.status = status;
       if (!this.headers.has("Content-Type")) {
         this.headers.set("Content-Type", "application/json; charset=utf-8");
       }
-      return Response.json(data, { status: this.status, headers:this.headers })
+      return Response.json(data, { status, headers: this.headers })
     },
 
-    file(filePath: string, mime_Type?: string,status?: number): Response {
-      if(status) this.status = status;
+    file(filePath: string, mime_Type?: string, status: number = 200): Response {
+      this.status = status;
       const file = Bun.file(filePath);
       if (!this.headers.has("Content-Type")) {
         this.headers.set("Content-Type", mime_Type ?? getMimeType(filePath));
       }
-      return new Response(file, { status: this.status, headers:this.headers });
+      return new Response(file, { status, headers: this.headers });
     },
 
-    async ejs(viewPath: string, data = {}, status?: number): Promise<Response> {
-      if(status) this.status = status;
-      let ejs;
-      try {
-        ejs = await import('ejs')
-        ejs = ejs.default || ejs
-      } catch (error) {
-        console.error("EJS not installed! Please run `bun add ejs`");
-        return new Response("EJS not installed! Please run `bun add ejs`", { status: 500 });
-      }
-
+    async ejs(viewPath: string, data = {}, status: number = 200): Promise<Response> {
+      this.status = status;
+      const ejs = await getEjs();
       try {
         const template = await Bun.file(viewPath).text()
         const rendered = ejs.render(template, data)
         const headers = new Headers({ "Content-Type": "text/html; charset=utf-8" });
-        return new Response(rendered, { status: this.status, headers });
+        return new Response(rendered, { status, headers });
       } catch (error) {
         console.error("EJS Rendering Error:", error);
         return new Response("Error rendering template", { status: 500 });
       }
     },
 
-    redirect(path: string, status?: number): Response {
-      if(status) this.status=status
-      else this.status = 302;
-      
+    redirect(path: string, status: number = 302): Response {
+      this.status = status
       this.headers.set("Location", path);
-      return new Response(null, { status: this.status, headers:this.headers });
+      return new Response(null, { status, headers: this.headers });
     },
 
     stream(callback: (controller: ReadableStreamDefaultController) => void) {
@@ -185,10 +192,10 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
             yield* callback();
           },
         },
-        { headers:this.headers }
+        { headers: this.headers }
       );
     },
-    
+
 
     setCookie(
       name: string,
@@ -260,21 +267,19 @@ function extractDynamicParams(
   const [pathWithoutQuery] = path.split("?");
   const pathSegments = pathWithoutQuery.split("/");
 
-  if (routeSegments.length !== pathSegments.length) {
-    return null;
-  }
+  if (routeSegments.length !== pathSegments.length) return null;
 
   for (let i = 0; i < routeSegments.length; i++) {
-    if (routeSegments[i].startsWith(":")) {
-      params[routeSegments[i].slice(1)] = pathSegments[i];
+    const segment = routeSegments[i];
+    if (segment.charCodeAt(0) === 58) {
+      params[segment.slice(1)] = pathSegments[i];
     }
   }
-
   return params;
 }
 
 async function parseBody(req: Request): Promise<ParseBodyResult> {
-  const contentType: string = req.headers.get("Content-Type")!;
+  const contentType: string = req.headers.get("Content-Type") || ''
   if (!contentType) return {};
 
   const contentLength = req.headers.get("Content-Length");
@@ -282,27 +287,23 @@ async function parseBody(req: Request): Promise<ParseBodyResult> {
     return {};
   }
 
-  try {
-    if (contentType.startsWith("application/json")) {
-      return await req.json();
-    }
-
-    if (contentType.startsWith("application/x-www-form-urlencoded")) {
-      const body = await req.text();
-      return Object.fromEntries(new URLSearchParams(body));
-    }
-
-    if (contentType.startsWith("multipart/form-data")) {
-      const formData: any = await req.formData();
-      const obj: Record<string, string> = {};
-      for (const [key, value] of formData.entries()) {
-        obj[key] = value;
-      }
-      return obj;
-    }
-
-    return { error: "Unknown request body type" };
-  } catch (error) {
-    return { error: "Invalid request body format" };
+  if (contentType.startsWith("application/json")) {
+    return await req.json();
   }
+
+  if (contentType.startsWith("application/x-www-form-urlencoded")) {
+    const body = await req.text();
+    return Object.fromEntries(new URLSearchParams(body));
+  }
+
+  if (contentType.startsWith("multipart/form-data")) {
+    const formData: any = await req.formData();
+    const obj: Record<string, string> = {};
+    for (const [key, value] of formData.entries()) {
+      obj[key] = value;
+    }
+    return obj;
+  }
+
+  return { error: "Unknown request body type" };
 }

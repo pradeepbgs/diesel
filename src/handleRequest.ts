@@ -7,21 +7,23 @@ import { getMimeType } from "./utils/mimeType";
 export default async function handleRequest(
   req: BunRequest,
   server: Server,
-  url: URL,
   diesel: DieselT
 ) {
+  // initilalize it first so every req wiill have predefined so v8 doesn't deoptimise it.
+  req.routePattern = undefined
+  const url = new URL(req.url)
+  
   const ctx: ContextType = createCtx(req, server, url);
 
   const routeHandler: RouteHandlerT | undefined = diesel.trie.search(
     url.pathname,
     req.method
   );
-  req.routePattern = routeHandler?.path;
+  req.routePattern = routeHandler?.path
 
   try {
 
     // PipeLines such as filters , middlewares, hooks
-
     if (diesel.hooks.onRequest) await runHooks('onRequest', diesel.hooks.onRequest, [req, url, server])
 
     // middleware execution
@@ -36,7 +38,6 @@ export default async function handleRequest(
       const filterResponse = await runFilter(diesel, path, ctx, server);
       if (filterResponse) return filterResponse;
     }
-
 
     // if route not found
     if (!routeHandler) return await handleRouteNotFound(diesel, ctx, url.pathname)
@@ -63,7 +64,6 @@ export default async function handleRequest(
     return generateErrorResponse(500, "No response returned from handler.");
 
   }
-
   catch (error: any) {
     const errorResult = await runHooks("onError", diesel.hooks.onError, [error, req, url, server]);
     return errorResult || generateErrorResponse(500, "Internal Server Error");

@@ -1,10 +1,11 @@
 import Trie from "./trie.js";
-import { ContextType, corsT, FilterMethods, HookFunction, HookType, listenArgsT, middlewareFunc, onError, onRequest, RouteNotFoundHandler, type handlerFunction, type Hooks } from "./types.js";
+import { ContextType, corsT, FilterMethods, HookFunction, HookType, listenArgsT, middlewareFunc, onError, onRequest, RouteNotFoundHandler, type handlerFunction, type Hooks, type HttpMethod } from "./types.js";
 import { BunRequest, Server } from "bun";
 import { AdvancedLoggerOptions, LoggerOptions } from "./middlewares/logger/logger.js";
 import { ServerOptions } from "http";
 export default class Diesel {
-    fecth: ServerOptions['fecth'];
+    private static instance;
+    fecth: ServerOptions['fetch'];
     routes: Record<string, Function>;
     private tempRoutes;
     globalMiddlewares: middlewareFunc[];
@@ -30,12 +31,21 @@ export default class Diesel {
     private enableFileRouter;
     idleTimeOut: number;
     routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
-    constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, }?: {
+    private prefixApiUrl;
+    constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, prefixApiUrl, }?: {
         jwtSecret?: string;
         baseApiUrl?: string;
         enableFileRouting?: boolean;
         idleTimeOut?: number;
+        prefixApiUrl?: string;
     });
+    static router(prefix: string): Diesel;
+    /**
+     this filter is like user once specify which routes needs to be public and for rest routes use a global
+      auth middleware .
+  
+      and this provides built in middleware to authenticate using jwt
+    */
     setupFilter(): FilterMethods;
     redirect(incomingPath: string, redirectPath: string, statusCode?: 302): this;
     serveStatic(filePath: string): this;
@@ -57,7 +67,7 @@ export default class Diesel {
      *   const userRoute = new Diesel();
      *   app.route("/api/v1/user", userRoute);
      */
-    route(basePath: string, routerInstance: any): this;
+    route(basePath: string | undefined, routerInstance: Diesel | null): this;
     /**
      * Registers a router instance for subrouting.
      * Allows defining subroutes like:
@@ -66,7 +76,7 @@ export default class Diesel {
      *   userRoute.post("/register", handlerFunction)
      *   app.register("/api/v1/user", userRoute);
      */
-    register(basePath: string, routerInstance: any): this;
+    register(basePath: string | undefined, routerInstance: Diesel): this;
     private addRoute;
     /**
      * Adds middleware to the application.
@@ -91,4 +101,5 @@ export default class Diesel {
     options(path: string, ...handlers: handlerFunction[]): this;
     propfind(path: string, ...handlers: handlerFunction[]): this;
     routeNotFound(handler: RouteNotFoundHandler): this;
+    on(methods: string | (HttpMethod | string)[], path: string, ...handlers: handlerFunction[]): void;
 }

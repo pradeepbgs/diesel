@@ -6,6 +6,7 @@ export type HookFunction = (ctx: ContextType, result?: Response | null | void, s
 export type RouteNotFoundHandler = (ctx: ContextType) => void | Response | Promise<void> | Promise<Response>;
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD" | "ANY" | "PROPFIND";
 export type HttpMethodOfApp = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | 'head' | 'any' | 'propfind';
+export type HttpMethodLower = Lowercase<HttpMethod>;
 export type HookType = 'onRequest' | 'preHandler' | 'postHandler' | 'onSend' | 'onError' | 'onClose';
 export interface onError {
     (error: Error, req: Request, url: URL, server: Server): void | null | Response | Promise<Response | null | void>;
@@ -30,7 +31,7 @@ export interface ContextType {
     setHeader: (key: string, value: any) => this;
     json: (data: Object, status?: number) => Response;
     text: (data: string, status?: number) => Response;
-    send: (data: string, status?: number) => Response;
+    send: <T>(data: T, status?: number) => Response;
     file: (filePath: string, mimeType?: string, status?: number) => Response;
     redirect: (path: string, status?: number) => Response;
     setCookie: (name: string, value: string, options?: CookieOptions) => this;
@@ -66,6 +67,10 @@ export interface RouteHandlerT {
     isDynamic?: boolean;
     path?: string;
 }
+export interface TempRouteEntry {
+    method: string;
+    handlers: handlerFunction[];
+}
 export interface DieselT {
     hasOnReqHook: boolean;
     hasMiddleware: boolean;
@@ -91,6 +96,8 @@ export interface DieselT {
     };
     staticPath: string | null;
     routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
+    routerInstance: DieselT;
+    tempRoutes: Map<string, TempRouteEntry>;
 }
 export interface RouteCache {
     [key: string]: RouteHandlerT | undefined;

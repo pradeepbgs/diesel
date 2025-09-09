@@ -9,6 +9,8 @@ export type RouteNotFoundHandler = (ctx: ContextType) => void | Response | Promi
 // export type onSendHookFunc = (result?: Response | null | void, ctx?:ContextType) => Response | Promise<Response | null | void>
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD" | "ANY" | "PROPFIND";
 export type HttpMethodOfApp = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | 'head' | 'any' | 'propfind'
+export type HttpMethodLower = Lowercase<HttpMethod>;
+
 // export enum HookType {
 //     onRequest = "onRequest",
 //     preHandler = "preHandler",
@@ -42,12 +44,12 @@ export interface ContextType {
     req: Request;
     server: Server;
     url: URL;
-    headers:Headers
+    headers: Headers
     status: number;
     setHeader: (key: string, value: any) => this;
     json: (data: Object, status?: number) => Response;
     text: (data: string, status?: number) => Response;
-    send: (data: string, status?: number) => Response;
+    send: <T>(data: T, status?: number) => Response;
     file: (filePath: string, mimeType?: string, status?: number) => Response
     redirect: (path: string, status?: number) => Response;
     setCookie: (name: string, value: string, options?: CookieOptions) => this;
@@ -60,9 +62,9 @@ export interface ContextType {
     body: Promise<any>;
     cookies: any
     removeHeader: (key: string) => this;
-    ejs:(viewPath: string, data:{}) => Response | Promise<Response>;
-    stream:(callback:()=>void) => Response
-    yieldStream:(callback: () => AsyncIterable<any>) => Response
+    ejs: (viewPath: string, data: {}) => Response | Promise<Response>;
+    stream: (callback: () => void) => Response
+    yieldStream: (callback: () => AsyncIterable<any>) => Response
     // setUser: (data?: any) => void
     // getUser: () => any
     // getParams: (props?: any) => any;
@@ -94,6 +96,10 @@ export interface RouteHandlerT {
     path?: string;
 }
 
+export interface TempRouteEntry {
+    method: string,
+    handlers: handlerFunction[]
+}
 
 export interface DieselT {
     hasOnReqHook: boolean;
@@ -119,7 +125,9 @@ export interface DieselT {
         search: (pathname: string, method: string) => RouteHandlerT | undefined;
     };
     staticPath: string | null
-    routeNotFoundFunc: (c:ContextType) => void | Promise<void> | Promise<Response> | Response;
+    routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
+    routerInstance: DieselT
+    tempRoutes: Map<string, TempRouteEntry>
 }
 
 // export interface routerT  {
@@ -167,8 +175,8 @@ export interface FilterMethods {
     publicRoutes: (...routes: string[]) => FilterMethods;
     permitAll: () => FilterMethods;
     authenticate: (fnc?: middlewareFunc[]) => Response | Promise<Response | null> | void;
-    authenticateJwt: (jwt:any) => Response | Promise<Response | null> | void;
-    authenticateJwtDB: (jwt:any,UserModel:any) => Response | Promise<Response | null> | void
+    authenticateJwt: (jwt: any) => Response | Promise<Response | null> | void;
+    authenticateJwtDB: (jwt: any, UserModel: any) => Response | Promise<Response | null> | void
 }
 
 export type listenArgsT = string | (() => void) | { cert?: string; key?: string };

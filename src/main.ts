@@ -10,26 +10,43 @@ import {
   FilterMethods,
   HookFunction,
   HookType,
+  HttpMethodLower,
   HttpMethodOfApp,
   listenArgsT,
   middlewareFunc,
   onError,
   onRequest,
   RouteNotFoundHandler,
+  TempRouteEntry,
   type handlerFunction,
   type Hooks,
   type HttpMethod,
 } from "./types.js";
-import { BunRequest, Server } from "bun";
-import { advancedLogger, AdvancedLoggerOptions, logger, LoggerOptions } from "./middlewares/logger/logger.js";
-import { authenticateJwtDbMiddleware, authenticateJwtMiddleware } from "./utils/jwt.js";
+
+import {
+  BunRequest,
+  Server
+} from "bun";
+
+import {
+  advancedLogger,
+  AdvancedLoggerOptions,
+  logger,
+  LoggerOptions
+} from "./middlewares/logger/logger.js";
+
+import {
+  authenticateJwtDbMiddleware,
+  authenticateJwtMiddleware
+} from "./utils/jwt.js";
+
 import { ServerOptions } from "http";
-import { requestId } from "./middlewares/request-id/index.js";
 
 export default class Diesel {
-  fecth: ServerOptions['fecth']
+  private static instance: Diesel
+  fecth: ServerOptions['fetch']
   routes: Record<string, Function>
-  private tempRoutes: Map<string, any> | null;
+  private tempRoutes: Map<string, TempRouteEntry> | null;
   globalMiddlewares: middlewareFunc[];
   middlewares: Map<string, middlewareFunc[]>;
   trie: Trie;
@@ -53,7 +70,7 @@ export default class Diesel {
   private enableFileRouter: boolean
   idleTimeOut: number
   routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
-
+  private prefixApiUrl: string | null
 
   constructor(
     {
@@ -61,21 +78,29 @@ export default class Diesel {
       baseApiUrl,
       enableFileRouting,
       idleTimeOut,
+      prefixApiUrl,
     }
       : {
         jwtSecret?: string,
         baseApiUrl?: string,
         enableFileRouting?: boolean,
-        idleTimeOut?: number
+        idleTimeOut?: number,
+        prefixApiUrl?: string,
       } = {}
   ) {
+
+    if (!Diesel.instance) {
+      Diesel.instance = this
+    }
+
+    this.prefixApiUrl = prefixApiUrl ?? ''
     this.fetch = this.fetch.bind(this);
     this.routes = {}
     this.idleTimeOut = idleTimeOut ?? 10
     this.enableFileRouter = enableFileRouting ?? false
     this.baseApiUrl = baseApiUrl || ''
     this.user_jwt_secret = jwtSecret || process.env.DIESEL_JWT_SECRET || 'feault_diesel_secret_for_jwt'
-    this.tempRoutes = new Map();
+    this.tempRoutes = new Map<string, TempRouteEntry>();
     this.globalMiddlewares = [];
     this.middlewares = new Map();
     this.trie = new Trie();
@@ -105,6 +130,35 @@ export default class Diesel {
 
   }
 
+  // experimental for sub routing using single ton
+  static router(prefix: string) {
+    // this.instance.prefixApiUrl = apiPath;
+    if (!this.instance) {
+      console.log('no instance')
+      this.instance = new Diesel()
+    }
+
+    // creating proxy to intercept router and add prefix url only for this
+    return new Proxy(this.instance, {
+      get(target, prop, reciever) {
+        return (path: string, handler: any) => {
+          const fullPath = prefix + path
+          return (target as any)[prop](fullPath, handler)
+          // if (typeof path === 'string') return (target as any)[prop](fullPath, handler)
+          // else if (typeof path === 'function') return (target as any)[prop](path)
+
+        }
+      }
+    })
+
+  }
+
+  /**
+   this filter is like user once specify which routes needs to be public and for rest routes use a global
+    auth middleware .
+
+    and this provides built in middleware to authenticate using jwt
+  */
   setupFilter(): FilterMethods {
     this.hasFilterEnabled = true;
 
@@ -154,6 +208,7 @@ export default class Diesel {
     };
   }
 
+  // for redirect on a specific path
   redirect(
     incomingPath: string,
     redirectPath: string,
@@ -244,7 +299,7 @@ export default class Diesel {
       this.hasMiddleware = true;
     }
 
-    for (const [_, middlewares] of this?.middlewares.entries()) {
+    for (const [_, middlewares] of this?.middlewares?.entries()) {
       if (middlewares.length > 0) {
         this.hasMiddleware = true;
         break;
@@ -265,6 +320,7 @@ export default class Diesel {
 
   }
 
+  // this func gives us power to do file based routing similar to Next.js
   private async registerFileRoutes(
     filePath: string,
     baseRoute: string,
@@ -305,7 +361,7 @@ export default class Diesel {
     }
   }
 
-
+  // part of load Routes func family
   private async loadRoutes(
     dirPath: string,
     baseRoute: string
@@ -317,17 +373,17 @@ export default class Diesel {
       const stat = await fs.promises.stat(filePath);
 
       if (stat.isDirectory()) {
-        this.loadRoutes(filePath, baseRoute + '/' + file);
+        await this.loadRoutes(filePath, baseRoute + '/' + file);
+      } else if (file.endsWith('.ts')) {
+        await this.registerFileRoutes(filePath, baseRoute, '.ts');
+      } else if (file.endsWith('.js')) {
+        await this.registerFileRoutes(filePath, baseRoute, '.js');
       }
-      else if (file.endsWith('.ts')) {
-        this.registerFileRoutes(filePath, baseRoute, '.ts');
-      }
-      else if (file.endsWith('.js')) {
-        this.registerFileRoutes(filePath, baseRoute, '.js');
-      }
+
     }
   }
 
+  // For logging incoming requests
   useLogger(options: LoggerOptions) {
     logger(options)
     return this
@@ -339,82 +395,56 @@ export default class Diesel {
   }
 
 
+  // this is for high performance api endpoint and when u use this no app.use midl works here
+  // when you use this , it will override existing endpoint with same path
   BunRoute(method: string, path: string, ...handlers: any[]) {
     if (!path || typeof path !== 'string') throw new Error("give a path in string format")
 
-    if (handlers.length === 1) {
-      const singleHandler = handlers[0];
-      this.routes[path] = async (req: BunRequest, server: Server) => {
 
-        if (this.hasMiddleware) {
-          if (this.globalMiddlewares.length) {
-            const globalMiddlewareResponse = await executeBunMiddlewares(
-              this.globalMiddlewares,
-              req,
-              server
-            );
-            if (globalMiddlewareResponse) return globalMiddlewareResponse;
-          }
+    this.routes[path] = async (req: BunRequest, server: Server) => {
 
-          const pathMiddlewares = this.middlewares.get(path) || [];
-          if (pathMiddlewares?.length) {
-            const pathMiddlewareResponse = await executeBunMiddlewares(
-              pathMiddlewares,
-              req,
-              server
-            );
-            if (pathMiddlewareResponse) return pathMiddlewareResponse;
-          }
+      if (this.hasMiddleware) {
+        if (this.globalMiddlewares.length) {
+          const globalMiddlewareResponse = await executeBunMiddlewares(
+            this.globalMiddlewares,
+            req,
+            server
+          );
+          if (globalMiddlewareResponse) return globalMiddlewareResponse;
         }
 
-        if (method !== req.method) return new Response("Method Not Allowed", { status: 405 });
+        const pathMiddlewares = this.middlewares.get(path) || [];
+        if (pathMiddlewares?.length) {
+          const pathMiddlewareResponse = await executeBunMiddlewares(
+            pathMiddlewares,
+            req,
+            server
+          );
+          if (pathMiddlewareResponse) return pathMiddlewareResponse;
+        }
+      }
 
-        const response = await singleHandler(req, server)
+      if (method !== req.method) return new Response("Method Not Allowed", { status: 405 });
+
+      if (handlers.length === 1) {
+        const response = handlers[0](req, server)
         if (response instanceof Promise) {
           const resolved = await response;
           return resolved ?? new Response("Not Found", { status: 404 });
         }
-        return response ?? new Response("Not Found", { status: 404 });
-
+        if (response instanceof Response) return response
       }
-    }
-
-    else {
-      this.routes[path] = async (req: BunRequest, server: Server) => {
-
-        if (this.hasMiddleware) {
-          if (this.globalMiddlewares.length) {
-            const globalMiddlewareResponse = await executeBunMiddlewares(
-              this.globalMiddlewares,
-              req,
-              server
-            );
-            if (globalMiddlewareResponse) return globalMiddlewareResponse;
-          }
-
-          const pathMiddlewares = this.middlewares.get(path) || [];
-          if (pathMiddlewares?.length) {
-            const pathMiddlewareResponse = await executeBunMiddlewares(
-              pathMiddlewares,
-              req,
-              server
-            );
-            if (pathMiddlewareResponse) return pathMiddlewareResponse;
-          }
-        }
-
-        if (method !== req.method) return new Response("Method Not Allowed", { status: 405 });
-
+      else {
         for (let i = 0; i < handlers.length; i++) {
           const response = handlers[i](req, server)
           if (response instanceof Promise) {
             const resolved = await response;
             return resolved ?? new Response("Not Found", { status: 404 });
           }
-          return response ?? new Response("Not Found", { status: 404 });
+          if (response instanceof Response) return response
         }
-
       }
+
     }
 
   }
@@ -440,7 +470,7 @@ export default class Diesel {
       }
     }
 
-    this.compile();
+    // this.compile();
 
     const ServerOptions: any = {
       port,
@@ -463,7 +493,7 @@ export default class Diesel {
     this.serverInstance = Bun?.serve(ServerOptions);
 
     if (callback) {
-      return callback();
+      callback();
     }
 
     return this.serverInstance;
@@ -472,8 +502,7 @@ export default class Diesel {
   fetch() {
     this.compile();
     return async (req: BunRequest, server: Server) => {
-      const url: URL = new URL(req.url);
-      return handleRequest(req, server, url, this as DieselT)
+      return handleRequest(req, server, this as DieselT)
     }
   }
 
@@ -496,21 +525,20 @@ export default class Diesel {
    *   app.route("/api/v1/user", userRoute);
    */
   route(
-    basePath: string,
-    routerInstance: any
+    basePath: string | undefined,
+    routerInstance: Diesel | null
   ): this {
-    if (!basePath || typeof basePath !== "string")
-      throw new Error("Path must be a string");
 
-    // Extract routes and convert them into an array of entries.
-    const routes = Object.fromEntries(routerInstance.tempRoutes);
-    const routesArray = Object.entries(routes);
+    basePath = (basePath && basePath.length > 0)
+      ? basePath
+      : routerInstance?.prefixApiUrl as string | undefined;
 
-    routesArray.forEach(([path, args]) => {
+    const tempRoutes = routerInstance?.tempRoutes ?? new Map<string, TempRouteEntry>()
+
+    for (const [path, args] of tempRoutes.entries()) {
       const cleanedPath = path.replace(/::\w+$/, "")
-      const fullpath = `${basePath}${cleanedPath}`; // Construct the full path.
+      const fullpath = `${basePath}${cleanedPath}`;
 
-      // Ensure the middleware array is initialized for the path.
       if (!this.middlewares.has(fullpath)) {
         this.middlewares.set(fullpath, []);
       }
@@ -518,14 +546,14 @@ export default class Diesel {
       // Add all middleware functions for the route, preserving user-defined order.
       const middlewareHandlers: middlewareFunc[] = args.handlers.slice(0, -1);
       middlewareHandlers.forEach((middleware: middlewareFunc) => {
-        if (!this.middlewares.get(fullpath)?.includes(middleware)) {
-          this.middlewares.get(fullpath)?.push(middleware);
+        const arr = this.middlewares.get(fullpath)!;
+        if (!arr.includes(middleware)) {
+          arr.push(middleware);
         }
       });
 
-      // Retrieve the final handler for the route (last in the array).
+      // final handler
       const handler = args.handlers[args.handlers.length - 1];
-      // Register the handler and method in the trie.
       const method = args.method;
       try {
         this.trie.insert(fullpath, {
@@ -535,12 +563,13 @@ export default class Diesel {
       } catch (error) {
         console.error(`Error inserting ${fullpath}:`, error);
       }
-    });
+    }
     // Nullify the router instance to prevent accidental reuse.
     // and to prevent memory leak
     routerInstance = null;
     return this;
   }
+
   /**
    * Registers a router instance for subrouting.
    * Allows defining subroutes like:
@@ -550,10 +579,9 @@ export default class Diesel {
    *   app.register("/api/v1/user", userRoute);
    */
   register(
-    basePath: string,
-    routerInstance: any
+    basePath: string | undefined,
+    routerInstance: Diesel
   ): this {
-    // Simply delegate to the `route` method.
     return this.route(basePath, routerInstance);
   }
 
@@ -563,23 +591,19 @@ export default class Diesel {
     path: string,
     handlers: handlerFunction[]
   ): void {
+    // path = this.prefixApiUrl ? this.prefixApiUrl + path : path;
+
     if (typeof path !== "string")
-      throw new Error(
-        `Error in ${handlers[handlers.length - 1]
-        }: Path must be a string. Received: ${typeof path}`
-      );
+      throw new Error(`Error in ${handlers[handlers.length - 1]}: Path must be a string. Received: ${typeof path}`);
     if (typeof method !== "string")
-      throw new Error(
-        `Error in addRoute: Method must be a string. Received: ${typeof method}`
-      );
+      throw new Error(`Error in addRoute: Method must be a string. Received: ${typeof method}`);
 
     this.tempRoutes?.set(path + "::" + method, { method, handlers });
     const middlewareHandlers = handlers.slice(0, -1) as middlewareFunc[];
     const handler = handlers[handlers.length - 1];
 
-    if (!this.middlewares.has(path)) {
-      this.middlewares.set(path, []);
-    }
+    if (!this.middlewares.has(path)) this.middlewares.set(path, []);
+
     middlewareHandlers.forEach((middleware: middlewareFunc) => {
       if (path === "/") {
         this.globalMiddlewares = [
@@ -595,18 +619,10 @@ export default class Diesel {
     try {
       if (method === "ANY") {
         const allMethods: HttpMethod[] = [
-          "GET",
-          "POST",
-          "PUT",
-          "DELETE",
-          "PATCH",
-          "OPTIONS",
-          "HEAD",
-          "PROPFIND",
+          "GET", "POST", "PUT", "DELETE",
+          "PATCH", "OPTIONS", "HEAD", "PROPFIND",
         ];
-        for (const m of allMethods) {
-          this.trie.insert(path, { handler, method: m });
-        }
+        for (const method of allMethods) this.trie.insert(path, { handler, method: method });
       }
       this.trie.insert(path, { handler, method });
     } catch (error) {
@@ -642,13 +658,6 @@ export default class Diesel {
          * and ensure they are not already added to globalMiddlewares.
          */
         if (typeof handler === "function") {
-          /**
-           * this algorithm was for removing duplicates midl but now user has freedom...
-           * if thet wanna run same middleware multilple times
-           * if (!this.globalMiddlewares.includes(handler as middlewareFunc)) {
-           * this.globalMiddlewares.push(handler as middlewareFunc) }
-           */
-
           this.globalMiddlewares.push(handler);
         }
       });
@@ -659,12 +668,7 @@ export default class Diesel {
      * Example: app.use(h1)
      */
     if (typeof pathORHandler === "function") {
-      /**
-       * this algorithm was for removing duplicates midl but now user has freedom...
-       * if thet wanna run same middleware multilple times
-       * if (!this.globalMiddlewares.includes(handler as middlewareFunc)) {
-       * this.globalMiddlewares.push(handler as middlewareFunc) }
-       */
+
       this.globalMiddlewares.push(pathORHandler);
 
       /**
@@ -674,9 +678,7 @@ export default class Diesel {
 
       if (Array.isArray(handlers)) {
         handlers.forEach((handler: middlewareFunc) => {
-          // if (!this.globalMiddlewares.includes(handler)) {
           this.globalMiddlewares.push(handler);
-          // }
         });
       }
       return this;
@@ -699,11 +701,9 @@ export default class Diesel {
         this.middlewares.set(path, []);
       }
       if (handlers) {
-        // Convert a single middleware into an array for consistency.
         // Example: app.use('/home', h1) -> handlers becomes [h1].
         const handlerArray = Array.isArray(handlers) ? handlers : [handlers];
 
-        // Add each handler to the middleware list for the path.
         handlerArray.forEach((handler: middlewareFunc) => {
           // if (!this.middlewares.get(path)?.includes(handler)) {
           this.middlewares.get(path)?.push(handler);
@@ -712,7 +712,6 @@ export default class Diesel {
       }
     });
 
-    // Finally, return `this` to allow method chaining.
     return this;
   }
 
@@ -788,10 +787,29 @@ export default class Diesel {
     return this;
   }
 
+
+
   routeNotFound(
     handler: RouteNotFoundHandler
   ) {
     this.routeNotFoundFunc = handler;
     return this;
   }
+
+
+  on(methods: string | (HttpMethod | string)[], path: string, ...handlers: handlerFunction[]) {
+    const methodArray = Array.isArray(methods) ? methods : [methods]
+
+    for (const method of methodArray) {
+      const methodNormalized = method.toUpperCase();
+      if (methodNormalized.toLocaleLowerCase() in this) {
+        this[methodNormalized.toLocaleLowerCase() as HttpMethodLower](path, ...handlers)
+      }
+      else {
+        this.addRoute(methodNormalized as HttpMethod, path, handlers)
+      }
+    }
+
+  }
 }
+
