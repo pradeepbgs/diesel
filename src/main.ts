@@ -314,10 +314,28 @@ export default class Diesel {
       }
     }
 
+    // check hooks enables
+    if (this?.hooks?.onRequest && this.hooks.onRequest.length > 0) {
+      this.hasOnReqHook = true;
+    }
+    if (this?.hooks?.preHandler && this.hooks.preHandler.length > 0) {
+      this.hasPreHandlerHook = true;
+    }
+    if (this?.hooks?.postHandler && this.hooks.postHandler?.length > 0) {
+      this.hasPostHandlerHook = true;
+    }
+    if (this?.hooks?.onSend && this.hooks.onSend?.length > 0) {
+      this.hasOnSendHook = true;
+    }
+    if (this?.hooks?.onError && this.hooks.onError?.length > 0) {
+      this.hasOnError = true;
+    }
+
+
+    // console.log('this.hooks', this.hasOnReqHook)
     setTimeout(() => {
       this.tempRoutes = null
     }, 2000);
-
   }
 
   // this func gives us power to do file based routing similar to Next.js
