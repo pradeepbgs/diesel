@@ -3,47 +3,77 @@ import createCtx from "./ctx";
 import type { ContextType, DieselT, HookType, RouteHandlerT } from "./types";
 import { getMimeType } from "./utils/mimeType";
 
+// from chatGPT , only for test for prodcution we will stil use new URL
+/** Fast parse that extracts pathname and raw query without constructing URL */
+export function parseRequestUrl(rawUrl: string): string {
+  let pathStart = 0;
+
+  // Case 1: Absolute URL like "http://host:port/path?query"
+  const protoIndex = rawUrl.indexOf("://");
+  if (protoIndex !== -1) {
+    const firstSlash = rawUrl.indexOf("/", protoIndex + 3);
+    pathStart = firstSlash === -1 ? rawUrl.length : firstSlash;
+  }
+  // Case 2: Protocol-relative URL like "//host/path"
+  else if (rawUrl.startsWith("//")) {
+    const firstSlash = rawUrl.indexOf("/", 2);
+    pathStart = firstSlash === -1 ? rawUrl.length : firstSlash;
+  }
+
+  // Extract only the path part
+  const pathAndQuery = rawUrl.slice(pathStart) || "/";
+
+  // Strip query if present
+  const qIdx = pathAndQuery.indexOf("?");
+  return qIdx === -1 ? pathAndQuery : pathAndQuery.slice(0, qIdx);
+}
+
 
 export default async function handleRequest(
   req: BunRequest,
   server: Server,
   diesel: DieselT
-) {
-  // initilalize it first so every req wiill have predefined so v8 doesn't deoptimise it.
-  req.routePattern = undefined
-  const url = new URL(req.url)
+): Promise<Response> {
   
-  const ctx: ContextType = createCtx(req, server, url);
+  const pathname = parseRequestUrl(req.url);
+  // console.log("custom pathname", pathname);
+
+  // const timenow  = new Date().getTime();
+  // const url = new URL(req.url)
+  // console.log(url?.pathname, url?.searchParams.get('name')) 
+
 
   const routeHandler: RouteHandlerT | undefined = diesel.trie.search(
-    url.pathname,
+    pathname,
     req.method
   );
-  req.routePattern = routeHandler?.path
+  // console.log(routeHandler)
+  const ctx: ContextType = createCtx(req, server, pathname, routeHandler?.path);
 
   try {
 
     // PipeLines such as filters , middlewares, hooks
-    if (diesel.hooks.onRequest) await runHooks('onRequest', diesel.hooks.onRequest, [req, url, server])
+    if (diesel.hasOnReqHook)
+      await runHooks('onRequest', diesel.hooks.onRequest, [req, pathname, server])
 
     // middleware execution
     if (diesel.hasMiddleware) {
-      const mwResult = await runMiddlewares(diesel, url.pathname, ctx, server);
+      const mwResult = await runMiddlewares(diesel, pathname, ctx, server);
       if (mwResult) return mwResult;
     }
 
     // filter execution
     if (diesel.hasFilterEnabled) {
-      const path = req.routePattern ?? url.pathname;
+      const path = req.routePattern ?? pathname;
       const filterResponse = await runFilter(diesel, path, ctx, server);
       if (filterResponse) return filterResponse;
     }
 
     // if route not found
-    if (!routeHandler) return await handleRouteNotFound(diesel, ctx, url.pathname)
+    if (!routeHandler) return await handleRouteNotFound(diesel, ctx, pathname)
 
     // pre-handler
-    if (diesel.hooks.preHandler) {
+    if (diesel.hasPreHandlerHook) {
       const result = await runHooks('preHandler', diesel.hooks.preHandler, [ctx, server]);
       if (result) return result;
     }
@@ -56,6 +86,7 @@ export default async function handleRequest(
       const response = await runHooks('onSend', diesel.hooks.onSend, [ctx, finalResult, server]);
       if (response) return response;
     }
+
     if (finalResult instanceof Response) {
       return finalResult;
     }
@@ -65,7 +96,7 @@ export default async function handleRequest(
 
   }
   catch (error: any) {
-    const errorResult = await runHooks("onError", diesel.hooks.onError, [error, req, url, server]);
+    const errorResult = await runHooks("onError", diesel.hooks.onError, [error, req, pathname, server]);
     return errorResult || generateErrorResponse(500, "Internal Server Error");
   }
 
@@ -85,31 +116,25 @@ async function runHooks<T extends any[]>(
 
 async function runMiddlewares(diesel: DieselT, pathname: string, ctx: ContextType, server: Server) {
 
-  if (diesel.globalMiddlewares.length) {
-    const res = await executeMiddlewares(diesel.globalMiddlewares, ctx, server);
-    if (res) return res;
+  const global = diesel.globalMiddlewares;
+  if (global.length) {
+    for (const middleware of global) {
+      const result = await middleware(ctx, server);
+      if (result) return result;
+    }
   }
 
-  const local = diesel.middlewares.get(pathname) || [];
-  if (local.length) {
-    const res = await executeMiddlewares(local, ctx, server);
-    if (res) return res;
+  const local = diesel.middlewares.get(pathname)
+  if (local && local.length) {
+    for (const middleware of local) {
+      const result = await middleware(ctx, server);
+      if (result) return result;
+    }
   }
 
   return null;
 }
 
-export async function executeMiddlewares(
-  middlewares: Function[],
-  ctx: ContextType,
-  server: Server
-): Promise<Response | null> {
-  for (const middleware of middlewares) {
-    const result = await middleware(ctx, server);
-    if (result) return result;
-  }
-  return null;
-}
 
 export async function executeBunMiddlewares(
   middlewares: Function[],
@@ -166,7 +191,7 @@ export async function handleBunFilterRequest(
   }
 }
 
-async function handleRouteNotFound(diesel: DieselT, ctx: ContextType, pathname: string) {
+async function handleRouteNotFound(diesel: DieselT, ctx: ContextType, pathname: string): Promise<Response> {
   if (diesel.staticPath) {
     const staticRes = await handleStaticFiles(diesel, pathname, ctx);
     if (staticRes) return staticRes;

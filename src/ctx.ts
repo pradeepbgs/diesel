@@ -22,17 +22,23 @@ const typeMap = {
 };
 
 
-export default function createCtx(req: Request, server: Server, url: URL): ContextType {
+export default function createCtx(
+  req: Request,
+  server: Server,
+  pathname: string,
+  routePattern: string | undefined
+): ContextType {
   let parsedQuery: Record<string, string> | null = null;
   let parsedParams: Record<string, string> | null = null;
   let parsedCookies: Record<string, string> | null = null;
   let parsedBody: Promise<any> | null = null;
   let contextData: Record<string, any> = {};
+  let urlObject: URL | null = null
 
   return {
     req,
     server,
-    url,
+    pathname,
     status: 200,
     headers: new Headers(),
 
@@ -47,7 +53,14 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
     },
 
     get ip(): string | null {
-      return this.server.requestIP(this.req)?.address ?? null;
+      return this.server.requestIP(req)?.address ?? null;
+    },
+
+    get url(): URL {
+      if (!urlObject) {
+        urlObject = new URL(req.url)
+      }
+      return urlObject
     },
 
     get query(): Record<string, string> {
@@ -59,9 +72,9 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
     },
 
     get params(): Record<string, string> {
-      if (!parsedParams && this.req.routePattern) {
+      if (!parsedParams && routePattern) {
         try {
-          parsedParams = extractDynamicParams(this.req.routePattern, this.url.pathname);
+          parsedParams = extractDynamicParams(routePattern, pathname);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error)
           throw new Error(`Failed to extract route parameters: ${message}`);
@@ -71,14 +84,14 @@ export default function createCtx(req: Request, server: Server, url: URL): Conte
     },
 
     get body(): Promise<any> {
-      if (this.req.method === "GET") {
+      if (req.method === "GET") {
         return Promise.resolve({});
       }
 
       if (!parsedBody) {
         parsedBody = (async () => {
           try {
-            const result = await parseBody(this.req);
+            const result = await parseBody(req);
             if (result.error) {
               throw new Error(result.error);
             }

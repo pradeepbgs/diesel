@@ -3,10 +3,14 @@ import Diesel from "../src/main";
 const app = new Diesel()
 const port = process.env.PORT || 3000
 
-// app.useLogger({app})
+
+// app.use(() => console.log('in iddle'))
+// app.addHooks('onRequest', () => console.log('onRequest'))
+app.useLogger({app})
 
 // app.on(['GET', 'POST', 'BREW', 'QUERY'], '/', (c) => c.text("Hello from /"))
 app.get("/", (c) => c.text("Hello from /k"))
+
 
 app.use("/hello", () => console.log("/hello"))
 app.get("/hello", (c) => c.send("he;;o"))
@@ -15,7 +19,8 @@ app.get("/hello/test", (c) => c.send("he;;o/test"))
 
 app.get("/hello/:id", (c) => {
     const id = c.params.id
-    return c.send(`Hello from /hello/${id}`)
+    const query = c.query.name
+    return c.send(`Hello from /hello/${id} , and here is query:${query}`)
 })
 
 
