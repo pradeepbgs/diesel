@@ -64,8 +64,7 @@ export default async function handleRequest(
 
     // filter execution
     if (diesel.hasFilterEnabled) {
-      const path = req.routePattern ?? pathname;
-      const filterResponse = await runFilter(diesel, path, ctx, server);
+      const filterResponse = await runFilter(diesel, pathname, ctx, server);
       if (filterResponse) return filterResponse;
     }
 
@@ -102,7 +101,7 @@ export default async function handleRequest(
 
 }
 
-async function runHooks<T extends any[]>(
+export async function runHooks<T extends any[]>(
   label: HookType,
   hooksArray: any,
   args: T): Promise<any> {
@@ -114,7 +113,7 @@ async function runHooks<T extends any[]>(
   }
 }
 
-async function runMiddlewares(diesel: DieselT, pathname: string, ctx: ContextType, server: Server) {
+export async function runMiddlewares(diesel: DieselT, pathname: string, ctx: ContextType, server: Server) {
 
   const global = diesel.globalMiddlewares;
   if (global.length) {
@@ -146,7 +145,7 @@ export async function executeBunMiddlewares(
   }
 }
 
-async function runFilter(diesel: DieselT, path: string, ctx: ContextType, server: Server) {
+export async function runFilter(diesel: DieselT, path: string, ctx: ContextType, server: Server) {
   const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
   const finalResult = filterResponse instanceof Promise ? await filterResponse : filterResponse;
   if (finalResult) return finalResult;
@@ -191,7 +190,7 @@ export async function handleBunFilterRequest(
   }
 }
 
-async function handleRouteNotFound(diesel: DieselT, ctx: ContextType, pathname: string): Promise<Response> {
+export async function handleRouteNotFound(diesel: DieselT, ctx: ContextType, pathname: string): Promise<Response> {
   if (diesel.staticPath) {
     const staticRes = await handleStaticFiles(diesel, pathname, ctx);
     if (staticRes) return staticRes;

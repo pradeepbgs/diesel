@@ -152,6 +152,7 @@ export interface DieselT {
     routeNotFoundFunc: RouteNotFoundHandler;
     routerInstance: DieselT;
     tempRoutes: Map<string, TempRouteEntry>;
+    pipeline: () => void
 }
 
 export type corsT = {

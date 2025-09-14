@@ -1,6 +1,8 @@
 import { Hono, type Context } from 'hono'
-
+import { logger } from 'hono/logger'
 const app = new Hono()
+
+app.use(logger())
 
 app.get('/', (ctx: Context) => ctx.text("hello world!"))
 

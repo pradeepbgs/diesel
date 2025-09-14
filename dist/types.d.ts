@@ -1,18 +1,18 @@
 import { Server } from "bun";
 export type listenCalllBackType = () => void;
-export type handlerFunction = (ctx: ContextType, server?: Server) => Response | Promise<Response | null | void>;
-export type middlewareFunc = (ctx: ContextType, server?: Server | undefined) => null | void | Response | Promise<Response | void | null>;
-export type HookFunction = (ctx: ContextType, result?: Response | null | void, server?: Server) => Response | Promise<Response | null | void> | void | null;
-export type RouteNotFoundHandler = (ctx: ContextType) => void | Response | Promise<void> | Promise<Response>;
+export type handlerFunction = (ctx: ContextType, server?: Server) => Response | Promise<Response>;
+export type middlewareFunc = (ctx: ContextType, server?: Server) => void | Response | Promise<void | Response>;
+export type HookFunction = (ctx: ContextType, result?: Response | null, server?: Server) => void | null | Response | Promise<void | null | Response>;
+export type RouteNotFoundHandler = (ctx: ContextType) => Promise<Response>;
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD" | "ANY" | "PROPFIND";
 export type HttpMethodOfApp = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | 'head' | 'any' | 'propfind';
 export type HttpMethodLower = Lowercase<HttpMethod>;
-export type HookType = 'onRequest' | 'preHandler' | 'postHandler' | 'onSend' | 'onError' | 'onClose';
+export type HookType = "onRequest" | "preHandler" | "postHandler" | "onSend" | "onError" | "onClose";
 export interface onError {
-    (error: Error, req: Request, url: URL, server: Server): void | null | Response | Promise<Response | null | void>;
+    (error: Error, req: Request, pathname: string, server: Server): void | null | Response | Promise<void | null | Response>;
 }
 export interface onRequest {
-    (req: Request, url: URL, server: Server): void | null | Response | Promise<Response | null | void>;
+    (req: Request, pathname: string, server: Server): void;
 }
 export interface Hooks {
     onRequest: onRequest[] | null;
@@ -25,25 +25,26 @@ export interface Hooks {
 export interface ContextType {
     req: Request;
     server: Server;
-    url: URL;
+    pathname: string;
     headers: Headers;
     status: number;
-    setHeader: (key: string, value: any) => this;
-    json: (data: Object, status?: number) => Response;
+    setHeader: (key: string, value: string) => this;
+    json: (data: object, status?: number) => Response;
     text: (data: string, status?: number) => Response;
     send: <T>(data: T, status?: number) => Response;
     file: (filePath: string, mimeType?: string, status?: number) => Response;
     redirect: (path: string, status?: number) => Response;
     setCookie: (name: string, value: string, options?: CookieOptions) => this;
     ip: string | null;
+    url: URL;
     query: Record<string, string>;
     params: Record<string, string>;
     set<T>(key: string, value: T): this;
     get<T>(key: string): T | undefined;
     body: Promise<any>;
-    cookies: any;
+    cookies: Record<string, string>;
     removeHeader: (key: string) => this;
-    ejs: (viewPath: string, data: {}) => Response | Promise<Response>;
+    ejs: (viewPath: string, data: object) => Response | Promise<Response>;
     stream: (callback: () => void) => Response;
     yieldStream: (callback: () => AsyncIterable<any>) => Response;
 }
@@ -56,14 +57,9 @@ export interface CookieOptions {
     httpOnly?: boolean;
     sameSite?: "Strict" | "Lax" | "None";
 }
-export interface RouteNodeType {
-    path: string;
-    handler: Function[];
-    method: string[];
-}
 export interface RouteHandlerT {
     method: string;
-    handler: (ctx: ContextType) => Promise<Response | null | void>;
+    handler: (ctx: ContextType) => Promise<Response> | Response;
     isDynamic?: boolean;
     path?: string;
 }
@@ -77,44 +73,27 @@ export interface DieselT {
     hasPreHandlerHook: boolean;
     hasPostHandlerHook: boolean;
     hasOnSendHook: boolean;
+    hasFilterEnabled: boolean;
     hooks: {
-        onRequest: ((req: Request, url: URL, serer: Server) => void) | null;
-        preHandler: ((ctx: ContextType, serer?: Server) => Response | Promise<Response | void | null>) | null;
-        postHandler: ((ctx: ContextType, serer?: Server) => Response | Promise<Response | void | null>) | null;
-        onSend: ((ctx?: ContextType, result?: Response | null | void, serer?: Server) => Response | Promise<Response | void | null>) | null;
-        onError: ((error: Error, req: Request, url: URL, server?: Server) => void | Response | Promise<Response | null | void>) | null;
-        routeNotFound: ((ctx: ContextType) => Response | Promise<Response | null | void>) | null;
+        onRequest: ((req: Request, url: URL, server: Server) => void) | null;
+        preHandler: ((ctx: ContextType, server?: Server) => Response | Promise<Response>) | null;
+        postHandler: ((ctx: ContextType, server?: Server) => Response | Promise<Response>) | null;
+        onSend: ((ctx: ContextType, result?: Response | null, server?: Server) => Response | Promise<Response>) | null;
+        onError: ((error: Error, req: Request, url: URL, server?: Server) => void | Response | Promise<Response>) | null;
+        routeNotFound: ((ctx: ContextType) => Response | Promise<Response>) | null;
     };
     filters: Set<string>;
-    hasFilterEnabled: boolean;
-    filterFunction: Array<(ctx: ContextType, serer?: Server) => void | Response | Promise<Response | void | null>>;
+    filterFunction: Array<(ctx: ContextType, server?: Server) => void | Response | Promise<void | Response>>;
     corsConfig: corsT | null;
-    globalMiddlewares: Array<(ctx: ContextType, serer?: Server) => void | Promise<Response | null | void>>;
-    middlewares: Map<string, Array<(ctx: ContextType, serer?: Server) => void | Promise<Response | null | void>>>;
+    globalMiddlewares: Array<(ctx: ContextType, server?: Server) => void | Promise<void | Response>>;
+    middlewares: Map<string, Array<(ctx: ContextType, server?: Server) => void | Promise<void | Response>>>;
     trie: {
         search: (pathname: string, method: string) => RouteHandlerT | undefined;
     };
     staticPath: string | null;
-    routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
+    routeNotFoundFunc: RouteNotFoundHandler;
     routerInstance: DieselT;
     tempRoutes: Map<string, TempRouteEntry>;
-}
-export interface RouteCache {
-    [key: string]: RouteHandlerT | undefined;
-}
-declare global {
-    interface Request {
-        routePattern?: string;
-        [key: string]: any;
-    }
-}
-export interface ParseBodyResult {
-    error?: string;
-    data?: any;
-}
-export interface RouteT {
-    method: string;
-    handler: handlerFunction;
 }
 export type corsT = {
     origin?: string | string[] | null;
@@ -137,3 +116,13 @@ export type listenArgsT = string | (() => void) | {
     cert?: string;
     key?: string;
 };
+export interface ParseBodyResult {
+    error?: string;
+    data?: any;
+}
+declare global {
+    interface Request {
+        routePattern?: string;
+        [key: string]: any;
+    }
+}

@@ -59,7 +59,7 @@ export default class Diesel {
     useAdvancedLogger(options: AdvancedLoggerOptions): this;
     BunRoute(method: string, path: string, ...handlers: any[]): void;
     listen(port: any, ...args: listenArgsT[]): Server | void;
-    fetch(): (req: BunRequest, server: Server) => Promise<any>;
+    fetch(): (req: BunRequest, server: Server) => Promise<Response>;
     close(callback?: () => void): void;
     /**
      * Registers a router instance for subrouting.

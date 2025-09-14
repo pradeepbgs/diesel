@@ -1,5 +1,5 @@
 import Trie from "./trie.js";
-import handleRequest, { executeBunMiddlewares } from "./handleRequest.js";
+import handleRequest, { executeBunMiddlewares, generateErrorResponse, handleRouteNotFound, parseRequestUrl, runFilter, runHooks, runMiddlewares } from "./handleRequest.js";
 import path from 'path'
 import fs from 'fs'
 
@@ -41,6 +41,8 @@ import {
 } from "./utils/jwt.js";
 
 import { ServerOptions } from "http";
+import createCtx from "./ctx.js";
+import { buildRequestPipeline, BunRequestPipline } from "./request_pipeline.js";
 
 export default class Diesel {
   private static instance: Diesel
@@ -72,6 +74,8 @@ export default class Diesel {
   routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
   private prefixApiUrl: string | null
 
+  pipeline: Function
+
   constructor(
     {
       jwtSecret,
@@ -92,7 +96,7 @@ export default class Diesel {
     if (!Diesel.instance) {
       Diesel.instance = this
     }
-
+    this.pipeline = new Function()
     this.prefixApiUrl = prefixApiUrl ?? ''
     this.fetch = this.fetch.bind(this);
     this.routes = {}
@@ -418,8 +422,11 @@ export default class Diesel {
   BunRoute(method: string, path: string, ...handlers: any[]) {
     if (!path || typeof path !== 'string') throw new Error("give a path in string format")
 
+    const handlerFunction = BunRequestPipline(this as any,method, createCtx, ...handlers)
+    this.routes[path] = handlerFunction
 
-    this.routes[path] = async (req: BunRequest, server: Server) => {
+    return;
+      this.routes[path] = async (req: BunRequest, server: Server) => {
 
       if (this.hasMiddleware) {
         if (this.globalMiddlewares.length) {
@@ -488,8 +495,6 @@ export default class Diesel {
       }
     }
 
-    // this.compile();
-
     const ServerOptions: any = {
       port,
       hostname,
@@ -517,11 +522,38 @@ export default class Diesel {
     return this.serverInstance;
   }
 
+  buildPipeline() {
+    buildRequestPipeline(this as any)
+  }
+
+
   fetch() {
     this.compile();
+    this.buildPipeline();
     return async (req: BunRequest, server: Server) => {
-      return handleRequest(req, server, this as DieselT)
-    }
+      const pathname = parseRequestUrl(req.url);
+      const routeHandler = this.trie.search(pathname, req.method as HttpMethod);
+      const ctx = createCtx(req, server, pathname, routeHandler?.path);
+
+      return this.pipeline(req, server, this, ctx, routeHandler, pathname)
+        .catch(async (error: any) => {
+          // console.error("Unhandled handler error:", error);
+
+          const errorResult = await runHooks(
+            "onError",
+            this.hooks.onError,
+            [error, req, pathname, server]
+          );
+
+          // If the error hook didn't return a response, fallback to default
+          return errorResult || generateErrorResponse(500, "Internal Server Error");
+        });
+    };
+
+    // old way 
+    // return async (req: BunRequest, server: Server) => {
+    //   return handleRequest(req, server, this as any)
+    // }
   }
 
   close(
