@@ -421,12 +421,12 @@ export default class Diesel {
   // when you use this , it will override existing endpoint with same path
   BunRoute(method: string, path: string, ...handlers: any[]) {
     if (!path || typeof path !== 'string') throw new Error("give a path in string format")
-
-    const handlerFunction = BunRequestPipline(this as any,method, createCtx, ...handlers)
+    this.compile()
+    const handlerFunction = BunRequestPipline(this as any, method.toUpperCase(), path, ...handlers)
     this.routes[path] = handlerFunction
 
     return;
-      this.routes[path] = async (req: BunRequest, server: Server) => {
+    this.routes[path] = async (req: BunRequest, server: Server) => {
 
       if (this.hasMiddleware) {
         if (this.globalMiddlewares.length) {

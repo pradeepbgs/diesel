@@ -1,3 +1,4 @@
+import { extractDynamicParams } from "../../src/ctx"
 import Diesel from "../../src/main"
 import type { ContextType } from "../../src/types"
 
@@ -5,11 +6,21 @@ import type { ContextType } from "../../src/types"
 const app = new Diesel()
 
 // app.useLogger({app})
+// app.addHooks('onRequest', () => console.log('req has come'))
+app.get('/', (ctx: ContextType) => ctx.text("hello world! normal route"))
 
-// app.get('/', (ctx: ContextType) => ctx.text("hello world!"))
+// app.use(() => console.log("console"))
+app.use('/bun', () => console.log("console2 from /bun"))
 
-app.BunRoute('GET','/', () => new Response("Hello world!"))
-app.BunRoute('GET','/bun', () => new Response("bun is bun"))
+app.BunRoute('get', '/', () => new Response("Hello world!"))
+app.BunRoute('get', '/bun', () => new Response("bun is bun"))
+app.BunRoute("get", '/hello/:id', (req) => {
+    const url = new URL(req.url)
+    const params = extractDynamicParams("/hello/:id", url.pathname)
+    const param = params.id
+    return new Response(`here is the param: ${param}`)
+})
+app.BunRoute('get', "/hello/ok", () => new Response("hello/ok"))
 
 app.get("/path/:name", (ctx: ContextType) => {
     return ctx.text(`hello ${ctx.params.name} with query: ${ctx.query.name}`)

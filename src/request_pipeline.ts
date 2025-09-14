@@ -1,4 +1,4 @@
-import { generateErrorResponse, handleRouteNotFound, runFilter, runHooks, runMiddlewares } from "./handleRequest";
+import { executeBunMiddlewares, generateErrorResponse, handleRouteNotFound, runFilter, runHooks, runMiddlewares } from "./handleRequest";
 import { DieselT } from "./types";
 
 export const buildRequestPipeline = (diesel: DieselT) => {
@@ -81,15 +81,37 @@ export const buildRequestPipeline = (diesel: DieselT) => {
 }
 
 
-export const BunRequestPipline = (diesel: DieselT, method: string, ...handlers: Function[]) => {
+export const BunRequestPipline = (diesel: DieselT, method: string, path: string, ...handlers: Function[]) => {
   const parts: string[] = []
 
-  // Middlewares
-  if (diesel.hasMiddleware) {
+  const globalMiddlewares = diesel.hasMiddleware ? diesel.globalMiddlewares : [];
+  const pathMiddlewares = diesel.hasMiddleware ? diesel.middlewares.get(path) || [] : [];
+  const allMiddlewares = [...globalMiddlewares, ...pathMiddlewares];
+  // onReq hooks
+  const onRequestHooks = diesel.hasOnReqHook ? diesel.hooks.onRequest : [];
+
+  // Hooks
+  if (onRequestHooks) {
     parts.push(`
-          const mwResult = await runMiddlewares(diesel, pathname, ctx, server);
-          if (mwResult) return mwResult;
-        `);
+      const onRequestResult = await runHooks(
+        "onRequest",
+        [${onRequestHooks}],
+        [req, "${path}", server]
+      );
+      if (onRequestResult) return onRequestResult;
+    `);
+  }
+
+  // Middlewares
+  if (allMiddlewares.length) {
+    parts.push(`
+      const globalMiddlewareResponse = await executeBunMiddlewares(
+        [${allMiddlewares}],
+        req,
+        server
+      );
+      if (globalMiddlewareResponse) return globalMiddlewareResponse;
+    `);
   }
 
   // method mathch
@@ -98,6 +120,7 @@ export const BunRequestPipline = (diesel: DieselT, method: string, ...handlers: 
         return new Response("Method Not Allowed", { status: 405 });
       `)
 
+  // Handler invocation
   if (handlers.length === 1) {
     parts.push(`
        const response = handlers[0](req, server)
@@ -127,11 +150,19 @@ export const BunRequestPipline = (diesel: DieselT, method: string, ...handlers: 
     }
   `;
 
-  const fnc = new Function("runMiddlewares", "diesel", "handlers", fnBody)(
-    runMiddlewares,
-    diesel,
-    handlers,
-  );
+  const fnc = new Function(
+    "executeBunMiddlewares",
+    "diesel",
+    "handlers",
+    "runHooks",
+    fnBody
+  )
+    (
+      executeBunMiddlewares,
+      diesel,
+      handlers,
+      runHooks
+    );
   // console.log(String(fnc))
   return fnc
 }

@@ -34,7 +34,7 @@ export default async function handleRequest(
   server: Server,
   diesel: DieselT
 ): Promise<Response> {
-  
+
   const pathname = parseRequestUrl(req.url);
   // console.log("custom pathname", pathname);
 
@@ -105,6 +105,7 @@ export async function runHooks<T extends any[]>(
   label: HookType,
   hooksArray: any,
   args: T): Promise<any> {
+
   if (!hooksArray?.length) return;
   for (let i = 0; i < hooksArray.length; i++) {
     const result = hooksArray[i](...args);
@@ -139,6 +140,7 @@ export async function executeBunMiddlewares(
   middlewares: Function[],
   req: BunRequest,
   server: Server) {
+
   for (const middleware of middlewares) {
     const result = await middleware(req, server);
     if (result) return result;
