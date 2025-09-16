@@ -128,8 +128,7 @@ export interface DieselT {
     hasPreHandlerHook: boolean;
     hasPostHandlerHook: boolean;
     hasOnSendHook: boolean;
-    hasFilterEnabled: boolean;
-
+    hasFilterEnabled:boolean
     hooks: {
         onRequest: ((req: Request, url: URL, server: Server) => void) | null;
         preHandler: ((ctx: ContextType, server?: Server) => Response | Promise<Response>) | null;
@@ -138,7 +137,6 @@ export interface DieselT {
         onError: ((error: Error, req: Request, url: URL, server?: Server) => void | Response | Promise<Response>) | null;
         routeNotFound: ((ctx: ContextType) => Response | Promise<Response>) | null;
     };
-
     filters: Set<string>;
     filterFunction: Array<(ctx: ContextType, server?: Server) => void | Response | Promise<void | Response>>;
     corsConfig: corsT | null;
@@ -147,11 +145,11 @@ export interface DieselT {
     trie: {
         search: (pathname: string, method: string) => RouteHandlerT | undefined;
     };
-
     staticPath: string | null;
     routeNotFoundFunc: RouteNotFoundHandler;
     routerInstance: DieselT;
     tempRoutes: Map<string, TempRouteEntry>;
+    routes: Record<string, Function>
 }
 
 export type corsT = {
@@ -187,4 +185,15 @@ declare global {
         routePattern?: string; // Custom property
         [key: string]: any;
     }
+}
+
+
+export interface CompileConfig {
+    hasMiddleware: boolean,
+    hasOnReqHook: boolean,
+    hasPreHandlerHook: boolean,
+    hasOnError: boolean,
+    hasPostHandlerHook: boolean,
+    hasOnSendHook: boolean,
+    hasFilterEnabled:boolean
 }

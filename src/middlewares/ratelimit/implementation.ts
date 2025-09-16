@@ -24,27 +24,8 @@ class RedisStore implements RateLimitStore{
     
 }
 
-class DiceDbStore implements RateLimitStore{
-    constructor(private dicedb:any){
-        
-    }
-    async get(key:string){
-        const value = await this.dicedb.get(key)
-        return value ? parseInt(value) : null
-    }
-
-    async set(key:string, value:string, ttlMs:number){
-        await this.dicedb.set(key,value,'PX',ttlMs)
-    }
-
-    async reset(key:string){
-        await this.dicedb.del(key)
-    }
-    
-}
 
 
 export {
     RedisStore,
-    DiceDbStore
 }

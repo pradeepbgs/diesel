@@ -271,13 +271,13 @@ function parseCookie(cookieHeader: string): Record<string, string> {
   );
 }
 
-function extractDynamicParams(
-  routePattern: any,
-  path: string
+export function extractDynamicParams(
+  originalPath: string,
+  incomingPath: string
 ): Record<string, string> | null {
   const params: Record<string, string> = {};
-  const routeSegments = routePattern.split("/");
-  const [pathWithoutQuery] = path.split("?");
+  const routeSegments = originalPath.split("/");
+  const [pathWithoutQuery] = incomingPath.split("?");
   const pathSegments = pathWithoutQuery.split("/");
 
   if (routeSegments.length !== pathSegments.length) return null;

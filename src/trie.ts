@@ -107,9 +107,9 @@ class TrieNode {
         return {
           path: node.path,
           handler: node.handler[routeMethodIndex],
-          isDynamic: node.isDynamic,
           pattern: node.pattern,
-          method: node.method[routeMethodIndex]
+          // isDynamic: node.isDynamic,
+          // method: node.method[routeMethodIndex]
         };
       }
       
