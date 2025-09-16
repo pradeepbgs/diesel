@@ -16,7 +16,7 @@ import { redis } from './src/utils/redis'
 import { RedisStore } from "../src/middlewares/ratelimit/implementation";
 import { requestId } from '../src/middlewares/request-id/index'
 const app = new Diesel({
-  enableFileRouting: true,
+  enableFileRouting: false,
 });
 
 const SECRET_KEY = "linux";
@@ -28,18 +28,18 @@ const port = 3000
 
 
 // Authentication Middleware
-// export async function authJwt(ctx: ContextType): Promise<void | null | Response> {
-//   const token = ctx.cookies?.accessToken
-//   if (!token) {
-//     return ctx.json({ message: "Authentication token missing" },401);
-//   }
-//   try {
-//     const user = jwt.verify(token, SECRET_KEY);
-//     ctx.set('user',user);
-//   } catch (error) {
-//     return ctx.json({ message: "Invalid token" },403);
-//   }
-// }
+export async function authJwt(ctx: ContextType): Promise<void | null | Response> {
+  const token = ctx.cookies?.accessToken
+  if (!token) {
+    return ctx.json({ message: "Authentication token missing" },401);
+  }
+  try {
+    const user = jwt.verify(token, SECRET_KEY);
+    ctx.set('user',user);
+  } catch (error) {
+    return ctx.json({ message: "Invalid token" },403);
+  }
+}
 
 app.use(cors({
   origin: 'http://localhost:3000',
@@ -48,9 +48,9 @@ app.use(cors({
 
 
 // app.setupFilter()
-// .publicRoutes("/cookie",'/', '/api/user/','/health')
+// .publicRoutes("/cookie",'/api/user/','/health')
 // .permitAll()
-// .authenticateJwt(jwt)
+// .authenticate([authJwt])
 
 
 // app.use(authenticateJwt({

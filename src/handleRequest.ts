@@ -116,13 +116,13 @@ export async function runHooks<T extends any[]>(
 
 export async function runMiddlewares(diesel: DieselT, pathname: string, ctx: ContextType, server: Server) {
 
-  const global = diesel.globalMiddlewares;
-  if (global.length) {
-    for (const middleware of global) {
-      const result = await middleware(ctx, server);
-      if (result) return result;
-    }
-  }
+  // const global = diesel.globalMiddlewares;
+  // if (global.length) {
+  //   for (const middleware of global) {
+  //     const result = await middleware(ctx, server);
+  //     if (result) return result;
+  //   }
+  // }
 
   const local = diesel.middlewares.get(pathname)
   if (local && local.length) {

@@ -1,34 +1,59 @@
 import Diesel from "../src/main";
-
+import jwt from 'jsonwebtoken'
+import { BunRequest } from "bun";
 const app = new Diesel()
 const port = process.env.PORT || 3000
 
+
+export async function authJwt(req: BunRequest): Promise<void | null | Response> {
+    const token = 'ok'
+    if (!token) {
+        return Response.json({ message: "Authentication token missing" }, { status: 401 });
+    }
+    try {
+        const user = jwt.verify(token, "SECRET_KEY");
+        req.user = user
+    } catch (error) {
+        return Response.json({ message: "Invalid token" }, { status: 403 });
+    }
+}
 
 // app.use(() => console.log('in iddle'))
 // app.addHooks('onRequest', () => console.log('onRequest'))
 // app.useLogger({app})
 
-app.addHooks('onError', (err: ErrnoException) => {
-    console.log('got an exception ', err)
-    return new Response(
-        JSON.stringify({ message: err.message, stack: err.stack }),
-        {
-            headers: { "Content-Type": "application/json" },
-            status: 500
-        }
-    );
-});
+// app.setupFilter()
+//     .publicRoutes("/cookie", '/api/user/', '/health')
+//     .permitAll()
+//     .authenticate([authJwt])
+
+// app.addHooks('onError', (err: ErrnoException) => {
+//     console.log('got an exception ', err)
+//     return new Response(
+//         JSON.stringify({ message: err.message, stack: err.stack }),
+//         {
+//             headers: { "Content-Type": "application/json" },
+//             status: 500
+//         }
+//     );
+// });
+
+app.BunRoute('get', '/bun', () => new Response("Bun route"))
+// app.BunRoute('post', '/bun2', () => new Response("Bun route 2"))
+// app.BunRoute('put', '/bun3', () => new Response("Bun route 3"))
 
 app.get('/err', (ctx) => {
-    return new Promise((res,rej) => {
+    return new Promise((res, rej) => {
         setTimeout(() => {
             rej(new Error("This is a simulated delayed error!"));
         }, 200);
     })
 })
 
+
+
 // app.on(['GET', 'POST', 'BREW', 'QUERY'], '/', (c) => c.text("Hello from /"))
-app.get("/", (c) => c.text("Hello from /k"))
+app.get("/", (c) => c.text("Hello from /"))
 
 
 // app.use("/hello", () => console.log("/hello"))
@@ -60,7 +85,9 @@ userRouter.get("/login", (c) => c.send("from /api/user/login"))
 const userRouter2 = new Diesel()
 userRouter2.get("/login", (c) => c.send("login from userRouter 2"))
 
-app.route('', userRouter)
-app.register('/api/user2', userRouter2)
+// app.route('', userRouter)
+// app.register('/api/user2', userRouter2)
 
 app.listen(port, () => console.log(`server running on ports: ${port}`))
+// after listening it wont work
+// app.use(() => console.log('afeter listen'))
