@@ -7,10 +7,10 @@ const app = new Diesel()
 
 // app.useLogger({app})
 // app.addHooks('onRequest', () => console.log('req has come'))
-app.get('/', (ctx: ContextType) => ctx.text("hello world! normal route"))
+app.get('/', () => new Response("Hello world!"))
 
 // app.use(() => console.log("console"))
-app.use('/bun', () => console.log("console2 from /bun"))
+// app.use('/bun', () => console.log("console2 from /bun"))
 
 app.BunRoute('get', '/', () => new Response("Hello world!"))
 app.BunRoute('get', '/bun', () => new Response("bun is bun"))

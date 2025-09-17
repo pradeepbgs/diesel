@@ -47,7 +47,7 @@ import { buildRequestPipeline, BunRequestPipline } from "./request_pipeline.js";
 
 export default class Diesel {
   private static instance: Diesel
-  fecth: ServerOptions['fetch']
+  fecth: any// ServerOptions['fetch']
   routes: Record<string, Function>
   private tempRoutes: Map<string, TempRouteEntry> | null;
   globalMiddlewares: middlewareFunc[];
@@ -432,12 +432,24 @@ export default class Diesel {
 
   // this is for high performance api endpoint and when u use this no app.use midl works here
   // when you use this , it will override existing endpoint with same path
-  BunRoute(method: string, path: string, ...handlers: any[]): this {
+  BunRoute(method: string, path: string, ...handlersOrResponse: any[]): this {
     if (!path || typeof path !== 'string') throw new Error("give a path in string format")
     if (!this.compileConfig) {
       this.compile();
     }
-    const handlerFunction = BunRequestPipline(this.compileConfig!, this as any, method.toUpperCase(), path, ...handlers)
+
+    // Direct response send
+    let response_data: string | object | undefined;
+    if (typeof handlersOrResponse[0] === "string" || typeof handlersOrResponse[0] === "object") {
+      response_data = handlersOrResponse[0];
+    }
+    if (typeof response_data !== "undefined") {
+      const data = typeof response_data === "string"
+        ? response_data
+        : JSON.stringify(response_data)
+    }
+
+    const handlerFunction = BunRequestPipline(this.compileConfig!, this as any, method.toUpperCase(), path, ...handlersOrResponse)
     this.routes[path] = handlerFunction
     return this
   }

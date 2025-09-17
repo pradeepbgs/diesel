@@ -1,4 +1,4 @@
-import type { handlerFunction, HttpMethod, RouteT } from "./types"
+import type { handlerFunction, HttpMethod, RouteHandlerT, } from "./types"
 
 
 class TrieNode {
@@ -28,7 +28,7 @@ class TrieNode {
       this.root = new TrieNode();
     }
   
-    insert(path:string, route:RouteT) : void {
+    insert(path:string, route:RouteHandlerT) : void {
       let node = this.root;
       const pathSegments = path.split('/').filter(Boolean); // Split path by segments
     

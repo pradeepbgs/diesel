@@ -1,10 +1,10 @@
 import { Hono, type Context } from 'hono'
 const app = new Hono()
 
-app.use('*',(_, next) => {
-    console.log('g')
-    next()
-})
+// app.use('*',(_, next) => {
+//     console.log('g')
+//     next()
+// })
 
 app.get('/', (ctx: Context) => ctx.text("hello world!"))
 

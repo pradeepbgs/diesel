@@ -42,7 +42,6 @@ export default async function handleRequest(
   // const url = new URL(req.url)
   // console.log(url?.pathname, url?.searchParams.get('name')) 
 
-
   const routeHandler: RouteHandlerT | undefined = diesel.trie.search(
     pathname,
     req.method

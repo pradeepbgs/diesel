@@ -94,6 +94,7 @@ export interface DieselT {
     routeNotFoundFunc: RouteNotFoundHandler;
     routerInstance: DieselT;
     tempRoutes: Map<string, TempRouteEntry>;
+    routes: Record<string, Function>;
 }
 export type corsT = {
     origin?: string | string[] | null;
@@ -125,4 +126,13 @@ declare global {
         routePattern?: string;
         [key: string]: any;
     }
+}
+export interface CompileConfig {
+    hasMiddleware: boolean;
+    hasOnReqHook: boolean;
+    hasPreHandlerHook: boolean;
+    hasOnError: boolean;
+    hasPostHandlerHook: boolean;
+    hasOnSendHook: boolean;
+    hasFilterEnabled: boolean;
 }

@@ -14,7 +14,7 @@ async function getEjs() {
 }
 
 
-const typeMap = {
+const typeMap: any = {
   string: "text/plain; charset=utf-8",
   object: "application/json; charset=utf-8",
   Uint8Array: "application/octet-stream",
@@ -199,14 +199,15 @@ export default function createCtx(
     },
 
     yieldStream(callback: () => AsyncIterable<any>): Response {
-      return new Response(
-        {
-          async *[Symbol.asyncIterator]() {
-            yield* callback();
-          },
-        },
-        { headers: this.headers }
-      );
+      return new Response("not working stream yet.")
+      // return new Response(
+      //   {
+      //     async *[Symbol.asyncIterator ]() {
+      //       yield* callback();
+      //     },
+      //   },
+      //   { headers: this.headers }
+      // );
     },
 
 

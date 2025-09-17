@@ -1,28 +1,21 @@
 import Trie from "./trie.js";
-import { ContextType, corsT, FilterMethods, HookFunction, HookType, listenArgsT, middlewareFunc, onError, onRequest, RouteNotFoundHandler, type handlerFunction, type Hooks, type HttpMethod } from "./types.js";
+import { CompileConfig, ContextType, corsT, FilterMethods, HookFunction, HookType, listenArgsT, middlewareFunc, onError, onRequest, RouteNotFoundHandler, type handlerFunction, type Hooks, type HttpMethod } from "./types.js";
 import { BunRequest, Server } from "bun";
 import { AdvancedLoggerOptions, LoggerOptions } from "./middlewares/logger/logger.js";
-import { ServerOptions } from "http";
 export default class Diesel {
     private static instance;
-    fecth: ServerOptions['fetch'];
+    fecth: any;
     routes: Record<string, Function>;
     private tempRoutes;
     globalMiddlewares: middlewareFunc[];
     middlewares: Map<string, middlewareFunc[]>;
     trie: Trie;
-    hasOnReqHook: boolean;
-    hasMiddleware: boolean;
-    hasPreHandlerHook: boolean;
-    hasPostHandlerHook: boolean;
-    hasOnSendHook: boolean;
-    hasOnError: boolean;
     hooks: Hooks;
     corsConfig: corsT;
     FilterRoutes: string[] | null | undefined;
     filters: Set<string>;
-    filterFunction: middlewareFunc[];
-    hasFilterEnabled: boolean;
+    filterFunction: Function[];
+    private hasFilterEnabled;
     private serverInstance;
     staticPath: any;
     staticFiles: any;
@@ -32,6 +25,7 @@ export default class Diesel {
     idleTimeOut: number;
     routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
     private prefixApiUrl;
+    compileConfig: CompileConfig | null;
     constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, prefixApiUrl, }?: {
         jwtSecret?: string;
         baseApiUrl?: string;
@@ -57,9 +51,9 @@ export default class Diesel {
     private loadRoutes;
     useLogger(options: LoggerOptions): this;
     useAdvancedLogger(options: AdvancedLoggerOptions): this;
-    BunRoute(method: string, path: string, ...handlers: any[]): void;
+    BunRoute(method: string, path: string, ...handlersOrResponse: any[]): this;
     listen(port: any, ...args: listenArgsT[]): Server | void;
-    fetch(): (req: BunRequest, server: Server) => Promise<Response>;
+    fetch(): (req: BunRequest, server: Server) => Promise<any>;
     close(callback?: () => void): void;
     /**
      * Registers a router instance for subrouting.

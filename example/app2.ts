@@ -1,6 +1,6 @@
 import Diesel from "../src/main";
 import jwt from 'jsonwebtoken'
-import { BunRequest } from "bun";
+import { BunRequest, resolve } from "bun";
 const app = new Diesel()
 const port = process.env.PORT || 3000
 
@@ -38,9 +38,18 @@ export async function authJwt(req: BunRequest): Promise<void | null | Response> 
 //     );
 // });
 
-app.BunRoute('get', '/bun', () => new Response("Bun route"))
-// app.BunRoute('post', '/bun2', () => new Response("Bun route 2"))
-// app.BunRoute('put', '/bun3', () => new Response("Bun route 3"))
+const msg = "Hi";
+app.BunRoute('get', '/bun', async () => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve(new Response("Hello bun"));
+        }, 1000);
+    });
+});
+
+app.BunRoute('get', '/bun2', () => new Response("Hello bun/2"))
+app.BunRoute('get', '/bun3', { message: "Hello JSON" });
+app.BunRoute('get', '/bun4', () => new Response("hell"))
 
 app.get('/err', (ctx) => {
     return new Promise((res, rej) => {
