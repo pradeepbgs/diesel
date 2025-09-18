@@ -1,11 +1,11 @@
-import { Server } from "bun";
+import { BunRequest, Server } from "bun";
 
 export type listenCalllBackType = () => void;
 
 export type handlerFunction = (ctx: ContextType, server?: Server) => Response | Promise<Response>;
 
 export type middlewareFunc = (
-    ctx: ContextType,
+    ctx: ContextType | BunRequest,
     server?: Server
 ) => void | Response | Promise<void | Response>;
 
@@ -128,7 +128,7 @@ export interface DieselT {
     hasPreHandlerHook: boolean;
     hasPostHandlerHook: boolean;
     hasOnSendHook: boolean;
-    hasFilterEnabled:boolean
+    hasFilterEnabled: boolean
     hooks: {
         onRequest: ((req: Request, url: URL, server: Server) => void) | null;
         preHandler: ((ctx: ContextType, server?: Server) => Response | Promise<Response>) | null;
@@ -195,5 +195,5 @@ export interface CompileConfig {
     hasOnError: boolean,
     hasPostHandlerHook: boolean,
     hasOnSendHook: boolean,
-    hasFilterEnabled:boolean
+    hasFilterEnabled: boolean
 }

@@ -1,7 +1,7 @@
-import { Server } from "bun";
+import { BunRequest, Server } from "bun";
 export type listenCalllBackType = () => void;
 export type handlerFunction = (ctx: ContextType, server?: Server) => Response | Promise<Response>;
-export type middlewareFunc = (ctx: ContextType, server?: Server) => void | Response | Promise<void | Response>;
+export type middlewareFunc = (ctx: ContextType | BunRequest, server?: Server) => void | Response | Promise<void | Response>;
 export type HookFunction = (ctx: ContextType, result?: Response | null, server?: Server) => void | null | Response | Promise<void | null | Response>;
 export type RouteNotFoundHandler = (ctx: ContextType) => Promise<Response>;
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD" | "ANY" | "PROPFIND";

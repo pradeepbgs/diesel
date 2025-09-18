@@ -28,6 +28,7 @@ Bun.build({
         './src/main.ts',
         './src/ctx.ts',
         './src/handleRequest.ts',
+        './src/request_pipeline.ts',
         './src/trie.ts',
     ],
     outdir: './dist',

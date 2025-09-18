@@ -1,5 +1,5 @@
 import Trie from "./trie.js";
-import handleRequest, { executeBunMiddlewares, generateErrorResponse, handleRouteNotFound, parseRequestUrl, runFilter, runHooks, runMiddlewares } from "./handleRequest.js";
+import handleRequest, { generateErrorResponse, parseRequestUrl, runHooks, } from "./handleRequest.js";
 import path from 'path'
 import fs from 'fs'
 
@@ -41,13 +41,12 @@ import {
   authenticateJwtMiddleware
 } from "./utils/jwt.js";
 
-import { ServerOptions } from "http";
 import createCtx from "./ctx.js";
 import { buildRequestPipeline, BunRequestPipline } from "./request_pipeline.js";
 
 export default class Diesel {
   private static instance: Diesel
-  fecth: any// ServerOptions['fetch']
+  fecth: any // ServerOptions['fetch']
   routes: Record<string, Function>
   private tempRoutes: Map<string, TempRouteEntry> | null;
   globalMiddlewares: middlewareFunc[];
@@ -83,6 +82,8 @@ export default class Diesel {
       enableFileRouting,
       idleTimeOut,
       prefixApiUrl,
+      onError,
+      logger,
     }
       : {
         jwtSecret?: string,
@@ -90,12 +91,15 @@ export default class Diesel {
         enableFileRouting?: boolean,
         idleTimeOut?: number,
         prefixApiUrl?: string,
+        onError?: boolean,
+        logger?: boolean
       } = {}
   ) {
 
     if (!Diesel.instance) {
       Diesel.instance = this
     }
+
     this.prefixApiUrl = prefixApiUrl ?? ''
     this.fetch = this.fetch.bind(this);
     this.routes = {}
@@ -122,6 +126,33 @@ export default class Diesel {
       onError: [],
       onClose: [],
     };
+
+    // if user wants to log Error and respective Res
+    if (onError) this.addHooks('onError', (err: ErrnoException) => {
+      console.log('got an exception ', err)
+      return new Response(
+        JSON.stringify({ message: err?.message ?? err, stack: err.stack }),
+        {
+          headers: { "Content-Type": "application/json" },
+          status: 500
+        }
+      );
+    });
+    // if user wants to log
+    if (logger) this.useLogger({
+      app: this, onError(err) {
+        console.log('got an exception ', err)
+        return new Response(
+          JSON.stringify({ message: err?.message ?? err, stack: err.stack }),
+          {
+            headers: { "Content-Type": "application/json" },
+            status: 500
+          }
+        );
+      },
+    })
+
+
     this.FilterRoutes = [];
     this.filters = new Set<string>();
     this.filterFunction = [];
@@ -503,6 +534,12 @@ export default class Diesel {
   }
 
   fetch() {
+
+    // old way 
+    // return async (req: BunRequest, server: Server) => {
+    //   return handleRequest(req, server, this as any)
+    // }
+
     const config: CompileConfig = this.compile();
     const pipeline = buildRequestPipeline(config, this as any)
     return async (req: BunRequest, server: Server) => {
@@ -524,11 +561,6 @@ export default class Diesel {
           return errorResult || generateErrorResponse(500, "Internal Server Error");
         });
     };
-
-    // old way 
-    // return async (req: BunRequest, server: Server) => {
-    //   return handleRequest(req, server, this as any)
-    // }
   }
 
   close(
@@ -569,7 +601,8 @@ export default class Diesel {
       }
 
       // Add all middleware functions for the route, preserving user-defined order.
-      const middlewareHandlers: middlewareFunc[] = args.handlers.slice(0, -1);
+      const middlewareHandlers = args.handlers.slice(0, -1) as middlewareFunc[];
+
       middlewareHandlers.forEach((middleware: middlewareFunc) => {
         const arr = this.middlewares.get(fullpath)!;
         if (!arr.includes(middleware)) {
@@ -671,8 +704,8 @@ export default class Diesel {
    */
 
   use(
-    pathORHandler?: string | string[] | middlewareFunc | middlewareFunc[],
-    handlers?: middlewareFunc | middlewareFunc[]
+    pathORHandler?: string | string[] | middlewareFunc | middlewareFunc[] | Function | Function[],
+    handlers?: middlewareFunc | middlewareFunc[] | Function | Function[]
   ): this {
     /**
      * First, we check if the user has passed an array of global middlewares.
@@ -685,7 +718,7 @@ export default class Diesel {
          * and ensure they are not already added to globalMiddlewares.
          */
         if (typeof handler === "function") {
-          this.globalMiddlewares.push(handler);
+          this.globalMiddlewares.push(handler as middlewareFunc);
         }
       });
     }
@@ -696,7 +729,7 @@ export default class Diesel {
      */
     if (typeof pathORHandler === "function") {
 
-      this.globalMiddlewares.push(pathORHandler);
+      this.globalMiddlewares.push(pathORHandler as middlewareFunc);
 
       /**
        * Additionally, check if there are multiple handlers passed as the second parameter.
@@ -704,8 +737,8 @@ export default class Diesel {
        */
 
       if (Array.isArray(handlers)) {
-        handlers.forEach((handler: middlewareFunc) => {
-          this.globalMiddlewares.push(handler);
+        handlers.forEach((handler: Function) => {
+          this.globalMiddlewares.push(handler as middlewareFunc);
         });
       }
       return this;
@@ -730,9 +763,9 @@ export default class Diesel {
         // Example: app.use('/home', h1) -> handlers becomes [h1].
         const handlerArray = Array.isArray(handlers) ? handlers : [handlers];
 
-        handlerArray.forEach((handler: middlewareFunc) => {
+        handlerArray.forEach((handler: Function) => {
           // if (!this.middlewares.get(path)?.includes(handler)) {
-          this.middlewares.get(path)?.push(handler);
+          this.middlewares.get(path)?.push(handler as middlewareFunc);
           // }
         });
       }

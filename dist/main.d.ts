@@ -26,12 +26,14 @@ export default class Diesel {
     routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
     private prefixApiUrl;
     compileConfig: CompileConfig | null;
-    constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, prefixApiUrl, }?: {
+    constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, prefixApiUrl, onError, logger, }?: {
         jwtSecret?: string;
         baseApiUrl?: string;
         enableFileRouting?: boolean;
         idleTimeOut?: number;
         prefixApiUrl?: string;
+        onError?: boolean;
+        logger?: boolean;
     });
     static router(prefix: string): Diesel;
     /**
@@ -84,7 +86,7 @@ export default class Diesel {
      * - app.use(["/home", "/user"], [h1, h2]) -> Adds `h1` and `h2` to `/home` and `/user`.
      * - app.use(h1, [h2, h1]) -> Runs `h1`, then `h2`, and `h1` again as specified.
      */
-    use(pathORHandler?: string | string[] | middlewareFunc | middlewareFunc[], handlers?: middlewareFunc | middlewareFunc[]): this;
+    use(pathORHandler?: string | string[] | middlewareFunc | middlewareFunc[] | Function | Function[], handlers?: middlewareFunc | middlewareFunc[] | Function | Function[]): this;
     get(path: string, ...handlers: handlerFunction[]): this;
     post(path: string, ...handlers: handlerFunction[]): this;
     put(path: string, ...handlers: handlerFunction[]): this;

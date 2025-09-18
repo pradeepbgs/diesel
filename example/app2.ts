@@ -1,12 +1,13 @@
 import Diesel from "../src/main";
 import jwt from 'jsonwebtoken'
-import { BunRequest, resolve } from "bun";
+import { BunRequest } from "bun";
+import { ContextType } from "../src/types";
 const app = new Diesel()
 const port = process.env.PORT || 3000
 
 
-export async function authJwt(req: BunRequest): Promise<void | null | Response> {
-    const token = 'ok'
+export async function authJwt(req: BunRequest): Promise<void | Response> {
+    const token = req.cookies
     if (!token) {
         return Response.json({ message: "Authentication token missing" }, { status: 401 });
     }
@@ -18,27 +19,32 @@ export async function authJwt(req: BunRequest): Promise<void | null | Response> 
     }
 }
 
-// app.use(() => console.log('in iddle'))
-// app.addHooks('onRequest', () => console.log('onRequest'))
-// app.useLogger({app})
+const msg = "Hi";
+app.use(() => {
+    console.log(msg)
+})
+
+app.addHooks('onRequest', () => { console.log('onRequest') })
+app.useLogger({ app })
+// app.use(authJwt)
 
 // app.setupFilter()
 //     .publicRoutes("/cookie", '/api/user/', '/health')
 //     .permitAll()
 //     .authenticate([authJwt])
 
-// app.addHooks('onError', (err: ErrnoException) => {
-//     console.log('got an exception ', err)
-//     return new Response(
-//         JSON.stringify({ message: err.message, stack: err.stack }),
-//         {
-//             headers: { "Content-Type": "application/json" },
-//             status: 500
-//         }
-//     );
-// });
+app.addHooks('onError', (err: ErrnoException) => {
+    console.log('got an exception ', err)
+    return new Response(
+        JSON.stringify({ message: err.message, stack: err.stack }),
+        {
+            headers: { "Content-Type": "application/json" },
+            status: 500
+        }
+    );
+});
 
-const msg = "Hi";
+
 app.BunRoute('get', '/bun', async () => {
     return new Promise((resolve) => {
         setTimeout(() => {
@@ -92,10 +98,10 @@ const userRouter = new Diesel({ prefixApiUrl: '/api/user' })
 userRouter.get("/login", (c) => c.send("from /api/user/login"))
 
 const userRouter2 = new Diesel()
-userRouter2.get("/login", (c) => c.send("login from userRouter 2"))
+userRouter2.get("/login", () => {console.log('hei')}, (c) => c.send("login from userRouter 2"))
 
 // app.route('', userRouter)
-// app.register('/api/user2', userRouter2)
+app.register('/api/user2', userRouter2)
 
 app.listen(port, () => console.log(`server running on ports: ${port}`))
 // after listening it wont work
