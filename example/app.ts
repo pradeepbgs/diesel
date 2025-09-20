@@ -185,7 +185,6 @@ app
   .get("/err", (ctx) => {
     ctx.status = 400
     throw new Error("Somethin`g went wrong yes");
-    return ctx.send("Error", 500);
   })
   .get("/query", async (ctx) => {
     const name = ctx.query.name

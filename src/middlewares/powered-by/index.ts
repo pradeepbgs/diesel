@@ -29,7 +29,7 @@ type PoweredByOptions = {
  * ```
  */
 export const poweredBy = (options?: PoweredByOptions): middlewareFunc => {
-  return async function poweredBy(ctx:ContextType) {
+  return async function poweredBy(ctx: ContextType) {
     ctx.setHeader('X-Powered-By', options?.serverName ?? 'Diesel')
-  }
+  } as middlewareFunc
 }

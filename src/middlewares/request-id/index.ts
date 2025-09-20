@@ -54,5 +54,5 @@ export const requestId = ({
     if (headerName) {
       c.setHeader(headerName, reqId)
     }
-  }
+  } as middlewareFunc
 }

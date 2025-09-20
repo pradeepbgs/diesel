@@ -13,7 +13,7 @@ const defaultMethods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"];
 const defaultHeaders = ["Content-Type", "Authorization"];
 
 export const cors = (config: CorsOptions): middlewareFunc => {
-    return async function (ctx): Promise<Response | null> {
+    return async function (ctx): Promise<Response | null | any> {
         const origin = ctx.req.headers.get("origin") ?? "*";
         const allowedOrigins = config.origin;
         const allowedHeaders = config.allowedHeaders ?? defaultHeaders;
@@ -58,5 +58,5 @@ export const cors = (config: CorsOptions): middlewareFunc => {
         }
 
         return null;
-    };
+    } as middlewareFunc
 };

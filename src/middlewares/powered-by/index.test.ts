@@ -1,18 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import Diesel from "../../main";
+import Diesel from "../../main"
 import { poweredBy } from "./index";
 
 
 describe('powered-by middleware testing', () => {
 
     const app = new Diesel()
-
-    beforeAll(() => {
-        app.listen(3008)
-    })
-    afterAll(() => {
-        app.close()
-    })
 
 
     app.use('/poweredBy', poweredBy())
@@ -24,6 +17,14 @@ describe('powered-by middleware testing', () => {
 
     app.use('/poweredBy3', poweredBy({ serverName: 'Foo' }))
     app.get('/poweredBy3', (c) => c.text('root'))
+
+    beforeAll(() => {
+        app.listen(3008)
+    })
+    afterAll(() => {
+        app.close()
+    })
+
 
     it('Should return with X-Powered-By header', async () => {
         const res = await fetch("http://localhost:3008/poweredBy")
