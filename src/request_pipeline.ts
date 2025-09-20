@@ -1,6 +1,7 @@
 import { BunRequest, Server } from "bun";
 import { executeBunMiddlewares, generateErrorResponse, handleRouteNotFound, runFilter, runHooks, runMiddlewares } from "./handleRequest";
-import { CompileConfig, DieselT } from "./types";
+import { CompileConfig, DieselT, HookFunction, middlewareFunc } from "./types";
+import createCtx from "./ctx";
 
 
 function extractBody(fn: Function) {
@@ -18,79 +19,148 @@ function extractBody(fn: Function) {
 }
 const isAsync = (func: Function) => func.constructor.name === 'AsyncFunction';
 
+const pushHooks = (pipeline: string[], hooks: HookFunction[], hooksType: string, ...args: any) => {
+  if (hooks.length > 5) {
+    pipeline.push(`
+      for (let i = 0; i < diesel.hooks.${hooksType}.length; i++) {
+        const result = diesel.hooks.${hooksType}[i](${args});
+        const finalResult = result instanceof Promise ? await result : result;
+        if (finalResult && '${hooksType}' !== 'onRequest') return finalResult
+    }
+  `)
+  }
+  // else inline each hooks functions
+  else {
+    hooks?.forEach((handler: Function, index: number) => {
+      const isFunctionAsync = isAsync(handler)
+      if (isFunctionAsync) {
+        // use await
+        pipeline.push(`
+            const ${hooksType}${index}Result = await diesel.hooks.${hooksType}[${index}](${args})
+            if (${hooksType}${index}Result && '${hooksType}' !== 'onRequest') return ${hooksType}${index}Result
+            `)
+      }
+      else {
+        // normal function invokation
+        pipeline.push(`
+            const ${hooksType}${index}Result = diesel.hooks.${hooksType}[${index}](${args})
+             if (${hooksType}${index}Result && '${hooksType}' !== 'onRequest') return ${hooksType}${index}Result
+            `)
+      }
+    })
+  }
+}
+
+const pushParsePathname = (pipeline: string[]) => {
+  pipeline.push(`
+    let pathname;
+    const start = req.url.indexOf('/', req.url.indexOf(':') + 4);
+    let i = start;
+    for (; i < req.url.length; i++) {
+        const charCode = req.url.charCodeAt(i);
+        if (charCode === 37) { // percent-encoded
+            const queryIndex = req.url.indexOf('?', i);
+            const path = req.url.slice(start, queryIndex === -1 ? undefined : queryIndex);
+            pathname = tryDecodeURI(path.includes('%25') ? path.replace(/%25/g, '%2525') : path);
+            break;
+        } else if (charCode === 63) { // ?
+            break;
+        }
+    }
+    if (!pathname) {
+      pathname = req.url.slice(start, i);
+    }
+  `)
+}
+
+const pushMiddlewares = (pipeline: string[], globalMiddlewares: middlewareFunc[]) => {
+  if (globalMiddlewares.length <= 5) {
+    // Inline each middleware for max speed
+    for (let i = 0; i < globalMiddlewares.length; i++) {
+      const isFunctionAsync = isAsync(globalMiddlewares[i])
+      if (isFunctionAsync) {
+        pipeline.push(`
+          const resultMiddleware${i} = await globalMiddlewares[${i}](ctx);
+          if (resultMiddleware${i}) return resultMiddleware${i};
+      `);
+      }
+      else {
+        pipeline.push(`
+        const resultMiddleware${i} = globalMiddlewares[${i}](ctx);
+        if (resultMiddleware${i}) return resultMiddleware${i};
+    `);
+      }
+    }
+  } else {
+    // Use loop for larger middleware lists
+    pipeline.push(`
+    for (let i = 0; i < globalMiddlewares.length; i++) {
+      const result = await globalMiddlewares[i](ctx);
+      if (result) return result;
+    }
+  `);
+
+  }
+}
 
 export const buildRequestPipeline = (config: CompileConfig, diesel: DieselT) => {
   const pipeline: string[] = [];
   const globalMiddlewares = diesel.globalMiddlewares || []
 
-  const onRequestHooks = config?.hasOnReqHook ? diesel.hooks.onRequest : [];
+  const onRequestHooks = config?.hasOnReqHook ? diesel.hooks.onRequest : [] as any;
+  const PreHandlerHook = config?.hasPreHandlerHook ? diesel.hooks.preHandler : [] as any;
+  const OnSendHook = config?.hasOnSendHook ? diesel.hooks.onSend : [] as any;
+
+  // parse pathname
+  pushParsePathname(pipeline)
+
+  // finc routeHandler
+  pipeline.push(`
+      const routeHandler = diesel.trie.search(pathname, req.method);
+    `);
+
   // Hooks
   if (onRequestHooks && onRequestHooks.length > 0) {
-    if (onRequestHooks.length >0) {
-      pipeline.push(`
-        for (let i = 0; i < diesel.hooks.onRequest.length; i++) {
-          const result = diesel.hooks.onRequest[i](req, pathname, server);
-          result instanceof Promise ? await result : result;
-      }
-    `);
-    }
-    // else inline the hooks
-    else {
-      onRequestHooks?.forEach((handler: Function, index: number) => {
-          const isFunctionAsync = isAsync(handler)
-          if (isFunctionAsync) {
-            // use await
-            pipeline.push(`
-              await diesel.hooks.onRequest[${index}](req,pathname,server)
-              `)
-          }
-          else {
-            // normal function invokation
-            pipeline.push(`
-              diesel.hooks.onRequest[${index}](req,pathname,server)
-              `)
-          }
-      })
-    }
+    pushHooks(pipeline, onRequestHooks, 'onRequest', 'req', 'pathname', 'server')
   }
+
+  pipeline.push(`
+          const ctx = createCtx(req, server, pathname, routeHandler?.path);
+    `)
 
   // Middlewares
   if (config?.hasMiddleware) {
     if (globalMiddlewares.length > 0) {
-      if (globalMiddlewares.length <= 5) {
-        // Inline each middleware for max speed
-        for (let i = 0; i < globalMiddlewares.length; i++) {
-          pipeline.push(`
-            const resultMiddleware${i} = await globalMiddlewares[${i}](ctx, server);
-            if (resultMiddleware${i}) return resultMiddleware${i};
-        `);
-        }
-      } else {
-        // Use loop for larger middleware lists
-        pipeline.push(`
-        for (let i = 0; i < globalMiddlewares.length; i++) {
-          const result = await globalMiddlewares[i](ctx, server);
+
+      pushMiddlewares(pipeline, globalMiddlewares as any)
+    }
+    // Local/path-specific middlewares still run via function
+
+    if (diesel.middlewares.size > 0) {
+      pipeline.push(`
+      const local = diesel.middlewares.get(pathname)
+      if (local && local.length) {
+        for (const middleware of local) {
+          const result = await middleware(ctx);
           if (result) return result;
         }
-      `);
-
       }
-
-      // Local/path-specific middlewares still run via function
-      if (diesel.middlewares.size > 0) {
-        pipeline.push(`
-        const mwResult = await runMiddlewares(diesel, pathname, ctx, server);
-        if (mwResult) return mwResult;
-      `);
-      }
-
+        `)
     }
+
+    // if (diesel.middlewares.size > 0) {
+    //   pipeline.push(`
+    //     const mwResult = await runMiddlewares(diesel, pathname, ctx);
+    //     if (mwResult) return mwResult;
+    //   `);
+    // }
+
   }
 
   // Filters
   if (config.hasFilterEnabled) {
     pipeline.push(`
-        const filterResponse = await runFilter(diesel, pathname, ctx, server);
+        const filterResponse = await runFilter(diesel, pathname, ctx);
         if (filterResponse) return filterResponse;
       `);
   }
@@ -102,18 +172,7 @@ export const buildRequestPipeline = (config: CompileConfig, diesel: DieselT) => 
 
   // Pre-handler
   if (config.hasPreHandlerHook) {
-    pipeline.push(`
-      for (let i = 0; i < diesel.hooks.preHandler.length; i++) {
-        const result = diesel.hooks.preHandler[i](ctx, server);
-        const finalResult = result instanceof Promise ? await result : result;
-        if (finalResult && label !== 'onRequest') return finalResult;
-      }
-    `);
-
-    // pipeline.push(`
-    //     const preResult = await runHooks("preHandler", diesel.hooks.preHandler, [ctx, server]);
-    //     if (preResult) return preResult;
-    //   `);
+    pushHooks(pipeline, PreHandlerHook, 'preHandler', 'ctx')
   }
 
   // Actual route handler
@@ -124,10 +183,7 @@ export const buildRequestPipeline = (config: CompileConfig, diesel: DieselT) => 
 
   // onSend
   if (config.hasOnSendHook) {
-    pipeline.push(`
-        const sendResponse = await runHooks("onSend", diesel.hooks.onSend, [ctx, finalResult, server]);
-        if (sendResponse) return sendResponse;
-      `);
+    pushHooks(pipeline, OnSendHook, 'onSend', 'ctx', 'finalResult')
   }
 
   // Final response
@@ -137,27 +193,26 @@ export const buildRequestPipeline = (config: CompileConfig, diesel: DieselT) => 
     `);
 
   const fnBody = `
-      return async function pipeline(req, server, diesel, ctx, routeHandler, pathname) {
+      return async function pipeline(req, server, diesel) {
           ${pipeline.join("\n")}
       }
     `;
 
   const fnc = new Function(
-    "runHooks",
-    "runMiddlewares",
     "runFilter",
     "handleRouteNotFound",
     "generateErrorResponse",
     "globalMiddlewares",
+    "createCtx",
     fnBody
   )(
-    runHooks,
-    runMiddlewares,
     runFilter,
     handleRouteNotFound,
     generateErrorResponse,
-    globalMiddlewares
+    globalMiddlewares,
+    createCtx
   );
+
   // console.log(fnc.toString())
   return fnc;
 
@@ -165,7 +220,6 @@ export const buildRequestPipeline = (config: CompileConfig, diesel: DieselT) => 
 
 export const BunRequestPipline = (config: CompileConfig, diesel: DieselT, method: string, path: string, ...handlersOrResponse: Function[]) => {
   const pipeline: string[] = []
-
   // handlers
   let response_data: string | object | undefined;
   if (typeof handlersOrResponse[0] === "string" || typeof handlersOrResponse[0] === "object") {
@@ -252,7 +306,7 @@ export const BunRequestPipline = (config: CompileConfig, diesel: DieselT, method
     // const body = extractBody(handlerFn);
 
     // pipeline.push(`${body}`)
-    
+
     if (isFunctionAsync) {
       pipeline.push(`
         const response = await handlers[0](req, server);

@@ -1,102 +1,82 @@
 import { BunRequest, Server } from "bun";
 import createCtx from "./ctx";
-import type { ContextType, DieselT, HookType, RouteHandlerT } from "./types";
+import type { ContextType, DieselT, HookType } from "./types";
 import { getMimeType } from "./utils/mimeType";
-
-// from chatGPT , only for test for prodcution we will stil use new URL
-/** Fast parse that extracts pathname and raw query without constructing URL */
-export function parseRequestUrl(rawUrl: string): string {
-  let pathStart = 0;
-
-  // Case 1: Absolute URL like "http://host:port/path?query"
-  const protoIndex = rawUrl.indexOf("://");
-  if (protoIndex !== -1) {
-    const firstSlash = rawUrl.indexOf("/", protoIndex + 3);
-    pathStart = firstSlash === -1 ? rawUrl.length : firstSlash;
-  }
-  // Case 2: Protocol-relative URL like "//host/path"
-  else if (rawUrl.startsWith("//")) {
-    const firstSlash = rawUrl.indexOf("/", 2);
-    pathStart = firstSlash === -1 ? rawUrl.length : firstSlash;
-  }
-
-  // Extract only the path part
-  const pathAndQuery = rawUrl.slice(pathStart) || "/";
-
-  // Strip query if present
-  const qIdx = pathAndQuery.indexOf("?");
-  return qIdx === -1 ? pathAndQuery : pathAndQuery.slice(0, qIdx);
-}
+import { tryDecodeURI } from "./utils/urls";
 
 
 export default async function handleRequest(
   req: BunRequest,
   server: Server,
   diesel: DieselT
-): Promise<Response> {
+): Promise<Response | undefined> {
 
-  const pathname = parseRequestUrl(req.url);
-  // console.log("custom pathname", pathname);
-
-  // const timenow  = new Date().getTime();
-  // const url = new URL(req.url)
-  // console.log(url?.pathname, url?.searchParams.get('name')) 
-
-  const routeHandler: RouteHandlerT | undefined = diesel.trie.search(
-    pathname,
-    req.method
-  );
-  // console.log(routeHandler)
-  const ctx: ContextType = createCtx(req, server, pathname, routeHandler?.path);
-
-  try {
-
-    // PipeLines such as filters , middlewares, hooks
-    if (diesel.hasOnReqHook)
-      await runHooks('onRequest', diesel.hooks.onRequest, [req, pathname, server])
-
-    // middleware execution
-    if (diesel.hasMiddleware) {
-      const mwResult = await runMiddlewares(diesel, pathname, ctx, server);
-      if (mwResult) return mwResult;
+  let pathname;
+  const start = req.url.indexOf('/', req.url.indexOf(':') + 4);
+  let i = start;
+  for (; i < req.url.length; i++) {
+    const charCode = req.url.charCodeAt(i);
+    if (charCode === 37) { // percent-encoded
+      const queryIndex = req.url.indexOf('?', i);
+      const path = req.url.slice(start, queryIndex === -1 ? undefined : queryIndex);
+      pathname = tryDecodeURI(path.includes('%25') ? path.replace(/%25/g, '%2525') : path);
+      break;
+    } else if (charCode === 63) {
+      break;
     }
-
-    // filter execution
-    if (diesel.hasFilterEnabled) {
-      const filterResponse = await runFilter(diesel, pathname, ctx, server);
-      if (filterResponse) return filterResponse;
-    }
-
-    // if route not found
-    if (!routeHandler) return await handleRouteNotFound(diesel, ctx, pathname)
-
-    // pre-handler
-    if (diesel.hasPreHandlerHook) {
-      const result = await runHooks('preHandler', diesel.hooks.preHandler, [ctx, server]);
-      if (result) return result;
-    }
-
-    const result = routeHandler.handler(ctx);
-    const finalResult = result instanceof Promise ? await result : result;
-
-    // onSend
-    if (diesel.hasOnSendHook) {
-      const response = await runHooks('onSend', diesel.hooks.onSend, [ctx, finalResult, server]);
-      if (response) return response;
-    }
-
-    if (finalResult instanceof Response) {
-      return finalResult;
-    }
-
-    // if we dont return a response then by default Bun shows a err 
-    return generateErrorResponse(500, "No response returned from handler.");
-
   }
-  catch (error: any) {
-    const errorResult = await runHooks("onError", diesel.hooks.onError, [error, req, pathname, server]);
-    return errorResult || generateErrorResponse(500, "Internal Server Error");
+  if (!pathname) {
+    pathname = req.url.slice(start, i);
   }
+
+  const routeHandler = diesel.trie.search(pathname, req.method);
+
+  const ctx = createCtx(req, server, pathname,
+    // diesel.on.bind(diesel), 
+    // diesel.emit.bind(diesel), 
+    routeHandler?.path)
+
+
+  // PipeLines such as filters , middlewares, hooks
+  if (diesel.hasOnReqHook)
+    await runHooks('onRequest', diesel.hooks.onRequest, [req, pathname, server])
+
+  // middleware execution
+  if (diesel.hasMiddleware) {
+    const mwResult = await runMiddlewares(diesel, pathname, ctx);
+    if (mwResult) return mwResult;
+  }
+
+  // filter execution
+  if (diesel.hasFilterEnabled) {
+    const filterResponse = await runFilter(diesel, pathname, ctx);
+    if (filterResponse) return filterResponse;
+  }
+
+  // if route not found
+  if (!routeHandler) return await handleRouteNotFound(diesel, ctx, pathname)
+
+  // pre-handler
+  if (diesel.hasPreHandlerHook) {
+    const result = await runHooks('preHandler', diesel.hooks.preHandler, [ctx]);
+    if (result) return result;
+  }
+
+  const result = routeHandler.handler(ctx);
+  const finalResult = result instanceof Promise ? await result : result;
+
+  // onSend
+  if (diesel.hasOnSendHook) {
+    const response = await runHooks('onSend', diesel.hooks.onSend, [ctx, finalResult]);
+    if (response) return response;
+  }
+
+  if (finalResult instanceof Response) {
+    return finalResult;
+  }
+
+  // if we dont return a response then by default Bun shows a err 
+  return generateErrorResponse(500, "No response returned from handler.");
 
 }
 
@@ -113,20 +93,20 @@ export async function runHooks<T extends any[]>(
   }
 }
 
-export async function runMiddlewares(diesel: DieselT, pathname: string, ctx: ContextType, server: Server) {
+export async function runMiddlewares(diesel: DieselT, pathname: string, ctx: ContextType,) {
 
-  // const global = diesel.globalMiddlewares;
-  // if (global.length) {
-  //   for (const middleware of global) {
-  //     const result = await middleware(ctx, server);
-  //     if (result) return result;
-  //   }
-  // }
+  const global = diesel.globalMiddlewares;
+  if (global.length) {
+    for (const middleware of global) {
+      const result = await middleware(ctx);
+      if (result) return result;
+    }
+  }
 
   const local = diesel.middlewares.get(pathname)
   if (local && local.length) {
     for (const middleware of local) {
-      const result = await middleware(ctx, server);
+      const result = await middleware(ctx);
       if (result) return result;
     }
   }
@@ -146,8 +126,8 @@ export async function executeBunMiddlewares(
   }
 }
 
-export async function runFilter(diesel: DieselT, path: string, ctx: ContextType, server: Server) {
-  const filterResponse = await handleFilterRequest(diesel, path, ctx, server);
+export async function runFilter(diesel: DieselT, path: string, ctx: ContextType) {
+  const filterResponse = await handleFilterRequest(diesel, path, ctx);
   const finalResult = filterResponse instanceof Promise ? await filterResponse : filterResponse;
   if (finalResult) return finalResult;
 }
@@ -155,8 +135,7 @@ export async function runFilter(diesel: DieselT, path: string, ctx: ContextType,
 export async function handleFilterRequest(
   diesel: DieselT,
   path: string,
-  ctx: ContextType,
-  server: Server) {
+  ctx: ContextType) {
   if (path.endsWith("/")) {
     path = path.slice(0, -1);
   }
@@ -164,7 +143,7 @@ export async function handleFilterRequest(
   if (!diesel.filters.has(path)) {
     if (diesel.filterFunction.length) {
       for (const filterFunction of diesel.filterFunction) {
-        const filterResult = await filterFunction(ctx, server);
+        const filterResult = await filterFunction(ctx);
         if (filterResult) return filterResult;
       }
     } else {
@@ -191,7 +170,7 @@ export async function handleBunFilterRequest(
   }
 }
 
-export async function handleRouteNotFound(diesel: DieselT, ctx: ContextType, pathname: string): Promise<Response> {
+export async function handleRouteNotFound(diesel: DieselT, ctx: ContextType, pathname: string): Promise<Response | undefined> {
   if (diesel.staticPath) {
     const staticRes = await handleStaticFiles(diesel, pathname, ctx);
     if (staticRes) return staticRes;

@@ -1,8 +1,10 @@
 import Trie from "./trie.js";
-import { CompileConfig, ContextType, corsT, FilterMethods, HookFunction, HookType, listenArgsT, middlewareFunc, onError, onRequest, RouteNotFoundHandler, type handlerFunction, type Hooks, type HttpMethod } from "./types.js";
+import { CompileConfig, ContextType, corsT, FilterMethods, HookType, listenArgsT, middlewareFunc, RouteNotFoundHandler, type handlerFunction, type Hooks } from "./types.js";
 import { BunRequest, Server } from "bun";
 import { AdvancedLoggerOptions, LoggerOptions } from "./middlewares/logger/logger.js";
+import { EventEmitter } from 'events';
 export default class Diesel {
+    emitter: EventEmitter;
     private static instance;
     fecth: any;
     routes: Record<string, Function>;
@@ -10,6 +12,12 @@ export default class Diesel {
     globalMiddlewares: middlewareFunc[];
     middlewares: Map<string, middlewareFunc[]>;
     trie: Trie;
+    hasOnReqHook: boolean;
+    hasMiddleware: boolean;
+    hasPreHandlerHook: boolean;
+    hasPostHandlerHook: boolean;
+    hasOnSendHook: boolean;
+    hasOnError: boolean;
     hooks: Hooks;
     corsConfig: corsT;
     FilterRoutes: string[] | null | undefined;
@@ -47,7 +55,7 @@ export default class Diesel {
     serveStatic(filePath: string): this;
     static(path: string): this;
     staticHtml(args: Record<string, string>): this;
-    addHooks(typeOfHook: HookType, fnc: HookFunction | onError | onRequest): this;
+    addHooks<T extends HookType>(typeOfHook: T, fnc: NonNullable<Hooks[T]>[number]): this;
     private compile;
     private registerFileRoutes;
     private loadRoutes;
@@ -97,5 +105,6 @@ export default class Diesel {
     options(path: string, ...handlers: handlerFunction[]): this;
     propfind(path: string, ...handlers: handlerFunction[]): this;
     routeNotFound(handler: RouteNotFoundHandler): this;
-    on(methods: string | (HttpMethod | string)[], path: string, ...handlers: handlerFunction[]): void;
+    on(event: string | symbol, listener: EventListener): void;
+    emit(event: string | symbol, ...args: any): void;
 }

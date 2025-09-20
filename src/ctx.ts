@@ -22,10 +22,14 @@ const typeMap: any = {
 };
 
 
+
+
 export default function createCtx(
   req: Request,
   server: Server,
   pathname: string,
+  // onn: (event: string | symbol, listener: EventListener) => void,
+  // emitter: (event: string | symbol, ...args: any) => void,
   routePattern: string | undefined
 ): ContextType {
   let parsedQuery: Record<string, string> | null = null;
@@ -42,6 +46,14 @@ export default function createCtx(
     status: 200,
     headers: new Headers(),
 
+    // on(event: string | symbol, listener: EventListener) {
+    //   onn(event, listener)
+    // },
+
+    // emit(event: string | symbol, ...args: any) {
+    //   emitter(event, ...args)
+    // },
+
     setHeader(key: string, value: string): ContextType {
       this.headers.set(key, value);
       return this;
@@ -50,6 +62,15 @@ export default function createCtx(
     removeHeader(key: string): ContextType {
       this.headers.delete(key)
       return this
+    },
+
+    set<T>(key: string, value: T): ContextType {
+      contextData[key] = value;
+      return this;
+    },
+
+    get<T>(key: string): T | undefined {
+      return contextData[key];
     },
 
     get ip(): string | null {
@@ -97,28 +118,16 @@ export default function createCtx(
             }
             return Object.keys(result).length === 0 ? null : result;
           } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            throw new Error(`Failed to parse request body: ${message}`);
+            throw new Error("Invalid request body format");
+            // const message = error instanceof Error ? error.message : String(error);
+            // throw new Error(`Failed to parse request body: ${message}`);
           }
         })();
       }
       return parsedBody;
     },
 
-    set<T>(key: string, value: T): ContextType {
-      contextData[key] = value;
-      return this;
-    },
-
-    get<T>(key: string): T | undefined {
-      return contextData[key];
-    },
-
     text(data: string, status: number = 200) {
-      this.status = status
-      if (!this.headers.has("Content-Type")) {
-        this.headers.set("Content-Type", "text/plain; charset=utf-8")
-      }
       return new Response(data, {
         status,
         headers: this.headers
@@ -126,7 +135,7 @@ export default function createCtx(
     },
 
     send<T>(data: T, status: number = 200): Response {
-      this.status = status;
+      // this.status = status;
 
       // const dataType = data instanceof Uint8Array ? "Uint8Array"
       //   : data instanceof ArrayBuffer ? "ArrayBuffer"
@@ -138,25 +147,25 @@ export default function createCtx(
       else if (data instanceof ArrayBuffer) dataType = 'ArrayBuffer'
       else dataType = typeof data
 
-      if (!this.headers.has("Content-Type")) {
-        this.headers.set("Content-Type", typeMap[dataType] ?? "text/plain; charset=utf-8");
-      }
+      // if (!this.headers.has("Content-Type")) {
+      //   this.headers.set("Content-Type", typeMap[dataType] ?? "text/plain; charset=utf-8");
+      // }
 
       const responseData =
         dataType === "object" && data !== null ? JSON.stringify(data) : (data as any);
       return new Response(responseData, { status, headers: this.headers });
     },
 
-    json<T>(data: T, status: number = 200): Response {
-      this.status = status;
-      if (!this.headers.has("Content-Type")) {
-        this.headers.set("Content-Type", "application/json; charset=utf-8");
-      }
-      return Response.json(data, { status, headers: this.headers })
+    json<T>(object: T, status: number = 200): Response {
+      // this.status = status;
+      // if (!this.headers.has("Content-Type")) {
+      //   this.headers.set("Content-Type", "application/json; charset=utf-8");
+      // }
+      return Response.json(object, { status, headers: this.headers })
     },
 
     file(filePath: string, mime_Type?: string, status: number = 200): Response {
-      this.status = status;
+      // this.status = status;
       const file = Bun.file(filePath);
       if (!this.headers.has("Content-Type")) {
         this.headers.set("Content-Type", mime_Type ?? getMimeType(filePath));
@@ -165,7 +174,7 @@ export default function createCtx(
     },
 
     async ejs(viewPath: string, data = {}, status: number = 200): Promise<Response> {
-      this.status = status;
+      // this.status = status;
       const ejs = await getEjs();
       try {
         const template = await Bun.file(viewPath).text()
@@ -179,7 +188,7 @@ export default function createCtx(
     },
 
     redirect(path: string, status: number = 302): Response {
-      this.status = status
+      // this.status = status
       this.headers.set("Location", path);
       return new Response(null, { status, headers: this.headers });
     },
@@ -321,3 +330,5 @@ async function parseBody(req: Request): Promise<ParseBodyResult> {
 
   return { error: "Unknown request body type" };
 }
+
+

@@ -1,22 +1,20 @@
 import Trie from "./trie.js";
-import handleRequest, { generateErrorResponse, parseRequestUrl, runHooks, } from "./handleRequest.js";
+import handleRequest, { generateErrorResponse, runHooks, } from "./handleRequest.js";
 import path from 'path'
 import fs from 'fs'
-
 import {
   CompileConfig,
   ContextType,
   corsT,
-  DieselT,
   FilterMethods,
   HookFunction,
   HookType,
-  HttpMethodLower,
   HttpMethodOfApp,
   listenArgsT,
   middlewareFunc,
   onError,
   onRequest,
+  onSend,
   RouteNotFoundHandler,
   TempRouteEntry,
   type handlerFunction,
@@ -41,10 +39,14 @@ import {
   authenticateJwtMiddleware
 } from "./utils/jwt.js";
 
-import createCtx from "./ctx.js";
 import { buildRequestPipeline, BunRequestPipline } from "./request_pipeline.js";
+import { getPath } from "./utils/urls.js";
+
+import { EventEmitter } from 'events';
+
 
 export default class Diesel {
+  emitter: EventEmitter
   private static instance: Diesel
   fecth: any // ServerOptions['fetch']
   routes: Record<string, Function>
@@ -52,12 +54,12 @@ export default class Diesel {
   globalMiddlewares: middlewareFunc[];
   middlewares: Map<string, middlewareFunc[]>;
   trie: Trie;
-  // hasOnReqHook: boolean;
-  // hasMiddleware: boolean;
-  // hasPreHandlerHook: boolean;
-  // hasPostHandlerHook: boolean;
-  // hasOnSendHook: boolean;
-  // hasOnError: boolean;
+  hasOnReqHook: boolean;
+  hasMiddleware: boolean;
+  hasPreHandlerHook: boolean;
+  hasPostHandlerHook: boolean;
+  hasOnSendHook: boolean;
+  hasOnError: boolean;
   hooks: Hooks;
   corsConfig: corsT;
   FilterRoutes: string[] | null | undefined;
@@ -100,6 +102,8 @@ export default class Diesel {
       Diesel.instance = this
     }
 
+    this.emitter = new EventEmitter()
+
     this.prefixApiUrl = prefixApiUrl ?? ''
     this.fetch = this.fetch.bind(this);
     this.routes = {}
@@ -112,12 +116,12 @@ export default class Diesel {
     this.middlewares = new Map();
     this.trie = new Trie();
     this.corsConfig = null;
-    // this.hasMiddleware = false;
-    // this.hasOnReqHook = false;
-    // this.hasPreHandlerHook = false;
-    // this.hasPostHandlerHook = false;
-    // this.hasOnSendHook = false;
-    // this.hasOnError = false;
+    this.hasMiddleware = false;
+    this.hasOnReqHook = false;
+    this.hasPreHandlerHook = false;
+    this.hasPostHandlerHook = false;
+    this.hasOnSendHook = false;
+    this.hasOnError = false;
     this.hooks = {
       onRequest: [],
       preHandler: [],
@@ -131,19 +135,20 @@ export default class Diesel {
     if (onError) this.addHooks('onError', (err: ErrnoException) => {
       console.log('got an exception ', err)
       return new Response(
-        JSON.stringify({ message: err?.message ?? err, stack: err.stack }),
+        JSON.stringify({ error: err?.message ?? err, stack: err.stack }),
         {
           headers: { "Content-Type": "application/json" },
           status: 500
         }
       );
     });
+
     // if user wants to log
     if (logger) this.useLogger({
       app: this, onError(err) {
         console.log('got an exception ', err)
         return new Response(
-          JSON.stringify({ message: err?.message ?? err, stack: err.stack }),
+          JSON.stringify({ error: err?.message || err, stack: err.stack }),
           {
             headers: { "Content-Type": "application/json" },
             status: 500
@@ -169,7 +174,6 @@ export default class Diesel {
   static router(prefix: string) {
     // this.instance.prefixApiUrl = apiPath;
     if (!this.instance) {
-      console.log('no instance')
       this.instance = new Diesel()
     }
 
@@ -291,9 +295,9 @@ export default class Diesel {
     return this;
   }
 
-  addHooks(
-    typeOfHook: HookType,
-    fnc: HookFunction | onError | onRequest
+  addHooks<T extends HookType>(
+    typeOfHook: T,
+    fnc: NonNullable<Hooks[T]>[number]
   ): this {
 
     if (typeof typeOfHook !== "string") {
@@ -315,7 +319,7 @@ export default class Diesel {
         this.hooks.postHandler?.push(fnc as HookFunction)
         break;
       case "onSend":
-        this.hooks.onSend?.push(fnc as HookFunction)
+        this.hooks.onSend?.push(fnc as onSend)
         break;
       case "onError":
         this.hooks.onError?.push(fnc as onError)
@@ -341,15 +345,20 @@ export default class Diesel {
       hasFilterEnabled: false
     }
 
-    if (this.hasFilterEnabled) config.hasFilterEnabled = true
+    if (this.hasFilterEnabled) {
+      config.hasFilterEnabled = true
+      this.hasFilterEnabled = true
+    }
 
     if (this?.globalMiddlewares?.length > 0) {
       config.hasMiddleware = true;
+      this.hasMiddleware = true
     }
 
     for (const [_, middlewares] of this?.middlewares?.entries()) {
       if (middlewares.length > 0) {
         config.hasMiddleware = true;
+        this.hasMiddleware = true
         break;
       }
     }
@@ -365,18 +374,23 @@ export default class Diesel {
     // check hooks enables
     if (this?.hooks?.onRequest && this.hooks.onRequest.length > 0) {
       config.hasOnReqHook = true;
+      this.hasOnReqHook = true
     }
     if (this?.hooks?.preHandler && this.hooks.preHandler.length > 0) {
       config.hasPreHandlerHook = true;
+      this.hasPreHandlerHook = true
     }
     if (this?.hooks?.postHandler && this.hooks.postHandler?.length > 0) {
       config.hasPostHandlerHook = true;
+      this.hasPostHandlerHook = true
     }
     if (this?.hooks?.onSend && this.hooks.onSend?.length > 0) {
       config.hasOnSendHook = true;
+      this.hasOnSendHook = true
     }
     if (this?.hooks?.onError && this.hooks.onError?.length > 0) {
       config.hasOnError = true;
+      this.hasOnError = true
     }
     // console.log('this.hooks', this.hasOnReqHook)
     setTimeout(() => {
@@ -534,29 +548,30 @@ export default class Diesel {
   }
 
   fetch() {
-
     // old way 
     // return async (req: BunRequest, server: Server) => {
     //   return handleRequest(req, server, this as any)
-    // }
-
-    const config: CompileConfig = this.compile();
+    //     .catch(async (err: ErrnoException) => {
+    //       console.log("error ", err)
+    //       const errorResult = await runHooks("onError", this.hooks.onError, [err, req, getPath(req.url), server]);
+    //       return errorResult || generateErrorResponse(500, "Internal Server Error");
+    //     })
+    //   }
+      
+      // New way
+      const config: CompileConfig = this.compile();
     const pipeline = buildRequestPipeline(config, this as any)
     return async (req: BunRequest, server: Server) => {
-      const pathname = parseRequestUrl(req.url);
-      const routeHandler = this.trie.search(pathname, req.method as HttpMethod);
-      const ctx = createCtx(req, server, pathname, routeHandler?.path);
-
-      return pipeline(req, server, this, ctx, routeHandler, pathname)
+      return pipeline(req, server, this)
         .catch(async (error: any) => {
-          // console.error("Unhandled handler error:", error);
+
+          console.error("Unhandled handler error:", error);
 
           const errorResult = await runHooks(
             "onError",
             this.hooks.onError,
-            [error, req, pathname, server]
+            [error, req, getPath(req.url), server]
           );
-
           // If the error hook didn't return a response, fallback to default
           return errorResult || generateErrorResponse(500, "Internal Server Error");
         });
@@ -754,6 +769,7 @@ export default class Diesel {
       : [pathORHandler].filter(
         (path): path is string => typeof path === "string"
       );
+
     paths.forEach((path: string) => {
       // Initialize the middleware array for the given path if it doesn't already exist.
       if (!this.middlewares.has(path)) {
@@ -770,6 +786,12 @@ export default class Diesel {
         });
       }
     });
+
+    // new try experimental
+    // paths.forEach((path: string) => {
+    //   console.log('midl',path, handlers)
+    //   this.trie.pushMidl(path, handlers as any)
+    // })
 
     return this;
   }
@@ -856,19 +878,26 @@ export default class Diesel {
   }
 
 
-  on(methods: string | (HttpMethod | string)[], path: string, ...handlers: handlerFunction[]) {
-    const methodArray = Array.isArray(methods) ? methods : [methods]
+  // on(methods: string | (HttpMethod | string)[], path: string, ...handlers: handlerFunction[]) {
+  //   const methodArray = Array.isArray(methods) ? methods : [methods]
 
-    for (const method of methodArray) {
-      const methodNormalized = method.toUpperCase();
-      if (methodNormalized.toLocaleLowerCase() in this) {
-        this[methodNormalized.toLocaleLowerCase() as HttpMethodLower](path, ...handlers)
-      }
-      else {
-        this.addRoute(methodNormalized as HttpMethod, path, handlers)
-      }
-    }
+  //   for (const method of methodArray) {
+  //     const methodNormalized = method.toUpperCase();
+  //     if (methodNormalized.toLocaleLowerCase() in this) {
+  //       this[methodNormalized.toLocaleLowerCase() as HttpMethodLower](path, ...handlers)
+  //     }
+  //     else {
+  //       this.addRoute(methodNormalized as HttpMethod, path, handlers)
+  //     }
+  //   }
 
+  // }
+  on(event: string | symbol, listener: EventListener) {
+    this.emitter.on(event, listener);
+  }
+
+  emit(event: string | symbol, ...args: any) {
+    this.emitter.emit(event, ...args);
   }
 }
 
