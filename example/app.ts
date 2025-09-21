@@ -16,7 +16,6 @@ import { redis } from './src/utils/redis'
 import { RedisStore } from "../src/middlewares/ratelimit/implementation";
 import { requestId } from '../src/middlewares/request-id/index'
 const app = new Diesel({
-  enableFileRouting: false,
 });
 
 const SECRET_KEY = "linux";
@@ -28,16 +27,16 @@ const port = 3000
 
 
 // Authentication Middleware
-export async function authJwt(ctx: ContextType): Promise<void | null | Response> {
+export async function authJwt(ctx: ContextType): Promise<undefined | Response> {
   const token = ctx.cookies?.accessToken
   if (!token) {
-    return ctx.json({ message: "Authentication token missing" },401);
+    return ctx.json({ message: "Authentication token missing" }, 401);
   }
   try {
     const user = jwt.verify(token, SECRET_KEY);
-    ctx.set('user',user);
+    ctx.set('user', user);
   } catch (error) {
-    return ctx.json({ message: "Invalid token" },403);
+    return ctx.json({ message: "Invalid token" }, 403);
   }
 }
 
@@ -47,10 +46,10 @@ app.use(cors({
 }))
 
 
-// app.setupFilter()
-// .publicRoutes("/cookie",'/api/user/','/health')
-// .permitAll()
-// .authenticate([authJwt])
+app.setupFilter()
+  .publicRoutes("/cookie", '/api/user/', '/health')
+  .permitAll()
+  .authenticate([authJwt])
 
 
 // app.use(authenticateJwt({
@@ -90,11 +89,10 @@ app.get("/ok", (ctx) => {
   return ctx.send({ msg: "hello world" })
 })
 
-// app.routeNotFound(async (ctx) => {
-//   const file = await Bun.file(`${import.meta.dir}/templates/routenotfound.html`)
-//   ctx.status = 404
-//   return new Response(file, { status: 404 })
-// })
+app.routeNotFound(async (ctx) => {
+  const file = await Bun.file(`${import.meta.dir}/templates/routenotfound.html`)
+  return new Response(file, { status: 404 })
+})
 
 
 // import homapge from './templates/index.html'
@@ -155,6 +153,7 @@ app.get('/txt', (c) => {
 
 
 app.get("/", async (ctx: ContextType) => {
+  console.log(ctx.headers)
   const headers = ctx.headers
   return ctx.json({
     msg: "Sending headers",
@@ -185,7 +184,6 @@ app
   .get("/err", (ctx) => {
     ctx.status = 400
     throw new Error("Somethin`g went wrong yes");
-    return ctx.send("Error", 500);
   })
   .get("/query", async (ctx) => {
     const name = ctx.query.name

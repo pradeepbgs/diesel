@@ -86,7 +86,7 @@ export const advancedLogger = (options?: AdvancedLoggerOptions) => {
         onError,
     } = options || {};
 
-    app?.addHooks('onRequest', (req: Request, pathname:string) => {
+    app?.addHooks('onRequest', (req: Request, pathname: string) => {
         req.startTime = Date.now();
 
         logger?.() ?? log(logLevel, 'Incoming Request', {
@@ -101,21 +101,22 @@ export const advancedLogger = (options?: AdvancedLoggerOptions) => {
         onRequest?.(req, pathname);
     });
 
-    app?.addHooks('onSend', async (ctx: ContextType) => {
+    app?.addHooks('onSend', async (ctx: ContextType, finalResult: Response): Promise<Response | undefined> => {
         const duration = `${Date.now() - ctx.req.startTime}ms`;
 
         logger?.() ?? log(logLevel, 'Response Sent', {
             method: ctx.req.method,
             url: ctx.url.toString(),
-            status: ctx.status,
+            status: finalResult.status,
             duration,
             reqId: ctx.get?.('requestId'),
             headers: {
-                'content-type': ctx.headers.get('content-type'),
+                'content-type': finalResult.headers.get('content-type'),
             },
         });
 
         const res = await onSend?.(ctx);
+        
         if (res instanceof Response) return res;
     });
 
@@ -183,7 +184,7 @@ export const logger = (options: LoggerOptions) => {
         onRequest?.(req, pathname);
     });
 
-    app.addHooks("onSend", async (ctx: ContextType) => {
+    app.addHooks("onSend", async (ctx: ContextType, finalResult: Response): Promise<Response | undefined> => {
         const { method, url } = ctx.req;
         const path = new URL(url).pathname;
         const reqId = ctx.get?.('requestId')
@@ -192,7 +193,7 @@ export const logger = (options: LoggerOptions) => {
                 LogPrefix.Outgoing,
                 method,
                 path,
-                ctx.status,
+                finalResult.status,
                 timeElapsed(ctx.req.startTime),
                 reqId as string
             );

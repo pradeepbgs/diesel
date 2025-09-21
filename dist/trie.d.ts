@@ -1,8 +1,8 @@
-import type { handlerFunction, HttpMethod, RouteT } from "./types";
+import type { handlerFunction, HttpMethod, middlewareFunc, RouteHandlerT } from "./types";
 declare class TrieNode {
     children: Record<string, TrieNode>;
     isEndOfWord: boolean;
-    handler: handlerFunction[];
+    handler: handlerFunction[] | middlewareFunc[] | any;
     isDynamic: boolean;
     pattern: string;
     path: string;
@@ -12,13 +12,12 @@ declare class TrieNode {
 export default class Trie {
     root: TrieNode;
     constructor();
-    insert(path: string, route: RouteT): void;
+    pushMidl(path: string, ...middlewares: middlewareFunc[]): void;
+    insert(path: string, route: RouteHandlerT): void;
     search(path: string, method: HttpMethod): {
         path: string;
-        handler: handlerFunction;
-        isDynamic: boolean;
+        handler: any;
         pattern: string;
-        method: string;
     } | null;
 }
 export {};

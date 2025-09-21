@@ -27,13 +27,14 @@ Bun.build({
     entrypoints: [
         './src/main.ts',
         './src/ctx.ts',
+        './src/request_pipeline.ts',
         './src/handleRequest.ts',
         './src/trie.ts',
     ],
     outdir: './dist',
     minify: true,
 })
-console.log('build complete')
+console.log('build complete for main src')
 
 Bun.build({
     entrypoints: [
@@ -44,17 +45,19 @@ Bun.build({
         './src/middlewares/ratelimit/rate-limit.ts',
         './src/middlewares/ratelimit/implementation.ts',
         './src/middlewares/powered-by/index.ts',
-        './src/middlewares/jwt/index.ts'
+        './src/middlewares/jwt/index.ts',
     ],
     outdir: './dist/middlewares',
     minify: true,
 })
-console.log('build complete')
+console.log('Middleware build complete')
 
 Bun.build({
     entrypoints:[
         './src/utils/jwt.ts',
-        './src/utils/mimeType.ts'
+        './src/utils/mimeType.ts',
+        './src/utils/urls.ts',
+        './src/utils/request.util.ts'
     ],
     outdir: './dist/utils',
     minify: true

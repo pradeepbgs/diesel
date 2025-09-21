@@ -1,54 +1,166 @@
-import { BunRequest, Server } from "bun";
-import { executeBunMiddlewares, generateErrorResponse, handleBunFilterRequest, handleRouteNotFound, runFilter, runHooks, runMiddlewares } from "./handleRequest";
-import { CompileConfig, DieselT } from "./types";
+import { CompileConfig, DieselT, HookFunction, middlewareFunc } from "./types";
+import { Context } from "./ctx";
+import { executeBunMiddlewares, generateErrorResponse, handleRouteNotFound, runFilter, runHooks } from "./utils/request.util";
+
+
+function extractBody(fn: Function) {
+  const src = fn.toString().trim();
+
+  // Arrow function without braces: () => new Response("...")
+  if (src.includes("=>") && !src.includes("{")) {
+    return `return ${src.split("=>")[1].trim()};`;
+  }
+
+  // Normal function: () => { return ... }
+  const start = src.indexOf("{") + 1;
+  const end = src.lastIndexOf("}");
+  return src.slice(start, end).trim();
+}
+
+const isAsync = (func: Function) => func.constructor.name === 'AsyncFunction';
+
+const pushHooks = (pipeline: string[], hooks: HookFunction[], hooksType: string, ...args: any) => {
+  if (hooks.length > 5) {
+    pipeline.push(`
+      for (let i = 0; i < diesel.hooks.${hooksType}.length; i++) {
+        const result = diesel.hooks.${hooksType}[i](${args});
+        const finalResult = result instanceof Promise ? await result : result;
+        if (finalResult && '${hooksType}' !== 'onRequest') return finalResult
+    }
+  `)
+  }
+  // else inline each hooks functions
+  else {
+    hooks?.forEach((handler: Function, index: number) => {
+      const isFunctionAsync = isAsync(handler)
+      if (isFunctionAsync) {
+        // use await
+        pipeline.push(`
+            const ${hooksType}${index}Result = await diesel.hooks.${hooksType}[${index}](${args})
+            if (${hooksType}${index}Result && '${hooksType}' !== 'onRequest') return ${hooksType}${index}Result
+            `)
+      }
+      else {
+        // normal function invokation
+        pipeline.push(`
+            const ${hooksType}${index}Result = diesel.hooks.${hooksType}[${index}](${args})
+             if (${hooksType}${index}Result && '${hooksType}' !== 'onRequest') return ${hooksType}${index}Result
+            `)
+      }
+    })
+  }
+}
+
+const pushParsePathname = (pipeline: string[]) => {
+  pipeline.push(`
+    let pathname;
+    const start = req.url.indexOf('/', req.url.indexOf(':') + 4);
+    let i = start;
+    for (; i < req.url.length; i++) {
+        const charCode = req.url.charCodeAt(i);
+        if (charCode === 37) { // percent-encoded
+            const queryIndex = req.url.indexOf('?', i);
+            const path = req.url.slice(start, queryIndex === -1 ? undefined : queryIndex);
+            pathname = tryDecodeURI(path.includes('%25') ? path.replace(/%25/g, '%2525') : path);
+            break;
+        } else if (charCode === 63) { // ?
+            break;
+        }
+    }
+    if (!pathname) {
+      pathname = req.url.slice(start, i);
+    }
+  `)
+}
+
+const pushMiddlewares = (pipeline: string[], globalMiddlewares: middlewareFunc[]) => {
+  if (globalMiddlewares.length <= 5) {
+    // Inline each middleware for max speed
+    for (let i = 0; i < globalMiddlewares.length; i++) {
+      const isFunctionAsync = isAsync(globalMiddlewares[i])
+      if (isFunctionAsync) {
+        pipeline.push(`
+          const resultMiddleware${i} = await globalMiddlewares[${i}](ctx);
+          if (resultMiddleware${i}) return resultMiddleware${i};
+      `);
+      }
+      else {
+        pipeline.push(`
+        const resultMiddleware${i} = globalMiddlewares[${i}](ctx);
+        if (resultMiddleware${i}) return resultMiddleware${i};
+    `);
+      }
+    }
+  } else {
+    // Use loop for larger middleware lists
+    pipeline.push(`
+    for (let i = 0; i < globalMiddlewares.length; i++) {
+      const result = await globalMiddlewares[i](ctx);
+      if (result) return result;
+    }
+  `);
+
+  }
+}
 
 export const buildRequestPipeline = (config: CompileConfig, diesel: DieselT) => {
   const pipeline: string[] = [];
-  const globalMiddlewares = diesel.globalMiddlewares ?? []
+  const globalMiddlewares = diesel.globalMiddlewares || []
+
+  const onRequestHooks = config?.hasOnReqHook ? diesel.hooks.onRequest : [] as any;
+  const PreHandlerHook = config?.hasPreHandlerHook ? diesel.hooks.preHandler : [] as any;
+  const OnSendHook = config?.hasOnSendHook ? diesel.hooks.onSend : [] as any;
+
+  // parse pathname
+  pushParsePathname(pipeline)
+
+  // finc routeHandler
+  pipeline.push(`
+      const routeHandler = diesel.trie.search(pathname, req.method);
+    `);
+
   // Hooks
-  if (config?.hasOnReqHook) {
-    pipeline.push(`await runHooks("onRequest", diesel.hooks.onRequest, [req, pathname, server]);`);
+  if (onRequestHooks && onRequestHooks.length > 0) {
+    pushHooks(pipeline, onRequestHooks, 'onRequest', 'req', 'pathname', 'server')
   }
+
+  pipeline.push(`
+          const ctx = new Context(req, server, pathname, routeHandler?.path)
+    `)
 
   // Middlewares
   if (config?.hasMiddleware) {
     if (globalMiddlewares.length > 0) {
-      if (globalMiddlewares.length <= 5) {
-        // Inline each middleware for max speed
-        for (let i = 0; i < globalMiddlewares.length; i++) {
-          pipeline.push(`
-          {
-            const result = await globalMiddlewares[${i}](ctx, server);
-            if (result) return result;
-          }
-        `);
-        }
-      } else {
-        // Use loop for larger middleware lists
-        pipeline.push(`
-        for (let i = 0; i < globalMiddlewares.length; i++) {
-          const result = await globalMiddlewares[i](ctx, server);
-          if (result) return result;
-        }
-      `);
-      }
-    }
 
+      pushMiddlewares(pipeline, globalMiddlewares as any)
+    }
     // Local/path-specific middlewares still run via function
-    // console.log(diesel.middlewares.size)
+
     if (diesel.middlewares.size > 0) {
       pipeline.push(`
-      const mwResult = await runMiddlewares(diesel, pathname, ctx, server);
-      if (mwResult) return mwResult;
-    `);
+      const local = diesel.middlewares.get(pathname)
+      if (local && local.length) {
+        for (const middleware of local) {
+          const result = await middleware(ctx);
+          if (result) return result;
+        }
+      }
+        `)
     }
-  }
 
+    // if (diesel.middlewares.size > 0) {
+    //   pipeline.push(`
+    //     const mwResult = await runMiddlewares(diesel, pathname, ctx);
+    //     if (mwResult) return mwResult;
+    //   `);
+    // }
+
+  }
 
   // Filters
   if (config.hasFilterEnabled) {
     pipeline.push(`
-        const filterResponse = await runFilter(diesel, pathname, ctx, server);
+        const filterResponse = await runFilter(diesel, pathname, ctx);
         if (filterResponse) return filterResponse;
       `);
   }
@@ -60,10 +172,7 @@ export const buildRequestPipeline = (config: CompileConfig, diesel: DieselT) => 
 
   // Pre-handler
   if (config.hasPreHandlerHook) {
-    pipeline.push(`
-        const preResult = await runHooks("preHandler", diesel.hooks.preHandler, [ctx, server]);
-        if (preResult) return preResult;
-      `);
+    pushHooks(pipeline, PreHandlerHook, 'preHandler', 'ctx')
   }
 
   // Actual route handler
@@ -74,10 +183,7 @@ export const buildRequestPipeline = (config: CompileConfig, diesel: DieselT) => 
 
   // onSend
   if (config.hasOnSendHook) {
-    pipeline.push(`
-        const sendResponse = await runHooks("onSend", diesel.hooks.onSend, [ctx, finalResult, server]);
-        if (sendResponse) return sendResponse;
-      `);
+    pushHooks(pipeline, OnSendHook, 'onSend', 'ctx', 'finalResult')
   }
 
   // Final response
@@ -87,46 +193,52 @@ export const buildRequestPipeline = (config: CompileConfig, diesel: DieselT) => 
     `);
 
   const fnBody = `
-      return async function pipeline(req, server, diesel, ctx, routeHandler, pathname) {
+      return async function pipeline(req, server, diesel) {
           ${pipeline.join("\n")}
       }
     `;
 
   const fnc = new Function(
-    "runHooks",
-    "runMiddlewares",
     "runFilter",
     "handleRouteNotFound",
     "generateErrorResponse",
     "globalMiddlewares",
+    "Context",
     fnBody
   )(
-    runHooks,
-    runMiddlewares,
     runFilter,
     handleRouteNotFound,
     generateErrorResponse,
-    globalMiddlewares
+    globalMiddlewares,
+    Context
   );
+
   // console.log(fnc.toString())
   return fnc;
+
 }
 
-
-export const BunRequestPipline = (config: CompileConfig, diesel: DieselT, method: string, path: string, ...handlers: Function[]) => {
+export const BunRequestPipline = (config: CompileConfig, diesel: DieselT, method: string, path: string, ...handlersOrResponse: Function[]) => {
   const pipeline: string[] = []
+  // handlers
+  let response_data: string | object | undefined;
+  if (typeof handlersOrResponse[0] === "string" || typeof handlersOrResponse[0] === "object") {
+    response_data = handlersOrResponse[0];
+  }
+  const handlers = handlersOrResponse
 
   const globalMiddlewares = config?.hasMiddleware ? diesel.globalMiddlewares : [];
   const pathMiddlewares = config?.hasMiddleware ? diesel.middlewares.get(path) || [] : [];
   const allMiddlewares = [...globalMiddlewares, ...pathMiddlewares];
+
   // onReq hooks
   const onRequestHooks = config?.hasOnReqHook ? diesel.hooks.onRequest : [];
+
   //filters
   const hasFilter = diesel.filters.has(path)
   const filterFunctions = diesel.filterFunction
-
   // Hooks
-  if (onRequestHooks) {
+  if (onRequestHooks && onRequestHooks?.length > 0) {
     pipeline.push(`
       const onRequestResult = await runHooks(
         "onRequest",
@@ -171,28 +283,63 @@ export const BunRequestPipline = (config: CompileConfig, diesel: DieselT, method
         return new Response("Method Not Allowed", { status: 405 });
       `)
 
-  // Handler invocation
-  if (handlers.length === 1) {
-    pipeline.push(`
-       const response = handlers[0](req, server)
-    if (response instanceof Promise) {
-      const resolved = await response;
-      return resolved ?? new Response("Not Found", { status: 404 });
+  // Direct send response
+  if (typeof response_data !== "undefined") {
+    if (typeof response_data === "string") {
+      pipeline.push(`
+        return new Response(${JSON.stringify(response_data)});
+      `);
+    } else {
+      const jsonText = JSON.stringify(response_data);
+      pipeline.push(`
+        return new Response(${JSON.stringify(jsonText)}, {
+          headers: { "content-type": "application/json; charset=utf-8" }
+        });
+      `);
     }
-    if (response instanceof Response) return response
-      `)
   }
-  else {
-    pipeline.push(`
-      for (let i = 0; i < handlers.length; i++) {
-      const response = handlers[i](req, server)
-      if (response instanceof Promise) {
-        const resolved = await response;
-        return resolved ?? new Response("Not Found", { status: 404 });
-      }
-      if (response instanceof Response) return response
+  // Single Handler
+  else if (handlers.length === 1) {
+    const handlerFn = handlers[0];
+    const isFunctionAsync = isAsync(handlerFn)
+
+    // const body = extractBody(handlerFn);
+
+    // pipeline.push(`${body}`)
+
+    if (isFunctionAsync) {
+      pipeline.push(`
+        const response = await handlers[0](req, server);
+        if (response instanceof Response) return response;
+      `);
+    } else {
+      pipeline.push(`
+        const response = handlers[0](req, server);
+        if (response instanceof Response) return response;
+      `);
     }
-      `)
+  }
+  // for multiple handlers
+  else {
+    handlers.forEach((handler, index) => {
+      const isFunctionAsync = isAsync(handler)
+      // const body = extractBody(handler);
+      // pipeline.push(`{
+      //   ${body}
+      // }`);
+
+      if (isFunctionAsync) {
+        pipeline.push(`
+            const response${index} = await handlers[${index}](req, server);
+            if (response${index} instanceof Response) return response${index};
+        `);
+      } else {
+        pipeline.push(`
+            const response${index} = handlers[${index}](req, server);
+            if (response${index} instanceof Response) return response${index};
+        `);
+      }
+    })
   }
 
   const fnBody = `
@@ -223,50 +370,52 @@ export const BunRequestPipline = (config: CompileConfig, diesel: DieselT, method
 }
 
 
-const prevBunReq = (diesel: DieselT, path: string, method: string, handlers: Function[]) => {
-  diesel.routes[path] = async (req: BunRequest, server: Server) => {
+//  Deprecated
 
-    if (diesel.hasMiddleware) {
-      if (diesel.globalMiddlewares.length) {
-        const globalMiddlewareResponse = await executeBunMiddlewares(
-          diesel.globalMiddlewares,
-          req,
-          server
-        );
-        if (globalMiddlewareResponse) return globalMiddlewareResponse;
-      }
+// const prevBunReq = (diesel: DieselT, path: string, method: string, handlers: Function[]) => {
+//   diesel.routes[path] = async (req: BunRequest, server: Server) => {
 
-      const pathMiddlewares = diesel.middlewares.get(path) || [];
-      if (pathMiddlewares?.length) {
-        const pathMiddlewareResponse = await executeBunMiddlewares(
-          pathMiddlewares,
-          req,
-          server
-        );
-        if (pathMiddlewareResponse) return pathMiddlewareResponse;
-      }
-    }
+//     if (diesel.hasMiddleware) {
+//       if (diesel.globalMiddlewares.length) {
+//         const globalMiddlewareResponse = await executeBunMiddlewares(
+//           diesel.globalMiddlewares,
+//           req,
+//           server
+//         );
+//         if (globalMiddlewareResponse) return globalMiddlewareResponse;
+//       }
 
-    if (method !== req.method) return new Response("Method Not Allowed", { status: 405 });
+//       const pathMiddlewares = diesel.middlewares.get(path) || [];
+//       if (pathMiddlewares?.length) {
+//         const pathMiddlewareResponse = await executeBunMiddlewares(
+//           pathMiddlewares,
+//           req,
+//           server
+//         );
+//         if (pathMiddlewareResponse) return pathMiddlewareResponse;
+//       }
+//     }
 
-    if (handlers.length === 1) {
-      const response = handlers[0](req, server)
-      if (response instanceof Promise) {
-        const resolved = await response;
-        return resolved ?? new Response("Not Found", { status: 404 });
-      }
-      if (response instanceof Response) return response
-    }
-    else {
-      for (let i = 0; i < handlers.length; i++) {
-        const response = handlers[i](req, server)
-        if (response instanceof Promise) {
-          const resolved = await response;
-          return resolved ?? new Response("Not Found", { status: 404 });
-        }
-        if (response instanceof Response) return response
-      }
-    }
+//     if (method !== req.method) return new Response("Method Not Allowed", { status: 405 });
 
-  }
-}
+//     if (handlers.length === 1) {
+//       const response = handlers[0](req, server)
+//       if (response instanceof Promise) {
+//         const resolved = await response;
+//         return resolved ?? new Response("Not Found", { status: 404 });
+//       }
+//       if (response instanceof Response) return response
+//     }
+//     else {
+//       for (let i = 0; i < handlers.length; i++) {
+//         const response = handlers[i](req, server)
+//         if (response instanceof Promise) {
+//           const resolved = await response;
+//           return resolved ?? new Response("Not Found", { status: 404 });
+//         }
+//         if (response instanceof Response) return response
+//       }
+//     }
+
+//   }
+// }

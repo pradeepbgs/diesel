@@ -1,24 +1,27 @@
 import { Server } from "bun";
 export type listenCalllBackType = () => void;
-export type handlerFunction = (ctx: ContextType, server?: Server) => Response | Promise<Response>;
-export type middlewareFunc = (ctx: ContextType, server?: Server) => void | Response | Promise<void | Response>;
-export type HookFunction = (ctx: ContextType, result?: Response | null, server?: Server) => void | null | Response | Promise<void | null | Response>;
-export type RouteNotFoundHandler = (ctx: ContextType) => Promise<Response>;
+export type handlerFunction = (ctx: ContextType) => Response | Promise<Response | undefined>;
+export type middlewareFunc = (ctx: ContextType | Request | any, server: Server) => void | Response | Promise<undefined | Response>;
+export type HookFunction = (ctx: ContextType, result?: Response | null, server?: Server) => undefined | void | null | Response | Promise<void | null | undefined | Response>;
+export type RouteNotFoundHandler = (ctx: ContextType) => Response | Promise<Response>;
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD" | "ANY" | "PROPFIND";
 export type HttpMethodOfApp = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | 'head' | 'any' | 'propfind';
 export type HttpMethodLower = Lowercase<HttpMethod>;
 export type HookType = "onRequest" | "preHandler" | "postHandler" | "onSend" | "onError" | "onClose";
 export interface onError {
-    (error: Error, req: Request, pathname: string, server: Server): void | null | Response | Promise<void | null | Response>;
+    (error: Error, req: Request, pathname: string, server: Server): void | null | Response | Promise<void | null | undefined | Response>;
 }
 export interface onRequest {
     (req: Request, pathname: string, server: Server): void;
+}
+export interface onSend {
+    (ctx: ContextType, finalResult: Response): Promise<Response | undefined>;
 }
 export interface Hooks {
     onRequest: onRequest[] | null;
     preHandler: HookFunction[] | null;
     postHandler: HookFunction[] | null;
-    onSend: HookFunction[] | null;
+    onSend: onSend[] | null;
     onError: onError[] | null;
     onClose: HookFunction[] | null;
 }
@@ -27,7 +30,6 @@ export interface ContextType {
     server: Server;
     pathname: string;
     headers: Headers;
-    status: number;
     setHeader: (key: string, value: string) => this;
     json: (data: object, status?: number) => Response;
     text: (data: string, status?: number) => Response;
@@ -59,7 +61,7 @@ export interface CookieOptions {
 }
 export interface RouteHandlerT {
     method: string;
-    handler: (ctx: ContextType) => Promise<Response> | Response;
+    handler: handlerFunction;
     isDynamic?: boolean;
     path?: string;
 }
@@ -94,6 +96,9 @@ export interface DieselT {
     routeNotFoundFunc: RouteNotFoundHandler;
     routerInstance: DieselT;
     tempRoutes: Map<string, TempRouteEntry>;
+    routes: Record<string, Function>;
+    on: () => void;
+    emit: () => void;
 }
 export type corsT = {
     origin?: string | string[] | null;
@@ -125,4 +130,13 @@ declare global {
         routePattern?: string;
         [key: string]: any;
     }
+}
+export interface CompileConfig {
+    hasMiddleware: boolean;
+    hasOnReqHook: boolean;
+    hasPreHandlerHook: boolean;
+    hasOnError: boolean;
+    hasPostHandlerHook: boolean;
+    hasOnSendHook: boolean;
+    hasFilterEnabled: boolean;
 }
