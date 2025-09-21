@@ -1,7 +1,7 @@
 import type { Server } from 'bun'
 import type { ContextType } from '../index'
 import { cors } from '../src/middlewares/cors/cors'
-import Diesel from '../src/main'
+import Diesel from '../dist/main'
 export const app = new Diesel()
 
 

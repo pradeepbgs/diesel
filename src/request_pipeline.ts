@@ -1,7 +1,6 @@
-import { BunRequest, Server } from "bun";
-import { executeBunMiddlewares, generateErrorResponse, handleRouteNotFound, runFilter, runHooks, runMiddlewares } from "./handleRequest";
 import { CompileConfig, DieselT, HookFunction, middlewareFunc } from "./types";
-import createCtx from "./ctx";
+import { Context } from "./ctx";
+import { executeBunMiddlewares, generateErrorResponse, handleRouteNotFound, runFilter, runHooks } from "./utils/request.util";
 
 
 function extractBody(fn: Function) {
@@ -17,6 +16,7 @@ function extractBody(fn: Function) {
   const end = src.lastIndexOf("}");
   return src.slice(start, end).trim();
 }
+
 const isAsync = (func: Function) => func.constructor.name === 'AsyncFunction';
 
 const pushHooks = (pipeline: string[], hooks: HookFunction[], hooksType: string, ...args: any) => {
@@ -125,7 +125,7 @@ export const buildRequestPipeline = (config: CompileConfig, diesel: DieselT) => 
   }
 
   pipeline.push(`
-          const ctx = createCtx(req, server, pathname, routeHandler?.path);
+          const ctx = new Context(req, server, pathname, routeHandler?.path)
     `)
 
   // Middlewares
@@ -203,14 +203,14 @@ export const buildRequestPipeline = (config: CompileConfig, diesel: DieselT) => 
     "handleRouteNotFound",
     "generateErrorResponse",
     "globalMiddlewares",
-    "createCtx",
+    "Context",
     fnBody
   )(
     runFilter,
     handleRouteNotFound,
     generateErrorResponse,
     globalMiddlewares,
-    createCtx
+    Context
   );
 
   // console.log(fnc.toString())
@@ -369,50 +369,53 @@ export const BunRequestPipline = (config: CompileConfig, diesel: DieselT, method
   return fnc
 }
 
-const prevBunReq = (diesel: DieselT, path: string, method: string, handlers: Function[]) => {
-  diesel.routes[path] = async (req: BunRequest, server: Server) => {
 
-    if (diesel.hasMiddleware) {
-      if (diesel.globalMiddlewares.length) {
-        const globalMiddlewareResponse = await executeBunMiddlewares(
-          diesel.globalMiddlewares,
-          req,
-          server
-        );
-        if (globalMiddlewareResponse) return globalMiddlewareResponse;
-      }
+//  Deprecated
 
-      const pathMiddlewares = diesel.middlewares.get(path) || [];
-      if (pathMiddlewares?.length) {
-        const pathMiddlewareResponse = await executeBunMiddlewares(
-          pathMiddlewares,
-          req,
-          server
-        );
-        if (pathMiddlewareResponse) return pathMiddlewareResponse;
-      }
-    }
+// const prevBunReq = (diesel: DieselT, path: string, method: string, handlers: Function[]) => {
+//   diesel.routes[path] = async (req: BunRequest, server: Server) => {
 
-    if (method !== req.method) return new Response("Method Not Allowed", { status: 405 });
+//     if (diesel.hasMiddleware) {
+//       if (diesel.globalMiddlewares.length) {
+//         const globalMiddlewareResponse = await executeBunMiddlewares(
+//           diesel.globalMiddlewares,
+//           req,
+//           server
+//         );
+//         if (globalMiddlewareResponse) return globalMiddlewareResponse;
+//       }
 
-    if (handlers.length === 1) {
-      const response = handlers[0](req, server)
-      if (response instanceof Promise) {
-        const resolved = await response;
-        return resolved ?? new Response("Not Found", { status: 404 });
-      }
-      if (response instanceof Response) return response
-    }
-    else {
-      for (let i = 0; i < handlers.length; i++) {
-        const response = handlers[i](req, server)
-        if (response instanceof Promise) {
-          const resolved = await response;
-          return resolved ?? new Response("Not Found", { status: 404 });
-        }
-        if (response instanceof Response) return response
-      }
-    }
+//       const pathMiddlewares = diesel.middlewares.get(path) || [];
+//       if (pathMiddlewares?.length) {
+//         const pathMiddlewareResponse = await executeBunMiddlewares(
+//           pathMiddlewares,
+//           req,
+//           server
+//         );
+//         if (pathMiddlewareResponse) return pathMiddlewareResponse;
+//       }
+//     }
 
-  }
-}
+//     if (method !== req.method) return new Response("Method Not Allowed", { status: 405 });
+
+//     if (handlers.length === 1) {
+//       const response = handlers[0](req, server)
+//       if (response instanceof Promise) {
+//         const resolved = await response;
+//         return resolved ?? new Response("Not Found", { status: 404 });
+//       }
+//       if (response instanceof Response) return response
+//     }
+//     else {
+//       for (let i = 0; i < handlers.length; i++) {
+//         const response = handlers[i](req, server)
+//         if (response instanceof Promise) {
+//           const resolved = await response;
+//           return resolved ?? new Response("Not Found", { status: 404 });
+//         }
+//         if (response instanceof Response) return response
+//       }
+//     }
+
+//   }
+// }

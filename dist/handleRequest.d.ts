@@ -1,12 +1,3 @@
-import { BunRequest, Server } from "bun";
-import type { ContextType, DieselT, HookType } from "./types";
-export default function handleRequest(req: BunRequest, server: Server, diesel: DieselT): Promise<Response | undefined>;
-export declare function runHooks<T extends any[]>(label: HookType, hooksArray: any, args: T): Promise<any>;
-export declare function runMiddlewares(diesel: DieselT, pathname: string, ctx: ContextType): Promise<Response | null>;
-export declare function executeBunMiddlewares(middlewares: Function[], req: BunRequest, server: Server): Promise<any>;
-export declare function runFilter(diesel: DieselT, path: string, ctx: ContextType): Promise<any>;
-export declare function handleFilterRequest(diesel: DieselT, path: string, ctx: ContextType): Promise<Response | undefined>;
-export declare function handleBunFilterRequest(diesel: DieselT, path: string, req: BunRequest, server: Server): Promise<Response | undefined>;
-export declare function handleRouteNotFound(diesel: DieselT, ctx: ContextType, pathname: string): Promise<Response | undefined>;
-export declare function generateErrorResponse(status: number, error: string): Response;
-export declare function handleStaticFiles(diesel: DieselT, pathname: string, ctx: ContextType): Promise<Response | null>;
+import { Server } from "bun";
+import type { DieselT } from "./types";
+export default function handleRequest(req: Request, server: Server, diesel: DieselT): Promise<Response | undefined>;

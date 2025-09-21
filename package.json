@@ -1,6 +1,6 @@
 {
   "name": "diesel-core",
-  "version": "1.4.9",
+  "version": "1.5.0",
   "description": "Web framework built on Web Standards",
   "main": "index.js",
   "types": "index.d.ts",
@@ -99,6 +99,7 @@
   },
   "dependencies": {
     "@types/uuid": "^10.0.0",
+    "ejs": "^3.1.10",
     "uuid": "^11.1.0"
   }
 }

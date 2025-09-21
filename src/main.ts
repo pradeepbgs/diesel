@@ -1,5 +1,4 @@
 import Trie from "./trie.js";
-import handleRequest, { generateErrorResponse, runHooks, } from "./handleRequest.js";
 import path from 'path'
 import fs from 'fs'
 import {
@@ -39,10 +38,27 @@ import {
   authenticateJwtMiddleware
 } from "./utils/jwt.js";
 
-import { buildRequestPipeline, BunRequestPipline } from "./request_pipeline.js";
-import { getPath } from "./utils/urls.js";
+import {
+  buildRequestPipeline,
+  BunRequestPipline
+} from "./request_pipeline.js";
+
+import {
+  getPath,
+  tryDecodeURI
+} from "./utils/urls.js";
 
 import { EventEmitter } from 'events';
+import { Context } from "./ctx.js";
+
+import {
+  generateErrorResponse,
+  handleRouteNotFound,
+  runFilter,
+  runHooks,
+  runMiddlewares
+} from "./utils/request.util.js";
+import handleRequest from "./handleRequest.js";
 
 
 export default class Diesel {
@@ -76,7 +92,7 @@ export default class Diesel {
   routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
   private prefixApiUrl: string | null
   compileConfig: CompileConfig | null
-
+  private newPipelineArchitecture: boolean = false
   constructor(
     {
       jwtSecret,
@@ -86,6 +102,7 @@ export default class Diesel {
       prefixApiUrl,
       onError,
       logger,
+      pipelineArchitecture
     }
       : {
         jwtSecret?: string,
@@ -94,14 +111,17 @@ export default class Diesel {
         idleTimeOut?: number,
         prefixApiUrl?: string,
         onError?: boolean,
-        logger?: boolean
+        logger?: boolean,
+        pipelineArchitecture?: boolean
       } = {}
   ) {
 
     if (!Diesel.instance) {
       Diesel.instance = this
     }
-
+    if (pipelineArchitecture) {
+      this.newPipelineArchitecture = true
+    }
     this.emitter = new EventEmitter()
 
     this.prefixApiUrl = prefixApiUrl ?? ''
@@ -168,6 +188,7 @@ export default class Diesel {
     this.routeNotFoundFunc = () => { }
 
     this.compileConfig = null
+
   }
 
   // experimental for sub routing using single ton
@@ -221,7 +242,7 @@ export default class Diesel {
       },
 
       authenticate: (
-        fnc?: Function[]
+        fnc?: Function[] | middlewareFunc[]
       ) => {
         if (fnc?.length) {
           for (const fn of fnc) {
@@ -548,34 +569,95 @@ export default class Diesel {
   }
 
   fetch() {
-    // old way 
-    // return async (req: BunRequest, server: Server) => {
-    //   return handleRequest(req, server, this as any)
-    //     .catch(async (err: ErrnoException) => {
-    //       console.log("error ", err)
-    //       const errorResult = await runHooks("onError", this.hooks.onError, [err, req, getPath(req.url), server]);
-    //       return errorResult || generateErrorResponse(500, "Internal Server Error");
-    //     })
-    //   }
-      
-      // New way
-      const config: CompileConfig = this.compile();
+    const config: CompileConfig = this.compile();
+    if (this.newPipelineArchitecture === false) return (req: Request, server: Server) => {
+      return this.handleRequests(req, server)
+        .catch(async (err: ErrnoException) => {
+          console.log("error ", err)
+          const errorResult = await runHooks("onError", this.hooks.onError, [err, req, getPath(req.url), server]);
+          return errorResult || generateErrorResponse(500, "Internal Server Error");
+        })
+    }
+
+    // New way
     const pipeline = buildRequestPipeline(config, this as any)
-    return async (req: BunRequest, server: Server) => {
+    return (req: BunRequest, server: Server) => {
       return pipeline(req, server, this)
         .catch(async (error: any) => {
-
           console.error("Unhandled handler error:", error);
-
           const errorResult = await runHooks(
             "onError",
             this.hooks.onError,
             [error, req, getPath(req.url), server]
           );
-          // If the error hook didn't return a response, fallback to default
           return errorResult || generateErrorResponse(500, "Internal Server Error");
         });
     };
+  }
+
+  // Func where our request comes if new architecture is disabled.
+  private async handleRequests(req: Request, server: Server) {
+    let pathname;
+    const start = req.url.indexOf('/', req.url.indexOf(':') + 4);
+    let i = start;
+    for (; i < req.url.length; i++) {
+      const charCode = req.url.charCodeAt(i);
+      if (charCode === 37) { // percent-encoded
+        const queryIndex = req.url.indexOf('?', i);
+        const path = req.url.slice(start, queryIndex === -1 ? undefined : queryIndex);
+        pathname = tryDecodeURI(path.includes('%25') ? path.replace(/%25/g, '%2525') : path);
+        break;
+      } else if (charCode === 63) {
+        break;
+      }
+    }
+    if (!pathname) {
+      pathname = req.url.slice(start, i);
+    }
+
+    const routeHandler = this.trie.search(pathname, req.method as HttpMethod);
+    const ctx = new Context(req, server, pathname, routeHandler?.path)
+
+    if (this.hasOnReqHook)
+      await runHooks('onRequest', this.hooks.onRequest, [req, pathname, server])
+
+    // middleware execution
+    if (this.hasMiddleware) {
+      const mwResult = await runMiddlewares(this as any, pathname, ctx);
+      if (mwResult) return mwResult;
+    }
+
+    // filter execution
+    if (this.hasFilterEnabled) {
+      const filterResponse = await runFilter(this as any, pathname, ctx);
+      if (filterResponse) return filterResponse;
+    }
+
+    // if route not found
+    if (!routeHandler) return await handleRouteNotFound(this as any, ctx, pathname)
+
+    // pre-handler
+    if (this.hasPreHandlerHook) {
+      const result = await runHooks('preHandler', this.hooks.preHandler, [ctx]);
+      if (result) return result;
+    }
+
+    const result = routeHandler.handler(ctx);
+    const finalResult = result instanceof Promise ? await result : result;
+
+    // onSend
+    if (this.hasOnSendHook) {
+      const response = await runHooks('onSend', this.hooks.onSend, [ctx, finalResult]);
+      if (response) return response;
+    }
+
+    if (finalResult instanceof Response) {
+      return finalResult;
+    }
+
+    // if we dont return a response then by default Bun shows a err 
+    return generateErrorResponse(500, "No response returned from handler.");
+
   }
 
   close(

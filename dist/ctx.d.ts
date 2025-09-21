@@ -1,4 +1,37 @@
 import { Server } from "bun";
-import type { ContextType } from "./types";
+import type { ContextType, CookieOptions } from "./types";
+export declare class Context implements ContextType {
+    req: Request;
+    server: Server;
+    pathname: string;
+    routePattern?: string;
+    headers: Headers;
+    private parsedQuery;
+    private parsedParams;
+    private parsedCookies;
+    private parsedBody;
+    private contextData;
+    private urlObject;
+    constructor(req: Request, server: Server, pathname: string, routePattern?: string);
+    setHeader(key: string, value: string): this;
+    removeHeader(key: string): this;
+    set<T>(key: string, value: T): this;
+    get<T>(key: string): T | undefined;
+    get ip(): string | null;
+    get url(): URL;
+    get query(): Record<string, string>;
+    get params(): Record<string, string>;
+    get body(): Promise<any>;
+    text(data: string, status?: number): Response;
+    send<T>(data: T, status?: number): Response;
+    json<T>(object: T, status?: number): Response;
+    file(filePath: string, mime_Type?: string, status?: number): Response;
+    ejs(viewPath: string, data?: {}, status?: number): Promise<Response>;
+    redirect(path: string, status?: number): Response;
+    setCookie(name: string, value: string, options?: CookieOptions): this;
+    get cookies(): Record<string, string>;
+    stream(callback: (controller: ReadableStreamDefaultController) => void): Response;
+    yieldStream(callback: () => AsyncIterable<any>): Response;
+}
 export default function createCtx(req: Request, server: Server, pathname: string, routePattern: string | undefined): ContextType;
 export declare function extractDynamicParams(originalPath: string, incomingPath: string): Record<string, string> | null;

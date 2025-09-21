@@ -34,7 +34,8 @@ export default class Diesel {
     routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
     private prefixApiUrl;
     compileConfig: CompileConfig | null;
-    constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, prefixApiUrl, onError, logger, }?: {
+    private newPipelineArchitecture;
+    constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, prefixApiUrl, onError, logger, pipelineArchitecture }?: {
         jwtSecret?: string;
         baseApiUrl?: string;
         enableFileRouting?: boolean;
@@ -42,6 +43,7 @@ export default class Diesel {
         prefixApiUrl?: string;
         onError?: boolean;
         logger?: boolean;
+        pipelineArchitecture?: boolean;
     });
     static router(prefix: string): Diesel;
     /**
@@ -63,7 +65,8 @@ export default class Diesel {
     useAdvancedLogger(options: AdvancedLoggerOptions): this;
     BunRoute(method: string, path: string, ...handlersOrResponse: any[]): this;
     listen(port: any, ...args: listenArgsT[]): Server | void;
-    fetch(): (req: BunRequest, server: Server) => Promise<any>;
+    fetch(): (req: BunRequest, server: Server) => any;
+    private handleRequests;
     close(callback?: () => void): void;
     /**
      * Registers a router instance for subrouting.

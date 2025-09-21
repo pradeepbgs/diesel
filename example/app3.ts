@@ -4,6 +4,7 @@ import { ContextType } from "../src/types";
 
 
 const app = new Diesel({
+    // pipelineArchitecture: false,
     // onError:true,
     // logger: true // allready includes onErr with logger
 })
@@ -11,6 +12,10 @@ const app = new Diesel({
 // app.useAdvancedLogger({app})
 // app.addHooks('preHandler', () => {
 //     console.log('pre Handler hook hun mai')
+// })
+
+// app.routeNotFound((ctx) => {
+//     return ctx.send(`nahi mila ye route ${ctx.pathname}`)
 // })
 
 const msg = "hhhhh"
@@ -78,5 +83,35 @@ app.get("/power", (ctx) => {
 })
 
 
+app.get('/async', (ctx) => {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            resolve(ctx.text("maybe resolved"))
+        }, 200);
+    })
+})
+
+app.get('/err', (ctx) => {
+    throw new Error("sync error");
+});
+
+app.get('/aerr', async (ctx) => {
+    await someAsyncTask();
+    throw new Error("async error");
+});
+
+async function someAsyncTask() { }
 
 app.listen(3000, () => console.log("diesel running on 3000"))
+// Bun.serve({
+//     port:3000,
+//     fetch:app.fetch() as any
+// })
+
+// fetch: (
+//     request: Request,
+//     Env?: E['Bindings'] | {},
+//     executionCtx?: ExecutionContext
+// ) => Response | Promise<Response> = (request, ...rest) => {
+//     return this.#dispatch(request, rest[1], rest[0], request.method)
+// }
