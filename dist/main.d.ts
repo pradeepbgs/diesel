@@ -1,6 +1,6 @@
 import Trie from "./trie.js";
 import { CompileConfig, ContextType, corsT, FilterMethods, HookType, listenArgsT, middlewareFunc, RouteNotFoundHandler, type handlerFunction, type Hooks } from "./types.js";
-import { BunRequest, Server } from "bun";
+import { Server } from "bun";
 import { AdvancedLoggerOptions, LoggerOptions } from "./middlewares/logger/logger.js";
 import { EventEmitter } from 'events';
 export default class Diesel {
@@ -65,7 +65,7 @@ export default class Diesel {
     useAdvancedLogger(options: AdvancedLoggerOptions): this;
     BunRoute(method: string, path: string, ...handlersOrResponse: any[]): this;
     listen(port: any, ...args: listenArgsT[]): Server | void;
-    fetch(): (req: BunRequest, server: Server) => any;
+    fetch(): (req: Request, server: Server) => any;
     private handleRequests;
     close(callback?: () => void): void;
     /**

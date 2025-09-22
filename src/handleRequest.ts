@@ -1,5 +1,5 @@
-import { BunRequest, Server } from "bun";
-import createCtx, { Context } from "./ctx";
+import { Server } from "bun";
+import { Context } from "./ctx";
 import type { DieselT } from "./types";
 import { tryDecodeURI } from "./utils/urls";
 import { generateErrorResponse, handleRouteNotFound, runFilter, runHooks, runMiddlewares } from "./utils/request.util";

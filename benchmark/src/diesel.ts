@@ -7,6 +7,14 @@ const app = new Diesel()
 
 // app.useLogger({app})
 // app.addHooks('onRequest', () => console.log('req has come'))
+
+const NUM_ROUTES = 10000;
+
+for (let i = 0; i < NUM_ROUTES; i++) {
+    app.get(`/${i}`, (ctx) => ctx.text(`Route ${i}`));
+}
+
+// app.use(() => { })
 app.get('/', (c) => c.text("Hello world"))
 
 //app.BunRoute('get','/',"hello bun/")
