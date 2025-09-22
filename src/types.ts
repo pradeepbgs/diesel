@@ -53,7 +53,7 @@ export type HookType =
     | "onClose";
 
 export interface onError {
-    (error: Error, req: Request, pathname: string, server: Server):
+    (error: Error, ctx: ContextType):
         | void
         | null
         | Response
@@ -61,7 +61,7 @@ export interface onError {
 }
 
 export interface onRequest {
-    (req: Request, pathname: string, server: Server): void
+    (ctx: ContextType): void
 }
 export interface onSend {
     (ctx: ContextType, finalResult: Response): Promise<Response | undefined>

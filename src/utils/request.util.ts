@@ -5,7 +5,7 @@ import { getMimeType } from "./mimeType";
 export async function runHooks<T extends any[]>(
   label: HookType,
   hooksArray: any,
-  args: T): Promise<any> {
+  args: T): Promise<Response | undefined> {
 
   if (!hooksArray?.length) return;
   for (let i = 0; i < hooksArray.length; i++) {

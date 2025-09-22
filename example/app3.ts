@@ -12,13 +12,11 @@ const msg = "hhhhh"
 
 function addMiddleware() {
     app.use(() => console.log(msg))
-    app.useLogger({
-        app, onError(error, req, pathname) {
-            console.log('got en error ')
-        },
-    })
+
     app.use(() => { console.log("hi") })
+
     app.useAdvancedLogger({ app })
+
     app.addHooks('preHandler', () => {
         console.log('pre Handler hook hun mai')
     })
@@ -26,20 +24,17 @@ function addMiddleware() {
     app.routeNotFound((ctx) => {
         return ctx.send(`nahi mila ye route ${ctx.pathname}`)
     })
+
     app.use('/power', (ctx) => {
         console.log('power middleware')
     })
 }
 
-
-app.use((ctx: ContextType) => {
-    const path = ctx.routePattern
-    // console.log('pathname ', path)
+app.get('/user/:id', (ctx) => {
+    const id = ctx.params.id
+    return ctx.text(id)
 })
 
-app.get('/users/:id', (c) => {
-    return c.text('')
-})
 
 app.BunRoute('get', '/bun', "Helll")
 

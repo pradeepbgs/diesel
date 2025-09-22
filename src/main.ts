@@ -154,9 +154,9 @@ export default class Diesel {
     };
 
     // if user wants to log Error and respective Res
-    if (onError) this.addHooks('onError', (err: ErrnoException, _, path) => {
+    if (onError) this.addHooks('onError', (err: ErrnoException, ctx: ContextType) => {
       console.log('Got an exception:', err);
-      console.log('Request Path:', path);
+      console.log('Request Path:', ctx.pathname);
     });
 
     // if user wants to log
@@ -626,14 +626,13 @@ export default class Diesel {
     if (!pathname) {
       pathname = req.url.slice(start, i);
     }
-
     const routeHandler = this.trie.search(pathname, req.method as HttpMethod);
     // console.log('routeHanlder',routeHandler)
     const ctx = new Context(req, server, pathname, routeHandler?.path)
 
     try {
       if (this.hasOnReqHook)
-        await runHooks('onRequest', this.hooks.onRequest, [req, pathname, server])
+        await runHooks('onRequest', this.hooks.onRequest, [ctx])
 
       // middleware execution
       if (this.hasMiddleware) {
@@ -669,7 +668,7 @@ export default class Diesel {
         return finalResult;
       }
     } catch (err: any) {
-      return this.handleError(err, req, server)
+      return this.handleError(err, ctx)
     }
 
     // if we dont return a response then by default Bun shows a err 
@@ -678,17 +677,12 @@ export default class Diesel {
   }
 
   // HandleError
-  private async handleError(err: ErrnoException, req: Request, server: Server) {
+  private async handleError(err: ErrnoException, ctx: Context) {
     const isDev = process.env.NODE_ENV === "developement";
     const format = this.errorFormat || "json";
-    const path = getPath(req.url)
+    const path = getPath(ctx.req.url)
     // 1. user defined hooks
-    const hookResult = await runHooks("onError", this.hooks.onError, [
-      err,
-      req,
-      path,
-      server,
-    ]);
+    const hookResult = await runHooks("onError", this.hooks.onError, [err, ctx]);
     if (hookResult) return hookResult;
 
     // 2. HTTPException

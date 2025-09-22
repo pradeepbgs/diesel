@@ -9,10 +9,10 @@ export type HttpMethodOfApp = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'opt
 export type HttpMethodLower = Lowercase<HttpMethod>;
 export type HookType = "onRequest" | "preHandler" | "postHandler" | "onSend" | "onError" | "onClose";
 export interface onError {
-    (error: Error, req: Request, pathname: string, server: Server): void | null | Response | Promise<void | null | undefined | Response>;
+    (error: Error, ctx: ContextType): void | null | Response | Promise<void | null | undefined | Response>;
 }
 export interface onRequest {
-    (req: Request, pathname: string, server: Server): void;
+    (ctx: ContextType): void;
 }
 export interface onSend {
     (ctx: ContextType, finalResult: Response): Promise<Response | undefined>;
