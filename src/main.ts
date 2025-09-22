@@ -57,8 +57,10 @@ import {
   runHooks,
   runMiddlewares
 } from "./utils/request.util.js";
-import { HTTPException } from "./http-exception.js";
 
+import { HTTPException } from "./http-exception";
+
+type errorFormat = 'json' | 'text' | 'html' | string
 
 export default class Diesel {
   private static instance: Diesel
@@ -92,7 +94,7 @@ export default class Diesel {
   compileConfig: CompileConfig | null
   private newPipelineArchitecture: boolean = false
   emitter: EventEmitter
-  errorFormat: string;
+  errorFormat: errorFormat;
 
   constructor(
     {
@@ -103,7 +105,8 @@ export default class Diesel {
       prefixApiUrl,
       onError,
       logger,
-      pipelineArchitecture
+      pipelineArchitecture,
+      errorFormat = 'json'
     }
       : {
         jwtSecret?: string,
@@ -113,17 +116,19 @@ export default class Diesel {
         prefixApiUrl?: string,
         onError?: boolean,
         logger?: boolean,
-        pipelineArchitecture?: boolean
+        pipelineArchitecture?: boolean,
+        errorFormat?: errorFormat,
       } = {}
   ) {
 
+    this.errorFormat = errorFormat
     if (!Diesel.instance) {
       Diesel.instance = this
     }
     if (pipelineArchitecture) {
       this.newPipelineArchitecture = true
     }
-    this.errorFormat = 'json'
+    this.errorFormat = errorFormat
     this.emitter = new EventEmitter()
 
     this.prefixApiUrl = prefixApiUrl ?? ''
@@ -626,8 +631,8 @@ export default class Diesel {
     if (!pathname) {
       pathname = req.url.slice(start, i);
     }
+
     const routeHandler = this.trie.search(pathname, req.method as HttpMethod);
-    // console.log('routeHanlder',routeHandler)
     const ctx = new Context(req, server, pathname, routeHandler?.path)
 
     try {
@@ -677,29 +682,33 @@ export default class Diesel {
   }
 
   // HandleError
-  private async handleError(err: ErrnoException, ctx: Context) {
+  private async handleError(err: unknown, ctx: Context) {
     const isDev = process.env.NODE_ENV === "developement";
-    const format = this.errorFormat || "json";
+    const format = this.errorFormat
     const path = getPath(ctx.req.url)
+    
     // 1. user defined hooks
     const hookResult = await runHooks("onError", this.hooks.onError, [err, ctx]);
     if (hookResult) return hookResult;
 
     // 2. HTTPException
-    if (err instanceof HTTPException) {
+    if (err && typeof err === 'object' && (err as any).name === 'HTTPException') {
       // If a custom Response was provided, use it
-      if (err.res) return err.res
+      const httpErr = err as HTTPException;
+      if (httpErr.res) return httpErr.res
 
       return format === "json"
-        ? Response.json({ error: err.message }, { status: err.status })
-        : new Response(err.message, { status: err.status });
+        ? Response.json({ error: httpErr.message }, { status: httpErr.status })
+        : new Response(httpErr.message, { status: httpErr.status });
     }
 
     // 3. Default fallback
+    const errorMessage = err instanceof Error ? err.message : "Internal Server Error";
+    const errorStack = err instanceof Error ? err.stack : undefined;
     if (format === 'json') {
-      const body = {
-        error: err?.message ?? "Internal Server Error",
-        ...(isDev && { stack: err.stack }),
+      const body: Record<string, any> = {
+        error: errorMessage,
+        ...(isDev && { stack: errorStack }),
         path
       }
       return Response.json(body, {
@@ -708,9 +717,9 @@ export default class Diesel {
       })
     }
     else {
-      const message = isDev
-        ? `Error: ${err?.message ?? "Internal Server Error"}\nStack: ${err.stack}`
-        : `Error: ${err?.message ?? "Internal Server Error"}`;
+      const message: string = isDev
+        ? `Error: ${errorMessage}\nStack: ${errorStack}`
+        : `Error: ${errorMessage}`;
 
       return new Response(message, {
         headers: { "Content-Type": "text/plain" },

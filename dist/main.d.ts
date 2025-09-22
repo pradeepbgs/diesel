@@ -3,6 +3,7 @@ import { CompileConfig, ContextType, corsT, FilterMethods, HookType, listenArgsT
 import { Server } from "bun";
 import { AdvancedLoggerOptions, LoggerOptions } from "./middlewares/logger/logger.js";
 import { EventEmitter } from 'events';
+type errorFormat = 'json' | 'text' | 'html' | string;
 export default class Diesel {
     private static instance;
     fecth: any;
@@ -35,8 +36,8 @@ export default class Diesel {
     compileConfig: CompileConfig | null;
     private newPipelineArchitecture;
     emitter: EventEmitter;
-    errorFormat: string;
-    constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, prefixApiUrl, onError, logger, pipelineArchitecture }?: {
+    errorFormat: errorFormat;
+    constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, prefixApiUrl, onError, logger, pipelineArchitecture, errorFormat }?: {
         jwtSecret?: string;
         baseApiUrl?: string;
         enableFileRouting?: boolean;
@@ -45,6 +46,7 @@ export default class Diesel {
         onError?: boolean;
         logger?: boolean;
         pipelineArchitecture?: boolean;
+        errorFormat?: errorFormat;
     });
     static router(prefix: string): Diesel;
     /**
@@ -113,3 +115,4 @@ export default class Diesel {
     on(event: string | symbol, listener: EventListener): void;
     emit(event: string | symbol, ...args: any): void;
 }
+export {};

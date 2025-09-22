@@ -1,11 +1,13 @@
-import Diesel from "../src/main";
-import { poweredBy } from "../src/middlewares/powered-by";
-import { ContextType } from "../src/types";
-import { HTTPException } from '../src/http-exception';
+import Diesel from "../dist/main";
+import { ContextType } from "../dist/types";
+
+import { HTTPException } from '../dist/http-exception';
+
+// const e = new HTTPException(401, { message: 'Unauthorized' });
+// console.log(e instanceof HTTPException);
 
 const app = new Diesel({
-    pipelineArchitecture: false,
-    logger: true
+    errorFormat: 'text'
 })
 
 const msg = "hhhhh"
@@ -41,7 +43,6 @@ app.BunRoute('get', '/bun', "Helll")
 
 
 app.get("/", (ctx) => ctx.text("Hello world!"))
-
 class UserService {
     users: Array<Object>
     constructor() {
@@ -84,12 +85,8 @@ app.get('/async', (ctx) => {
     })
 })
 
-app.get('/err', (ctx) => {
-    // throw new Error('Unauthorized', { cause: 401 })
-    throw new HTTPException(401, {
-        res: new Response('Unauthorized', { status: 401 }),
-    })
-
+app.get('/err', (ctx: ContextType) => {
+    throw new HTTPException(405, { res: ctx.json({ msg: "unauthorized sir" }) })
     throw new HTTPException(400, { message: 'Unauthorized' });
 });
 
@@ -100,10 +97,10 @@ app.get('/aerr', async (ctx) => {
 
 async function someAsyncTask() { }
 
-// app.listen(3000, () => console.log("diesel running on 3000"))
+app.listen(3000, () => console.log("diesel running on 3000"))
 
 
-Bun.serve({
-    port: 3000,
-    fetch: app.fetch() as any
-})
+// Bun.serve({
+//     port: 3000,
+//     fetch: app.fetch() as any
+// })
