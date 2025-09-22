@@ -30,6 +30,7 @@ Bun.build({
         './src/request_pipeline.ts',
         './src/handleRequest.ts',
         './src/trie.ts',
+        './src/http-exception.ts'
     ],
     outdir: './dist',
     minify: true,

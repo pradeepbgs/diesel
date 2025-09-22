@@ -81,6 +81,7 @@ export interface ContextType {
     server: Server;
     pathname: string;
     headers: Headers;
+    routePattern?: string
     // status: number;
     setHeader: (key: string, value: string) => this;
     json: (data: object, status?: number) => Response;

@@ -1,12 +1,11 @@
 import Diesel from "../src/main";
 import { poweredBy } from "../src/middlewares/powered-by";
 import { ContextType } from "../src/types";
-
+import { HTTPException } from '../src/http-exception';
 
 const app = new Diesel({
-    pipelineArchitecture: true,
-    // onError:true,
-    // logger: true // allready includes onErr with logger
+    pipelineArchitecture: false,
+    logger: true
 })
 
 const msg = "hhhhh"
@@ -32,6 +31,15 @@ function addMiddleware() {
     })
 }
 
+
+app.use((ctx: ContextType) => {
+    const path = ctx.routePattern
+    // console.log('pathname ', path)
+})
+
+app.get('/users/:id', (c) => {
+    return c.text('')
+})
 
 app.BunRoute('get', '/bun', "Helll")
 
@@ -82,7 +90,12 @@ app.get('/async', (ctx) => {
 })
 
 app.get('/err', (ctx) => {
-    throw new Error("sync error");
+    // throw new Error('Unauthorized', { cause: 401 })
+    throw new HTTPException(401, {
+        res: new Response('Unauthorized', { status: 401 }),
+    })
+
+    throw new HTTPException(400, { message: 'Unauthorized' });
 });
 
 app.get('/aerr', async (ctx) => {

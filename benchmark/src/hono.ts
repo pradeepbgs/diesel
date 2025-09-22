@@ -11,7 +11,7 @@ const NUM_ROUTES = 10000;
 for (let i = 0; i < NUM_ROUTES; i++) {
     app.get(`/${i}`, (ctx) => ctx.text(`Route ${i}`));
 }
-// app.use("*", async (_, next) => { next() })
+app.use("*", (_, next) => { next() })
 
 app.get('/', (ctx: Context) => ctx.text("hello world!"))
 

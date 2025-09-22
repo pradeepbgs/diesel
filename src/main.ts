@@ -57,10 +57,10 @@ import {
   runHooks,
   runMiddlewares
 } from "./utils/request.util.js";
+import { HTTPException } from "./http-exception.js";
 
 
 export default class Diesel {
-  emitter: EventEmitter
   private static instance: Diesel
   fecth: any // ServerOptions['fetch']
   routes: Record<string, Function>
@@ -91,6 +91,9 @@ export default class Diesel {
   private prefixApiUrl: string | null
   compileConfig: CompileConfig | null
   private newPipelineArchitecture: boolean = false
+  emitter: EventEmitter
+  errorFormat: string;
+
   constructor(
     {
       jwtSecret,
@@ -120,6 +123,7 @@ export default class Diesel {
     if (pipelineArchitecture) {
       this.newPipelineArchitecture = true
     }
+    this.errorFormat = 'json'
     this.emitter = new EventEmitter()
 
     this.prefixApiUrl = prefixApiUrl ?? ''
@@ -150,28 +154,16 @@ export default class Diesel {
     };
 
     // if user wants to log Error and respective Res
-    if (onError) this.addHooks('onError', (err: ErrnoException) => {
-      console.log('got an exception ', err)
-      return new Response(
-        JSON.stringify({ error: err?.message ?? err, stack: err.stack }),
-        {
-          headers: { "Content-Type": "application/json" },
-          status: 500
-        }
-      );
+    if (onError) this.addHooks('onError', (err: ErrnoException, _, path) => {
+      console.log('Got an exception:', err);
+      console.log('Request Path:', path);
     });
 
     // if user wants to log
     if (logger) this.useLogger({
-      app: this, onError(err) {
-        console.log('got an exception ', err)
-        return new Response(
-          JSON.stringify({ error: err?.message || err, stack: err.stack }),
-          {
-            headers: { "Content-Type": "application/json" },
-            status: 500
-          }
-        );
+      app: this,
+      onError(err) {
+        console.error('Got an exception:', err);
       },
     })
 
@@ -319,7 +311,7 @@ export default class Diesel {
     typeOfHook: T,
     fnc: NonNullable<Hooks[T]>[number]
   ): this {
-    
+
     if (typeof typeOfHook !== "string") {
       throw new Error("hookName must be a string");
     }
@@ -567,6 +559,19 @@ export default class Diesel {
     return this.serverInstance;
   }
 
+
+  close(
+    callback?: () => void
+  ): void {
+    if (this.serverInstance) {
+      this.serverInstance.stop(true);
+      this.serverInstance = null;
+      callback ? callback() : console.log("Server has been stopped")
+    } else {
+      console.warn("Server is not running.");
+    }
+  }
+
   fetch() {
     const config: CompileConfig = this.compile();
 
@@ -623,6 +628,7 @@ export default class Diesel {
     }
 
     const routeHandler = this.trie.search(pathname, req.method as HttpMethod);
+    // console.log('routeHanlder',routeHandler)
     const ctx = new Context(req, server, pathname, routeHandler?.path)
 
     try {
@@ -662,9 +668,8 @@ export default class Diesel {
       if (finalResult instanceof Response) {
         return finalResult;
       }
-    } catch (err) {
-      const errorResult = await runHooks("onError", this.hooks.onError, [err, req, getPath(req.url), server]);
-      return errorResult || generateErrorResponse(500, "Internal Server Error");
+    } catch (err: any) {
+      return this.handleError(err, req, server)
     }
 
     // if we dont return a response then by default Bun shows a err 
@@ -672,15 +677,51 @@ export default class Diesel {
 
   }
 
-  close(
-    callback?: () => void
-  ): void {
-    if (this.serverInstance) {
-      this.serverInstance.stop(true);
-      this.serverInstance = null;
-      callback ? callback() : console.log("Server has been stopped")
-    } else {
-      console.warn("Server is not running.");
+  // HandleError
+  private async handleError(err: ErrnoException, req: Request, server: Server) {
+    const isDev = process.env.NODE_ENV === "developement";
+    const format = this.errorFormat || "json";
+    const path = getPath(req.url)
+    // 1. user defined hooks
+    const hookResult = await runHooks("onError", this.hooks.onError, [
+      err,
+      req,
+      path,
+      server,
+    ]);
+    if (hookResult) return hookResult;
+
+    // 2. HTTPException
+    if (err instanceof HTTPException) {
+      // If a custom Response was provided, use it
+      if (err.res) return err.res
+
+      return format === "json"
+        ? Response.json({ error: err.message }, { status: err.status })
+        : new Response(err.message, { status: err.status });
+    }
+
+    // 3. Default fallback
+    if (format === 'json') {
+      const body = {
+        error: err?.message ?? "Internal Server Error",
+        ...(isDev && { stack: err.stack }),
+        path
+      }
+      return Response.json(body, {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+    else {
+      const message = isDev
+        ? `Error: ${err?.message ?? "Internal Server Error"}\nStack: ${err.stack}`
+        : `Error: ${err?.message ?? "Internal Server Error"}`;
+
+      return new Response(message, {
+        headers: { "Content-Type": "text/plain" },
+        status: 500,
+      });
     }
   }
 

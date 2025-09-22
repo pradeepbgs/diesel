@@ -4,7 +4,6 @@ import { Server } from "bun";
 import { AdvancedLoggerOptions, LoggerOptions } from "./middlewares/logger/logger.js";
 import { EventEmitter } from 'events';
 export default class Diesel {
-    emitter: EventEmitter;
     private static instance;
     fecth: any;
     routes: Record<string, Function>;
@@ -35,6 +34,8 @@ export default class Diesel {
     private prefixApiUrl;
     compileConfig: CompileConfig | null;
     private newPipelineArchitecture;
+    emitter: EventEmitter;
+    errorFormat: string;
     constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, prefixApiUrl, onError, logger, pipelineArchitecture }?: {
         jwtSecret?: string;
         baseApiUrl?: string;
@@ -65,9 +66,10 @@ export default class Diesel {
     useAdvancedLogger(options: AdvancedLoggerOptions): this;
     BunRoute(method: string, path: string, ...handlersOrResponse: any[]): this;
     listen(port: any, ...args: listenArgsT[]): Server | void;
+    close(callback?: () => void): void;
     fetch(): (req: Request, server: Server) => any;
     private handleRequests;
-    close(callback?: () => void): void;
+    private handleError;
     /**
      * Registers a router instance for subrouting.
      * Allows defining subroutes like:
