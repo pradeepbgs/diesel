@@ -1,11 +1,11 @@
 import { Diesel } from 'diesel-core'
-import { HTTPException } from 'diesel-core/http-exception'
+//import { HTTPException } from 'diesel-core/http-exception'
 
 
 
 const app = new Diesel()
 
-app.BunRoute('get', '/', 'Hello bun/')
+//app.BunRoute('get', '/', 'Hello bun/')
 app.get('/', (ctx) => ctx.text('hello diesel'))
 
 app.get('/path/:name', (ctx) => {

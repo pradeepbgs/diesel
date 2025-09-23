@@ -50,7 +50,7 @@ export type HookType =
     | "postHandler"
     | "onSend"
     | "onError"
-    | "onClose";
+    | "onClose"
 
 export interface onError {
     (error: Error, ctx: ContextType):
@@ -68,20 +68,23 @@ export interface onSend {
 }
 
 export interface Hooks {
-    onRequest: onRequest[] | null;
-    preHandler: HookFunction[] | null;
-    postHandler: HookFunction[] | null;
-    onSend: onSend[] | null;
-    onError: onError[] | null;
-    onClose: HookFunction[] | null;
+    onRequest: onRequest[];
+    preHandler: HookFunction[];
+    postHandler: HookFunction[];
+    onSend: onSend[];
+    onError: onError[];
+    onClose: HookFunction[];
 }
+
 
 export interface ContextType {
     req: Request;
-    server: Server;
-    pathname: string;
+    server?: Server;
+    path?: string | undefined;
+    routePattern?: string|undefined
+    env?: Record<string, any>;
+    executionCtx?: any | undefined;
     headers: Headers;
-    routePattern?: string
     // status: number;
     setHeader: (key: string, value: string) => this;
     json: (data: object, status?: number) => Response;
@@ -152,6 +155,8 @@ export interface DieselT {
         search: (pathname: string, method: string) => RouteHandlerT | undefined;
     };
     staticPath: string | null;
+    staticRequestPath: string | null;
+    staticFiles: Record<string, string>;
     routeNotFoundFunc: RouteNotFoundHandler;
     routerInstance: DieselT;
     tempRoutes: Map<string, TempRouteEntry>;
@@ -190,7 +195,6 @@ export interface ParseBodyResult {
 
 declare global {
     interface Request {
-        routePattern?: string; // Custom property
         [key: string]: any;
     }
 }

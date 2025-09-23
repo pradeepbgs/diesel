@@ -3,22 +3,25 @@ import homepage from './templates/index.html'
 import aboutPage from './templates/about.html'
 const app = new Diesel();
 
-app.addHooks("routeNotFound",(ctx) => {
+app.addHooks("routeNotFound", (ctx) => {
     return ctx.file(`${import.meta.dirname}/templates/404.html`)
 })
 
-app
-.staticHtml(
-        {
-            "/": homepage,
-        }
-    )
+// app
+//     .staticHtml(
+//         {
+//             "/": homepage,
+//         }
+//     )
 
-    app.staticHtml({
-        "/about": aboutPage
-    })
+// app.staticHtml({
+//     "/about": aboutPage
+// })
 
-app.serveStatic(`${import.meta.dirname}/public`);
+app.serveStatic(
+    `${import.meta.dirname}/public`,
+    '/static'
+);
 
 app.get("/", (ctx) => {
     return ctx.json({

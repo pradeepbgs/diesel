@@ -1,13 +1,13 @@
-import Diesel from "../dist/main";
-import { ContextType } from "../dist/types";
+import Diesel from "../src/main";
+import { ContextType } from "../src/types";
 
-import { HTTPException } from '../dist/http-exception';
+import { HTTPException } from '../src/http-exception';
 
 // const e = new HTTPException(401, { message: 'Unauthorized' });
 // console.log(e instanceof HTTPException);
 
 const app = new Diesel({
-    errorFormat: 'text'
+    errorFormat: 'text',
 })
 
 const msg = "hhhhh"
@@ -24,7 +24,7 @@ function addMiddleware() {
     })
 
     app.routeNotFound((ctx) => {
-        return ctx.send(`nahi mila ye route ${ctx.pathname}`)
+        return ctx.send(`nahi mila ye route ${ctx.path}`)
     })
 
     app.use('/power', (ctx) => {
@@ -33,6 +33,7 @@ function addMiddleware() {
 }
 
 app.get('/user/:id', (ctx) => {
+    const p = ctx.req
     const id = ctx.params.id
     return ctx.text(id)
 })
@@ -42,7 +43,12 @@ app.BunRoute('get', '/bun', "Helll")
 
 
 
-app.get("/", (ctx) => ctx.text("Hello world!"))
+app.get("/", (ctx) => {
+    // const ip = ctx.ip
+    // console.log('ip ', ip)
+    return ctx.send("hej")
+})
+
 class UserService {
     users: Array<Object>
     constructor() {
@@ -104,3 +110,4 @@ app.listen(3000, () => console.log("diesel running on 3000"))
 //     port: 3000,
 //     fetch: app.fetch() as any
 // })
+

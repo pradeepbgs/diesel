@@ -46,10 +46,10 @@ app.use(cors({
 }))
 
 
-app.setupFilter()
-  .publicRoutes("/cookie", '/api/user/', '/health')
-  .permitAll()
-  .authenticate([authJwt])
+// app.setupFilter()
+//   .publicRoutes("/cookie", '/api/user/', '/health')
+//   .permitAll()
+//   .authenticate([authJwt])
 
 
 // app.use(authenticateJwt({
@@ -115,7 +115,7 @@ app.get("/redirect/:name/:age", (ctx) => {
   })
 })
 
-// app.serveStatic(`${import.meta.dirname}/public`)
+// app.static(`${import.meta.dirname}/public`)
 
 // app.get("*",() => new Response(Bun.file(`${import.meta.dirname}/public/index.html`)) )
 
@@ -153,7 +153,6 @@ app.get('/txt', (c) => {
 
 
 app.get("/", async (ctx: ContextType) => {
-  console.log(ctx.headers)
   const headers = ctx.headers
   return ctx.json({
     msg: "Sending headers",
@@ -182,7 +181,6 @@ app
     return ctx.text("How are you? " + id + name);
   })
   .get("/err", (ctx) => {
-    ctx.status = 400
     throw new Error("Somethin`g went wrong yes");
   })
   .get("/query", async (ctx) => {

@@ -5,6 +5,7 @@ import { AdvancedLoggerOptions, LoggerOptions } from "./middlewares/logger/logge
 import { EventEmitter } from 'events';
 type errorFormat = 'json' | 'text' | 'html' | string;
 export default class Diesel {
+    #private;
     private static instance;
     fecth: any;
     routes: Record<string, Function>;
@@ -25,7 +26,6 @@ export default class Diesel {
     filterFunction: Function[];
     private hasFilterEnabled;
     private serverInstance;
-    staticPath: any;
     staticFiles: any;
     user_jwt_secret: string;
     private baseApiUrl;
@@ -34,9 +34,10 @@ export default class Diesel {
     routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
     private prefixApiUrl;
     compileConfig: CompileConfig | null;
-    private newPipelineArchitecture;
     emitter: EventEmitter;
     errorFormat: errorFormat;
+    staticPath: any;
+    staticRequestPath: string | undefined;
     constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, prefixApiUrl, onError, logger, pipelineArchitecture, errorFormat }?: {
         jwtSecret?: string;
         baseApiUrl?: string;
@@ -57,10 +58,10 @@ export default class Diesel {
     */
     setupFilter(): FilterMethods;
     redirect(incomingPath: string, redirectPath: string, statusCode?: 302): this;
-    serveStatic(filePath: string): this;
-    static(path: string): this;
+    serveStatic(filePath: string, requestPath?: string): this;
+    static(path: string, requestPath?: string): this;
     staticHtml(args: Record<string, string>): this;
-    addHooks<T extends HookType>(typeOfHook: T, fnc: NonNullable<Hooks[T]>[number]): this;
+    addHooks<T extends HookType>(typeOfHook: T, fnc: Hooks[T][number]): this;
     private compile;
     private registerFileRoutes;
     private loadRoutes;

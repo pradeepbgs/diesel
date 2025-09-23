@@ -18,12 +18,12 @@ export interface onSend {
     (ctx: ContextType, finalResult: Response): Promise<Response | undefined>;
 }
 export interface Hooks {
-    onRequest: onRequest[] | null;
-    preHandler: HookFunction[] | null;
-    postHandler: HookFunction[] | null;
-    onSend: onSend[] | null;
-    onError: onError[] | null;
-    onClose: HookFunction[] | null;
+    onRequest: onRequest[];
+    preHandler: HookFunction[];
+    postHandler: HookFunction[];
+    onSend: onSend[];
+    onError: onError[];
+    onClose: HookFunction[];
 }
 export interface ContextType {
     req: Request;
@@ -94,6 +94,8 @@ export interface DieselT {
         search: (pathname: string, method: string) => RouteHandlerT | undefined;
     };
     staticPath: string | null;
+    staticRequestPath: string | null;
+    staticFiles: Record<string, string>;
     routeNotFoundFunc: RouteNotFoundHandler;
     routerInstance: DieselT;
     tempRoutes: Map<string, TempRouteEntry>;
@@ -128,7 +130,6 @@ export interface ParseBodyResult {
 }
 declare global {
     interface Request {
-        routePattern?: string;
         [key: string]: any;
     }
 }

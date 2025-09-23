@@ -83,7 +83,6 @@ export default class Diesel {
   filterFunction: Function[];
   private hasFilterEnabled: boolean;
   private serverInstance: Server | null;
-  staticPath: any;
   staticFiles: any
   user_jwt_secret: string
   private baseApiUrl: string
@@ -92,9 +91,14 @@ export default class Diesel {
   routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
   private prefixApiUrl: string | null
   compileConfig: CompileConfig | null
-  private newPipelineArchitecture: boolean = false
+  #newPipelineArchitecture: boolean = false
   emitter: EventEmitter
   errorFormat: errorFormat;
+  platform: string = 'bun'
+  // tha path of static files
+  staticPath: any;
+  // the request path where user wants static files should be server
+  staticRequestPath: string | undefined = undefined;
 
   constructor(
     {
@@ -106,7 +110,8 @@ export default class Diesel {
       onError,
       logger,
       pipelineArchitecture,
-      errorFormat = 'json'
+      errorFormat = 'json',
+      platform = 'bun'
     }
       : {
         jwtSecret?: string,
@@ -118,15 +123,18 @@ export default class Diesel {
         logger?: boolean,
         pipelineArchitecture?: boolean,
         errorFormat?: errorFormat,
+        platform?: string
       } = {}
   ) {
 
     this.errorFormat = errorFormat
+    this.platform = platform
+
     if (!Diesel.instance) {
       Diesel.instance = this
     }
     if (pipelineArchitecture) {
-      this.newPipelineArchitecture = true
+      this.#newPipelineArchitecture = true
     }
     this.errorFormat = errorFormat
     this.emitter = new EventEmitter()
@@ -161,7 +169,7 @@ export default class Diesel {
     // if user wants to log Error and respective Res
     if (onError) this.addHooks('onError', (err: ErrnoException, ctx: ContextType) => {
       console.log('Got an exception:', err);
-      console.log('Request Path:', ctx.pathname);
+      console.log('Request Path:', ctx.path);
     });
 
     // if user wants to log
@@ -291,16 +299,20 @@ export default class Diesel {
   }
 
   serveStatic(
-    filePath: string
+    filePath: string,
+    requestPath?: string
   ) {
     this.staticPath = filePath;
+    this.staticRequestPath = requestPath
     return this;
   }
 
   static(
-    path: string
+    path: string,
+    requestPath?: string
   ) {
     this.staticPath = path;
+    this.staticRequestPath = requestPath
     return this;
   }
 
@@ -314,7 +326,7 @@ export default class Diesel {
 
   addHooks<T extends HookType>(
     typeOfHook: T,
-    fnc: NonNullable<Hooks[T]>[number]
+    fnc: Hooks[T][number]
   ): this {
 
     if (typeof typeOfHook !== "string") {
@@ -410,9 +422,10 @@ export default class Diesel {
       this.hasOnError = true
     }
     // console.log('this.hooks', this.hasOnReqHook)
-    setTimeout(() => {
-      this.tempRoutes = null
-    }, 2000);
+    // setTimeout(() => {
+    //   this.tempRoutes = null
+    // }, 2000);
+    this.tempRoutes = null
     this.compileConfig = config
     return config;
   }
@@ -577,10 +590,28 @@ export default class Diesel {
     }
   }
 
+  // for cloudflare fetch
+  cfFetch(
+    request: Request,
+    env: Record<string, any>,
+    executionCtx: any
+  ) {
+    return this.#handleRequests(request, undefined, env, executionCtx)
+  }
+
   fetch() {
     const config: CompileConfig = this.compile();
 
-    if (this.newPipelineArchitecture) {
+    // if user is using for cloudflare workers
+    if (this.platform === 'cf' || this.platform === 'cloudflare') {
+      return (request: Request, env?: Record<string, any>, executionContext?: any) => {
+        return this.#handleRequests(request, undefined, env, executionContext)
+      }
+    }
+
+    // NORMAL WAY WITH BUN/NODE/DENO
+
+    if (this.#newPipelineArchitecture) {
       // New way
       const pipeline = buildRequestPipeline(config, this as any)
       return (req: Request, server: Server) => {
@@ -597,23 +628,14 @@ export default class Diesel {
       };
     }
 
-    // old with bind
-    return this.handleRequests.bind(this)
-
-    // old method which is default
-    return (req: Request, server: Server) => {
-      return this.handleRequests(req, server)
-        .catch(async (err: ErrnoException) => {
-          console.log("error ", err)
-          const errorResult = await runHooks("onError", this.hooks.onError, [err, req, getPath(req.url), server]);
-          return errorResult || generateErrorResponse(500, "Internal Server Error");
-        })
-    }
+    // Default
+    return this.#handleRequests.bind(this)
 
   }
 
   // Function where our request comes if new architecture is disabled.
-  private async handleRequests(req: Request, server: Server) {
+  async #handleRequests(req: Request, server?: Server, env?: Record<string, any>, executionCtx?: any) {
+
     let pathname;
     const start = req.url.indexOf('/', req.url.indexOf(':') + 4);
     let i = start;
@@ -633,7 +655,8 @@ export default class Diesel {
     }
 
     const routeHandler = this.trie.search(pathname, req.method as HttpMethod);
-    const ctx = new Context(req, server, pathname, routeHandler?.path)
+    const ctx = new Context(req, server, pathname, routeHandler?.path, env, executionCtx);
+
 
     try {
       if (this.hasOnReqHook)
@@ -686,7 +709,7 @@ export default class Diesel {
     const isDev = process.env.NODE_ENV === "developement";
     const format = this.errorFormat
     const path = getPath(ctx.req.url)
-    
+
     // 1. user defined hooks
     const hookResult = await runHooks("onError", this.hooks.onError, [err, ctx]);
     if (hookResult) return hookResult;
