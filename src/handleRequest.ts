@@ -8,7 +8,9 @@ import { generateErrorResponse, handleRouteNotFound, runFilter, runHooks, runMid
 export default async function handleRequest(
   req: Request,
   server: Server,
-  diesel: DieselT
+  diesel: DieselT,
+  env?: Record<string, any>,
+  executionContext?: any
 ): Promise<Response | undefined> {
 
   let pathname;
@@ -29,9 +31,9 @@ export default async function handleRequest(
     pathname = req.url.slice(start, i);
   }
 
-  const routeHandler = diesel.trie.search(pathname, req.method);
+  const routeHandler = diesel.router.find(req.method, pathname)
 
-  const ctx = new Context(req, server, pathname, routeHandler?.path)
+  const ctx = new Context(req, server, pathname, routeHandler?.path, env, executionContext)
   // const ctx = createCtx(req,server,pathname,routeHandler?.path)
 
 

@@ -1,4 +1,5 @@
-import type { handlerFunction, HttpMethod, middlewareFunc, RouteHandlerT } from "./types";
+import { NormalizedRoute, Router } from "../router/interface";
+import type { handlerFunction, HttpMethod, middlewareFunc, RouteHandlerT } from "../types";
 declare class TrieNode {
     children: Record<string, TrieNode>;
     isEndOfWord: boolean;
@@ -19,5 +20,11 @@ export default class Trie {
         handler: any;
         pattern: string;
     } | null;
+}
+export declare class TrieRouter implements Router {
+    private trie;
+    private cache;
+    add(method: string, path: string, handler: handlerFunction): void;
+    find(method: string, path: string): NormalizedRoute | null;
 }
 export {};

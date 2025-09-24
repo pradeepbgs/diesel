@@ -1,36 +1,37 @@
 import Diesel from "../src/main";
 import { ContextType } from "../src/types";
-
 import { HTTPException } from '../src/http-exception';
 
-// const e = new HTTPException(401, { message: 'Unauthorized' });
-// console.log(e instanceof HTTPException);
+
 
 const app = new Diesel({
     errorFormat: 'text',
+    router:'fastify'
 })
 
 const msg = "hhhhh"
 
 function addMiddleware() {
-    app.use(() => console.log(msg))
+    // app.use(() => console.log(msg))
 
-    app.use(() => { console.log("hi") })
+    app.use(async () => { console.log("hi") })
 
-    app.useAdvancedLogger({ app })
+    // app.useAdvancedLogger({ app })
 
     app.addHooks('preHandler', () => {
         console.log('pre Handler hook hun mai')
     })
 
-    app.routeNotFound((ctx) => {
-        return ctx.send(`nahi mila ye route ${ctx.path}`)
-    })
+    // app.routeNotFound((ctx) => {
+    //     return ctx.send(`nahi mila ye route ${ctx.path}`)
+    // })
 
-    app.use('/power', (ctx) => {
-        console.log('power middleware')
-    })
+    // app.use('/power', (ctx) => {
+    //     console.log('power middleware')
+    // })
 }
+
+// addMiddleware()
 
 app.get('/user/:id', (ctx) => {
     const p = ctx.req
@@ -46,7 +47,7 @@ app.BunRoute('get', '/bun', "Helll")
 app.get("/", (ctx) => {
     // const ip = ctx.ip
     // console.log('ip ', ip)
-    return ctx.send("hej")
+    return ctx.text("hello world")
 })
 
 class UserService {
@@ -76,8 +77,9 @@ class UserService {
 const userService = new UserService()
 app.BunRoute('get', '/user', userService.getUser)
 
-
-
+// app.use(async() => console.log('hloblalsssss'), async() => console.log("2nd"), () => console.log("3rd"))
+// app.use(async() => console.log('hloblal'))
+// app.use('/power', () => console.log('power middleware'))
 app.get("/power", (ctx) => {
     return ctx.text("/power")
 })

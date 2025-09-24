@@ -1,4 +1,5 @@
 import { Server } from "bun";
+import { Router } from "./router/interface";
 
 export type listenCalllBackType = () => void;
 
@@ -83,7 +84,8 @@ export interface ContextType {
     path?: string | undefined;
     routePattern?: string|undefined
     env?: Record<string, any>;
-    executionCtx?: any | undefined;
+    executionContext?: any | undefined;
+    
     headers: Headers;
     // status: number;
     setHeader: (key: string, value: string) => this;
@@ -120,7 +122,7 @@ export interface CookieOptions {
 }
 
 export interface RouteHandlerT {
-    method: string;
+    method?: string;
     handler: handlerFunction
     isDynamic?: boolean;
     path?: string;
@@ -151,9 +153,7 @@ export interface DieselT {
     corsConfig: corsT | null;
     globalMiddlewares: Array<(ctx: ContextType, server?: Server) => void | Promise<void | Response>>;
     middlewares: Map<string, Array<(ctx: ContextType, server?: Server) => void | Promise<void | Response>>>;
-    trie: {
-        search: (pathname: string, method: string) => RouteHandlerT | undefined;
-    };
+    router:Router
     staticPath: string | null;
     staticRequestPath: string | null;
     staticFiles: Record<string, string>;

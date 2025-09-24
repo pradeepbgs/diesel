@@ -1,4 +1,3 @@
-import Trie from "./trie.js";
 import path from 'path'
 import fs from 'fs'
 import {
@@ -44,7 +43,6 @@ import {
 
 import {
   getPath,
-  tryDecodeURI
 } from "./utils/urls.js";
 
 import { EventEmitter } from 'events';
@@ -59,17 +57,18 @@ import {
 } from "./utils/request.util.js";
 
 import { HTTPException } from "./http-exception";
+import { Router, RouterFactory } from "./router/interface.js";
 
 type errorFormat = 'json' | 'text' | 'html' | string
 
 export default class Diesel {
   private static instance: Diesel
-  fecth: any // ServerOptions['fetch']
+  // fetch: any // ServerOptions['fetch']
   routes: Record<string, Function>
   private tempRoutes: Map<string, TempRouteEntry> | null;
   globalMiddlewares: middlewareFunc[];
   middlewares: Map<string, middlewareFunc[]>;
-  trie: Trie;
+  router: Router
   hasOnReqHook: boolean;
   hasMiddleware: boolean;
   hasPreHandlerHook: boolean;
@@ -111,7 +110,8 @@ export default class Diesel {
       logger,
       pipelineArchitecture,
       errorFormat = 'json',
-      platform = 'bun'
+      platform = 'bun',
+      router = 'trie'
     }
       : {
         jwtSecret?: string,
@@ -123,10 +123,11 @@ export default class Diesel {
         logger?: boolean,
         pipelineArchitecture?: boolean,
         errorFormat?: errorFormat,
-        platform?: string
+        platform?: string,
+        router?: string
       } = {}
   ) {
-
+    this.router = RouterFactory.create(router);
     this.errorFormat = errorFormat
     this.platform = platform
 
@@ -149,7 +150,7 @@ export default class Diesel {
     this.tempRoutes = new Map<string, TempRouteEntry>();
     this.globalMiddlewares = [];
     this.middlewares = new Map();
-    this.trie = new Trie();
+
     this.corsConfig = null;
     this.hasMiddleware = false;
     this.hasOnReqHook = false;
@@ -591,16 +592,29 @@ export default class Diesel {
   }
 
   // for cloudflare fetch
-  cfFetch(
-    request: Request,
-    env: Record<string, any>,
-    executionCtx: any
-  ) {
-    return this.#handleRequests(request, undefined, env, executionCtx)
+  cfFetch() {
+    this.compile()
+    return (request: Request, env: Record<string, any>, executionCtx: any) => {
+      return this.#handleRequests(request, undefined, env, executionCtx)
+    }
   }
 
   fetch() {
     const config: CompileConfig = this.compile();
+
+    // For Testing
+    // return (r: Request, s: Server) => {
+    //   return handleRequest(r, s, this as any, undefined, undefined)
+    //     .catch(async (error: any) => {
+    //       // console.error("Unhandled handler error:", error);
+    //       const errorResult = await runHooks(
+    //         "onError",
+    //         this.hooks.onError,
+    //         [error, {}]
+    //       );
+    //       return errorResult || generateErrorResponse(500, "Internal Server Error");
+    //     });
+    // }
 
     // if user is using for cloudflare workers
     if (this.platform === 'cf' || this.platform === 'cloudflare') {
@@ -634,29 +648,11 @@ export default class Diesel {
   }
 
   // Function where our request comes if new architecture is disabled.
-  async #handleRequests(req: Request, server?: Server, env?: Record<string, any>, executionCtx?: any) {
+  async #handleRequests(req: Request, server?: Server, env?: Record<string, any>, executionContext?: any) {
 
-    let pathname;
-    const start = req.url.indexOf('/', req.url.indexOf(':') + 4);
-    let i = start;
-    for (; i < req.url.length; i++) {
-      const charCode = req.url.charCodeAt(i);
-      if (charCode === 37) {
-        const queryIndex = req.url.indexOf('?', i);
-        const path = req.url.slice(start, queryIndex === -1 ? undefined : queryIndex);
-        pathname = tryDecodeURI(path.includes('%25') ? path.replace(/%25/g, '%2525') : path);
-        break;
-      } else if (charCode === 63) {
-        break;
-      }
-    }
-    if (!pathname) {
-      pathname = req.url.slice(start, i);
-    }
-
-    const routeHandler = this.trie.search(pathname, req.method as HttpMethod);
-    const ctx = new Context(req, server, pathname, routeHandler?.path, env, executionCtx);
-
+    const pathname = getPath(req.url);
+    const routeHandler = this.router.find(req.method as HttpMethod, pathname);
+    const ctx = new Context(req, server, pathname, routeHandler?.path, env, executionContext);
 
     try {
       if (this.hasOnReqHook)
@@ -752,6 +748,29 @@ export default class Diesel {
   }
 
   /**
+   * Mount method
+   */
+
+  mount(
+    prefix: string,
+    fetch: (request: Request, ...args: any) => Response | Promise<Response>,
+  ) {
+    const cleanPrefix = prefix.endsWith("/*") ? prefix.slice(0, -1) : prefix;
+    const prefixLength = cleanPrefix === '/' ? 0 : cleanPrefix.length;
+    this.any(prefix, (ctx) => {
+      // build new url for fetch
+      const url = new URL(ctx.req.url);
+      // here we slice orgininal coming url like /hono/hello so we have to slice /hono
+      // and only /hello should become new url
+      url.pathname = url.pathname.slice(prefixLength) || '/';
+      // create new Request with that url 
+      const newRequest = new Request(url.toString(), ctx.req);
+      // call fetch 
+      return fetch(newRequest, ctx.env, ctx.executionContext);
+    });
+  }
+
+  /**
    * Registers a router instance for subrouting.
    * Allows defining subroutes like:
    *   const userRoute = new Diesel();
@@ -790,10 +809,11 @@ export default class Diesel {
       const handler = args.handlers[args.handlers.length - 1];
       const method = args.method;
       try {
-        this.trie.insert(fullpath, {
-          handler: handler as handlerFunction,
-          method,
-        });
+        // this.trie.insert(fullpath, {
+        //   handler: handler as handlerFunction,
+        //   method,
+        // });
+        this.router.add(method, fullpath, handler as handlerFunction)
       } catch (error) {
         console.error(`Error inserting ${fullpath}:`, error);
       }
@@ -858,9 +878,17 @@ export default class Diesel {
           "GET", "POST", "PUT", "DELETE",
           "PATCH", "OPTIONS", "HEAD", "PROPFIND",
         ];
-        for (const method of allMethods) this.trie.insert(path, { handler, method: method });
+        for (const method of allMethods) {
+          try {
+            this.router.add(method, path, handler);
+          } catch (error) {
+
+          }
+        }
       }
-      this.trie.insert(path, { handler, method });
+      else {
+        this.router.add(method, path, handler);
+      }
     } catch (error) {
       console.error(`Error inserting ${path}:`, error);
     }
@@ -881,8 +909,9 @@ export default class Diesel {
 
   use(
     pathORHandler?: string | string[] | middlewareFunc | middlewareFunc[] | Function | Function[],
-    handlers?: middlewareFunc | middlewareFunc[] | Function | Function[]
+    ...handlers: middlewareFunc | middlewareFunc[] | Function | Function[] | any
   ): this {
+
     /**
      * First, we check if the user has passed an array of global middlewares.
      * Example: app.use([h1, h2])
@@ -895,6 +924,7 @@ export default class Diesel {
          */
         if (typeof handler === "function") {
           this.globalMiddlewares.push(handler as middlewareFunc);
+          // this.trie.pushMidl('/', handler as middlewareFunc)
         }
       });
     }
@@ -906,15 +936,16 @@ export default class Diesel {
     if (typeof pathORHandler === "function") {
 
       this.globalMiddlewares.push(pathORHandler as middlewareFunc);
+      // this.trie.pushMidl('/', pathORHandler as middlewareFunc)
 
       /**
        * Additionally, check if there are multiple handlers passed as the second parameter.
-       * Example: app.use(h1, [h2, h3])
+       * Example: app.use(h1, h2,h3,h4..)
        */
-
       if (Array.isArray(handlers)) {
         handlers.forEach((handler: Function) => {
           this.globalMiddlewares.push(handler as middlewareFunc);
+          // this.trie.pushMidl('/', handler as middlewareFunc)
         });
       }
       return this;
@@ -930,6 +961,7 @@ export default class Diesel {
       : [pathORHandler].filter(
         (path): path is string => typeof path === "string"
       );
+
 
     paths.forEach((path: string) => {
       // Initialize the middleware array for the given path if it doesn't already exist.
@@ -948,13 +980,15 @@ export default class Diesel {
       }
     });
 
-    // new try experimental
-    // paths.forEach((path: string) => {
-    //   console.log('midl',path, handlers)
-    //   this.trie.pushMidl(path, handlers as any)
-    // })
 
     return this;
+
+    // new try experimental
+    paths.forEach((path: string) => {
+      // console.log('midl', path, handlers)
+      // this.trie.pushMidl(path, handlers as any)
+    })
+    return this
   }
 
   get(

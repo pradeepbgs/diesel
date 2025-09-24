@@ -1,4 +1,5 @@
 import { Server } from "bun";
+import { Router } from "./router/interface";
 export type listenCalllBackType = () => void;
 export type handlerFunction = (ctx: ContextType) => Response | Promise<Response | undefined>;
 export type middlewareFunc = (ctx: ContextType | Request | any, server: Server) => void | Response | Promise<undefined | Response>;
@@ -27,10 +28,12 @@ export interface Hooks {
 }
 export interface ContextType {
     req: Request;
-    server: Server;
-    pathname: string;
+    server?: Server;
+    path?: string | undefined;
+    routePattern?: string | undefined;
+    env?: Record<string, any>;
+    executionContext?: any | undefined;
     headers: Headers;
-    routePattern?: string;
     setHeader: (key: string, value: string) => this;
     json: (data: object, status?: number) => Response;
     text: (data: string, status?: number) => Response;
@@ -61,7 +64,7 @@ export interface CookieOptions {
     sameSite?: "Strict" | "Lax" | "None";
 }
 export interface RouteHandlerT {
-    method: string;
+    method?: string;
     handler: handlerFunction;
     isDynamic?: boolean;
     path?: string;
@@ -90,9 +93,7 @@ export interface DieselT {
     corsConfig: corsT | null;
     globalMiddlewares: Array<(ctx: ContextType, server?: Server) => void | Promise<void | Response>>;
     middlewares: Map<string, Array<(ctx: ContextType, server?: Server) => void | Promise<void | Response>>>;
-    trie: {
-        search: (pathname: string, method: string) => RouteHandlerT | undefined;
-    };
+    router: Router;
     staticPath: string | null;
     staticRequestPath: string | null;
     staticFiles: Record<string, string>;

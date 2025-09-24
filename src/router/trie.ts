@@ -1,4 +1,5 @@
-import type { handlerFunction, HttpMethod, middlewareFunc, RouteHandlerT, } from "./types"
+import { NormalizedRoute, Router } from "../router/interface"
+import type { handlerFunction, HttpMethod, middlewareFunc, RouteHandlerT, } from "../types"
 
 
 class TrieNode {
@@ -56,7 +57,7 @@ export default class Trie {
       node.isEndOfWord = true;
       node.handler.push(route.handler)
       node.path = path;
-      node.method.push(route.method)
+      node.method.push(route.method!)
       return;
     }
 
@@ -67,6 +68,10 @@ export default class Trie {
       if (segment.startsWith(':')) {
         isDynamic = true;
         key = ':';  // Store dynamic routes under the key ':'
+      }
+
+      if (segment === '*') {
+        key = '*';
       }
 
       if (!node.children[key]) {
@@ -81,7 +86,7 @@ export default class Trie {
     // Assign route details only after path traversal
     node.isEndOfWord = true;
     node.path = path;
-    node.method.push(route.method);
+    node.method.push(route.method!);
     node.handler.push(route.handler);
 
   }
@@ -91,41 +96,71 @@ export default class Trie {
   search(path: string, method: HttpMethod) {
     let node = this.root;
     const pathSegments = path.split('/').filter(Boolean);
-    const totalSegments = pathSegments.length;
-
-    for (const segment of pathSegments) {
-      let key = segment;
-
-      // Check for exact match first (static)
-      if (!node.children[key]) {
-        // Try dynamic match (e.g., ':id')
-        if (node.children[':']) {
-          node = node.children[':'];
-        } else {
-          return null; // No match
-        }
+  
+    for (let i = 0; i < pathSegments.length; i++) {
+      const segment = pathSegments[i];
+  
+      if (node.children[segment]) {
+        // exact match
+        node = node.children[segment];
+      } else if (node.children[':']) {
+        // dynamic match :
+        node = node.children[':'];
+      } else if (node.children['*']) {
+        // Wildcard match → stop traversal here
+        node = node.children['*'];
+        break;
       } else {
-        node = node.children[key];
+        return null;
       }
     }
-
-    // Check if the number of segments matches the number of dynamic segments
+  
     const routeSegments = node.path.split('/').filter(Boolean);
-    if (totalSegments !== routeSegments.length) {
+  
+    // skip strict length check if last segment is '*'
+    const hasWildcard = routeSegments[routeSegments.length - 1] === '*';
+    if (!hasWildcard && pathSegments.length !== routeSegments.length) {
       return null;
     }
-
-    // Method matching
+  
+    // Method check
     const routeMethodIndex = node.method.indexOf(method);
     if (routeMethodIndex !== -1) {
       return {
         path: node.path,
-        handler: node.handler[0], // node.handler[routeMethodIndex]
+        handler: node.handler[0],
         pattern: node.pattern,
       };
     }
+  
+    return null;
+  }
+  
 
-    return null
+
+}
+
+
+// Implementation
+
+export class TrieRouter implements Router {
+  private trie = new Trie();
+  private cache = new Map()
+
+  add(method: string, path: string, handler: handlerFunction) {
+    this.trie.insert(path, { method, handler });
   }
 
+  find(method: string, path: string): NormalizedRoute | null {
+    // const cachedRoute = this.cache.get(`${method}:${path}`);
+
+    // if (cachedRoute) {
+    //   return cachedRoute;
+    // }
+
+    return this.trie.search(path, method as HttpMethod);
+    // if (!r) return null;
+    // // this.cache.set(`${method}:${path}`, r);
+    // return r;
+  }
 }

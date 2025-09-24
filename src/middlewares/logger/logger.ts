@@ -91,7 +91,7 @@ export const advancedLogger = (options?: AdvancedLoggerOptions) => {
 
         logger?.() ?? log(logLevel, 'Incoming Request', {
             method: ctx.req.method,
-            url: ctx.pathname,
+            url: ctx.path,
             headers: {
                 'user-agent': ctx.req.headers.get('user-agent'),
                 'content-type': ctx.req.headers.get('content-type'),
@@ -123,7 +123,7 @@ export const advancedLogger = (options?: AdvancedLoggerOptions) => {
     app?.addHooks('onError', async (error: Error, ctx:ContextType) => {
         logger?.() ?? log('error', 'Unhandled Error', {
             method: ctx.req.method,
-            url: ctx.pathname,
+            url: ctx.path,
             status: 500,
             error: error.message,
         });
@@ -179,11 +179,11 @@ export const logger = (options: LoggerOptions) => {
 
     app.addHooks("onRequest", (ctx:ContextType) => {
         const req = ctx.req
-        const pathname = ctx.pathname
+        const pathname = ctx.path
         req.startTime = Date.now();
-        log?.() ?? logFormatted(LogPrefix.Incoming, req.method, pathname);
+        log?.() ?? logFormatted(LogPrefix.Incoming, req.method, pathname!);
 
-        onRequest?.(req, pathname);
+        onRequest?.(req, pathname!);
     });
 
     app.addHooks("onSend", async (ctx: ContextType, finalResult: Response): Promise<Response | undefined> => {
@@ -206,7 +206,7 @@ export const logger = (options: LoggerOptions) => {
 
     app.addHooks("onError", async (error: Error, ctx:ContextType) => {
         const req = ctx.req
-        const  pathname = ctx.pathname
+        const  pathname = ctx.path!
         log?.() ??
             logFormatted(error.message as LogPrefix, req.method, pathname, 500);
 

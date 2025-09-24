@@ -105,7 +105,7 @@ export async function handleRouteNotFound(diesel: DieselT, ctx: ContextType, pat
       const staticRes = await handleStaticFiles(diesel, pathname, ctx);
       if (staticRes) return staticRes;
 
-      const wildcard = diesel.trie.search('*', ctx.req.method);
+      const wildcard = diesel.router.find(ctx.req.method, '*');
       if (wildcard?.handler) return await wildcard.handler(ctx);
     }
   }

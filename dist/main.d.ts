@@ -1,18 +1,17 @@
-import Trie from "./trie.js";
 import { CompileConfig, ContextType, corsT, FilterMethods, HookType, listenArgsT, middlewareFunc, RouteNotFoundHandler, type handlerFunction, type Hooks } from "./types.js";
 import { Server } from "bun";
 import { AdvancedLoggerOptions, LoggerOptions } from "./middlewares/logger/logger.js";
 import { EventEmitter } from 'events';
+import { Router } from "./router/interface.js";
 type errorFormat = 'json' | 'text' | 'html' | string;
 export default class Diesel {
     #private;
     private static instance;
-    fecth: any;
     routes: Record<string, Function>;
     private tempRoutes;
     globalMiddlewares: middlewareFunc[];
     middlewares: Map<string, middlewareFunc[]>;
-    trie: Trie;
+    router: Router;
     hasOnReqHook: boolean;
     hasMiddleware: boolean;
     hasPreHandlerHook: boolean;
@@ -36,9 +35,10 @@ export default class Diesel {
     compileConfig: CompileConfig | null;
     emitter: EventEmitter;
     errorFormat: errorFormat;
+    platform: string;
     staticPath: any;
     staticRequestPath: string | undefined;
-    constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, prefixApiUrl, onError, logger, pipelineArchitecture, errorFormat }?: {
+    constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, prefixApiUrl, onError, logger, pipelineArchitecture, errorFormat, platform, router }?: {
         jwtSecret?: string;
         baseApiUrl?: string;
         enableFileRouting?: boolean;
@@ -48,6 +48,8 @@ export default class Diesel {
         logger?: boolean;
         pipelineArchitecture?: boolean;
         errorFormat?: errorFormat;
+        platform?: string;
+        router?: string;
     });
     static router(prefix: string): Diesel;
     /**
@@ -70,9 +72,13 @@ export default class Diesel {
     BunRoute(method: string, path: string, ...handlersOrResponse: any[]): this;
     listen(port: any, ...args: listenArgsT[]): Server | void;
     close(callback?: () => void): void;
-    fetch(): (req: Request, server: Server) => any;
-    private handleRequests;
+    cfFetch(): (request: Request, env: Record<string, any>, executionCtx: any) => Promise<any>;
+    fetch(): ((request: Request, env?: Record<string, any>, executionContext?: any) => Promise<any>) | ((req: Request, server: Server) => any) | ((req: Request, server?: Server, env?: Record<string, any>, executionContext?: any) => Promise<any>);
     private handleError;
+    /**
+     * Mount method
+     */
+    mount(prefix: string, fetch: (request: Request, ...args: any) => Response | Promise<Response>): void;
     /**
      * Registers a router instance for subrouting.
      * Allows defining subroutes like:
@@ -102,7 +108,7 @@ export default class Diesel {
      * - app.use(["/home", "/user"], [h1, h2]) -> Adds `h1` and `h2` to `/home` and `/user`.
      * - app.use(h1, [h2, h1]) -> Runs `h1`, then `h2`, and `h1` again as specified.
      */
-    use(pathORHandler?: string | string[] | middlewareFunc | middlewareFunc[] | Function | Function[], handlers?: middlewareFunc | middlewareFunc[] | Function | Function[]): this;
+    use(pathORHandler?: string | string[] | middlewareFunc | middlewareFunc[] | Function | Function[], ...handlers: middlewareFunc | middlewareFunc[] | Function | Function[] | any): this;
     get(path: string, ...handlers: handlerFunction[]): this;
     post(path: string, ...handlers: handlerFunction[]): this;
     put(path: string, ...handlers: handlerFunction[]): this;

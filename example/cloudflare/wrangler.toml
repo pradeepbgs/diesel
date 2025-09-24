@@ -1,0 +1,6 @@
+name = "cfw-diesel"
+main = "app.js"
+compatibility_date = "2025-09-23"
+
+# If you need Node.js APIs
+compatibility_flags = ["nodejs_compat"]
