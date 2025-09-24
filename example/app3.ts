@@ -1,12 +1,13 @@
 import Diesel from "../src/main";
 import { ContextType } from "../src/types";
 import { HTTPException } from '../src/http-exception';
-
+import FindMyWay from 'find-my-way'
+import { FindMyWayRouter } from "../src/router/find-my-way";
 
 
 const app = new Diesel({
     errorFormat: 'text',
-    router:'fastify'
+    // router: 'fastify',
 })
 
 const msg = "hhhhh"
@@ -36,6 +37,7 @@ function addMiddleware() {
 app.get('/user/:id', (ctx) => {
     const p = ctx.req
     const id = ctx.params.id
+    console.log('id ', id)
     return ctx.text(id)
 })
 

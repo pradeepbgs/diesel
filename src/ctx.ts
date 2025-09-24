@@ -13,14 +13,6 @@ async function getEjs() {
   return ejsInstance;
 }
 
-interface ContextOptions {
-  path: string;
-  routePattern?: string;
-  server?: any;                  // Bun / Node
-  env?: Record<string, any>;     // Cloudflare Workers
-  executionCtx?: any | undefined; // CF Workers
-}
-
 const typeMap: any = {
   string: "text/plain; charset=utf-8",
   object: "application/json; charset=utf-8",

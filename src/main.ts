@@ -4,6 +4,8 @@ import {
   CompileConfig,
   ContextType,
   corsT,
+  DieselOptions,
+  errorFormat,
   FilterMethods,
   HookFunction,
   HookType,
@@ -59,7 +61,6 @@ import {
 import { HTTPException } from "./http-exception";
 import { Router, RouterFactory } from "./router/interface.js";
 
-type errorFormat = 'json' | 'text' | 'html' | string
 
 export default class Diesel {
   private static instance: Diesel
@@ -99,35 +100,25 @@ export default class Diesel {
   // the request path where user wants static files should be server
   staticRequestPath: string | undefined = undefined;
 
-  constructor(
-    {
-      jwtSecret,
-      baseApiUrl,
-      enableFileRouting,
-      idleTimeOut,
-      prefixApiUrl,
-      onError,
-      logger,
-      pipelineArchitecture,
+  constructor(options: DieselOptions = {}) {
+
+    const {
+      router = 'trie',
+      routerInstance,
       errorFormat = 'json',
       platform = 'bun',
-      router = 'trie'
-    }
-      : {
-        jwtSecret?: string,
-        baseApiUrl?: string,
-        enableFileRouting?: boolean,
-        idleTimeOut?: number,
-        prefixApiUrl?: string,
-        onError?: boolean,
-        logger?: boolean,
-        pipelineArchitecture?: boolean,
-        errorFormat?: errorFormat,
-        platform?: string,
-        router?: string
-      } = {}
-  ) {
-    this.router = RouterFactory.create(router);
+      enableFileRouting = false,
+      prefixApiUrl = '',
+      baseApiUrl = '',
+      jwtSecret,
+      idleTimeOut = 10,
+      pipelineArchitecture = false,
+      logger,
+      onError
+    } = options;
+    if (routerInstance) this.router = routerInstance
+    else this.router = RouterFactory.create(router);
+
     this.errorFormat = errorFormat
     this.platform = platform
 

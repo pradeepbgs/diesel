@@ -209,3 +209,20 @@ export interface CompileConfig {
     hasOnSendHook: boolean,
     hasFilterEnabled: boolean
 }
+
+export type errorFormat = 'json' | 'text' | 'html' | string
+
+export interface DieselOptions {
+    jwtSecret?: string;
+    baseApiUrl?: string;
+    enableFileRouting?: boolean;
+    idleTimeOut?: number;
+    prefixApiUrl?: string;
+    onError?: boolean;
+    logger?: boolean;
+    pipelineArchitecture?: boolean;
+    errorFormat?: errorFormat
+    platform?: string;
+    router?: string;             
+    routerInstance?: Router;    
+}
