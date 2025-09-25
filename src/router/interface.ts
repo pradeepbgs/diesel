@@ -2,6 +2,7 @@ import { handlerFunction } from "../types";
 import { Handler, HTTPVersion } from 'find-my-way'
 import { TrieRouter } from "./trie";
 import { FindMyWayRouter } from './find-my-way'
+import { TrieRouter2 } from "./trie2";
 
 export interface Router {
     add(method: string, path: string, handler: handlerFunction | Handler<HTTPVersion.V1>): void
@@ -15,7 +16,7 @@ export interface RouteMatchResult {
 
 export interface NormalizedRoute {
     handler: handlerFunction;
-    params?: Record<string, string>;
+    params?: Record<string, string> | string[];
     path?: string;
     method?: string;
 }
@@ -25,6 +26,8 @@ export interface NormalizedRoute {
 export class RouterFactory {
     static create(name?: string): Router {
         switch (name) {
+            case 't2':
+                return new TrieRouter2()
             case 'trie':
                 return new TrieRouter()
             case 'fastify':

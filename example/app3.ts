@@ -3,10 +3,12 @@ import { ContextType } from "../src/types";
 import { HTTPException } from '../src/http-exception';
 import FindMyWay from 'find-my-way'
 import { FindMyWayRouter } from "../src/router/find-my-way";
+import { TrieRouter2 } from '../src/router/trie2'
 
-
+const t2 = new TrieRouter2()
 const app = new Diesel({
     errorFormat: 'text',
+    // routerInstance: t2
     // router: 'fastify',
 })
 
@@ -106,6 +108,12 @@ app.get('/aerr', async (ctx) => {
 });
 
 async function someAsyncTask() { }
+
+
+
+app.get('/hello/2', (ctx) => ctx.send("/hello/2"))
+app.get('/hello/:id/:name', (ctx) => ctx.send('/helo/;id/;name'))
+
 
 app.listen(3000, () => console.log("diesel running on 3000"))
 

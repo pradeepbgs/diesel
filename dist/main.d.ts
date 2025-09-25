@@ -1,9 +1,8 @@
-import { CompileConfig, ContextType, corsT, FilterMethods, HookType, listenArgsT, middlewareFunc, RouteNotFoundHandler, type handlerFunction, type Hooks } from "./types.js";
+import { CompileConfig, ContextType, corsT, DieselOptions, errorFormat, FilterMethods, HookType, listenArgsT, middlewareFunc, RouteNotFoundHandler, type handlerFunction, type Hooks } from "./types.js";
 import { Server } from "bun";
 import { AdvancedLoggerOptions, LoggerOptions } from "./middlewares/logger/logger.js";
 import { EventEmitter } from 'events';
 import { Router } from "./router/interface.js";
-type errorFormat = 'json' | 'text' | 'html' | string;
 export default class Diesel {
     #private;
     private static instance;
@@ -38,19 +37,7 @@ export default class Diesel {
     platform: string;
     staticPath: any;
     staticRequestPath: string | undefined;
-    constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, prefixApiUrl, onError, logger, pipelineArchitecture, errorFormat, platform, router }?: {
-        jwtSecret?: string;
-        baseApiUrl?: string;
-        enableFileRouting?: boolean;
-        idleTimeOut?: number;
-        prefixApiUrl?: string;
-        onError?: boolean;
-        logger?: boolean;
-        pipelineArchitecture?: boolean;
-        errorFormat?: errorFormat;
-        platform?: string;
-        router?: string;
-    });
+    constructor(options?: DieselOptions);
     static router(prefix: string): Diesel;
     /**
      this filter is like user once specify which routes needs to be public and for rest routes use a global
@@ -122,4 +109,3 @@ export default class Diesel {
     on(event: string | symbol, listener: EventListener): void;
     emit(event: string | symbol, ...args: any): void;
 }
-export {};

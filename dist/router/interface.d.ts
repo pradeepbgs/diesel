@@ -12,7 +12,7 @@ export interface RouteMatchResult {
 }
 export interface NormalizedRoute {
     handler: handlerFunction;
-    params?: Record<string, string>;
+    params?: Record<string, string> | string[];
     path?: string;
     method?: string;
 }

@@ -3,16 +3,16 @@ import Diesel from "../../src/main"
 // import { Hono } from '/home/pradeep/Desktop/hono/src/hono'
 
 const app = new Diesel({})
-    .get('/hello', (c) => c.text("Hello Diesel!"))
+    .get('/', (c) => c.text("Hello Diesel!"))
 
 const honoApp = new Hono()
-    .get("/hello", (c) => c.text("Hello Hono!"))
+    .get("/", (c) => c.text("Hello Hono!"))
 
 
 
 
-app.mount('/hono/*', honoApp.fetch)
-honoApp.mount("/diesel/", app.fetch())
+//app.mount('/hono/*', honoApp.fetch)
+//honoApp.mount("/diesel/", app.fetch())
 
 app.listen(3000, () => console.log('diesel is running on port', 3000))
 console.log('hono is running on port', 3002)

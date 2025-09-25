@@ -1,10 +1,11 @@
-import { NormalizedRoute, Router } from "./router/interface";
+import { extractParam } from "../ctx";
+import { NormalizedRoute, Router } from "../router/interface";
 import type {
   handlerFunction,
   HttpMethod,
   middlewareFunc,
   RouteHandlerT,
-} from "./types";
+} from "../types";
 
 class TrieNode {
   children: Record<string, TrieNode>;
@@ -15,7 +16,7 @@ class TrieNode {
   path: string;
   methodMap: Map<string, handlerFunction>; // O(1) method lookup
   segmentCount: number; // cached number of segments
-
+  params: string[]
   constructor() {
     this.children = {};
     this.isEndOfWord = false;
@@ -25,6 +26,7 @@ class TrieNode {
     this.path = "";
     this.methodMap = new Map();
     this.segmentCount = 0;
+    this.params = []
   }
 }
 
@@ -42,7 +44,8 @@ export default class Trie {
     const segments = path.split("/").filter(Boolean);
 
     if (path === "/") {
-      node.handler = middlewares[0]; // simple, only first middleware
+      node.handler = middlewares[0] as any // simple, only first middleware
+
       return;
     }
 
@@ -53,7 +56,7 @@ export default class Trie {
       node = node.children[key];
     }
 
-    node.handler = middlewares[0]; // store first middleware
+    node.handler = middlewares[0] as any// store first middleware
   }
 
   insert(path: string, route: RouteHandlerT): void {
@@ -66,8 +69,9 @@ export default class Trie {
       node.isEndOfWord = true;
       node.handler = route.handler;
       node.path = path;
-      node.methodMap.set(route.method, route.handler);
+      node.methodMap.set(route.method!, route.handler);
       node.segmentCount = 0;
+      node.params = []
       return;
     }
 
@@ -88,10 +92,14 @@ export default class Trie {
       node.pattern = segment;
     }
 
+    node.params = pathSegments
+      .filter(s => s.startsWith(':'))
+      .map(s => s.slice(1))
+
     node.isEndOfWord = true;
     node.path = path;
     node.segmentCount = pathSegments.length;
-    node.methodMap.set(route.method, route.handler);
+    node.methodMap.set(route.method!, route.handler);
     node.handler = route.handler; // first handler reference
   }
 
@@ -120,9 +128,10 @@ export default class Trie {
     if (!handler) return null;
 
     return {
-      path: node.path,
+      // path: node.path,
       handler,
-      pattern: node.pattern,
+      // pattern: node.pattern,
+      params: node.params
     };
   }
 }
@@ -137,12 +146,29 @@ export class TrieRouter implements Router {
   }
 
   find(method: string, path: string): NormalizedRoute | null {
-    const cacheKey = `${method}:${path}`;
-    const cached = this.cache.get(cacheKey);
-    if (cached) return cached;
+    return this.trie.search(path, method as HttpMethod)
+    
+    // const cacheKey = `${method}:${path}`;
+    // const cached = this.cache.get(cacheKey);
+    // if (cached) return cached;
 
-    const result = this.trie.search(path, method as HttpMethod);
-    if (result) this.cache.set(cacheKey, result);
-    return result;
+    // const result = this.trie.search(path, method as HttpMethod);
+    // if (result) this.cache.set(cacheKey, result);
+    // return result;
   }
 }
+
+// const t = new TrieRouter()
+// t.add('GET', '/user/:id/:name', () => 'root')
+// t.add('GET', '/user/:id/pk', () => 'root /user/:id/pk')
+
+// const m1 = t.find('GET', '/user/3/pradeep')
+// const m2 = t.find("GET", "/user/3/pk")
+
+// console.log(m1)
+
+// console.log(m2?.handler())
+// console.log(m1?.handler())
+
+// const p = extractParam(m1?.params as string[], '/user/3/pk/')
+// console.log(p)

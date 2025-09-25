@@ -3,22 +3,24 @@ import type { handlerFunction, HttpMethod, middlewareFunc, RouteHandlerT } from 
 declare class TrieNode {
     children: Record<string, TrieNode>;
     isEndOfWord: boolean;
-    handler: handlerFunction[] | middlewareFunc[] | any;
+    handler: handlerFunction | null;
     isDynamic: boolean;
     pattern: string;
     path: string;
-    method: string[];
+    methodMap: Map<string, handlerFunction>;
+    segmentCount: number;
+    params: string[];
     constructor();
 }
 export default class Trie {
     root: TrieNode;
+    cachedSegments: Map<string, string[]>;
     constructor();
     pushMidl(path: string, ...middlewares: middlewareFunc[]): void;
     insert(path: string, route: RouteHandlerT): void;
     search(path: string, method: HttpMethod): {
-        path: string;
-        handler: any;
-        pattern: string;
+        handler: handlerFunction;
+        params: string[];
     } | null;
 }
 export declare class TrieRouter implements Router {

@@ -1,7 +1,6 @@
-import type { Server } from 'bun'
 import type { ContextType } from '../index'
 import { cors } from '../src/middlewares/cors/cors'
-import Diesel from '../dist/main'
+import Diesel from '../src/main'
 export const app = new Diesel()
 
 
@@ -40,12 +39,10 @@ app
   })
 
 app.get("/error", (ctx) => {
-  ctx.status = 500
   throw new Error("Somethin`g went wrong yes");
   return ctx.json({ message: "Something went wrong!" });
 })
 app.get("/err", (ctx) => {
-  ctx.status = 500
   throw new Error("Somethin`g went wrong yes");
   return ctx.send("Error");
 })

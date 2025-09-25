@@ -25,6 +25,7 @@ export class Context implements ContextType {
   server?: Server | undefined;
   path?: string | undefined;
   routePattern?: string;
+  paramNames?: string[] | Record<string, string>
   env?: Record<string, any>;
   executionContext?: any | undefined;
   // status = 200;
@@ -39,13 +40,22 @@ export class Context implements ContextType {
   private urlObject: URL | null = null;
 
 
-  constructor(req: Request, server?: Server, path?: string, routePattern?: string, env?: Record<string, any>, executionContext?: any) {
+  constructor(
+    req: Request,
+    server?: Server,
+    path?: string,
+    routePattern?: string,
+    paramNames?: string[] | Record<string, string>,
+    env?: Record<string, any>,
+    executionContext?: any
+  ) {
     this.req = req;
     this.server = server;
     this.path = path;
     this.routePattern = routePattern;
     this.executionContext = executionContext;
     this.env = env;
+    this.paramNames = paramNames
   }
 
   // Methods
@@ -88,9 +98,10 @@ export class Context implements ContextType {
   }
 
   get params(): Record<string, string> {
-    if (!this.parsedParams && this.routePattern) {
+    if (!this.parsedParams) {
       try {
-        this.parsedParams = extractDynamicParams(this.routePattern, this.path!);
+        // console.log(this.path)
+        this.parsedParams = extractParam(this.paramNames as any, this.path!);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         throw new Error(`Failed to extract route parameters: ${message}`);
@@ -270,6 +281,34 @@ function parseCookie(cookieHeader: string): Record<string, string> {
   );
 }
 
+export function extractParam(paramNames: string[], incomingPath: string) {
+  // ["id","name"]
+  const param: Record<string, string> = {}
+  // inComingpath = /user/2/pradeep
+  const [pathWithoutQuery] = incomingPath.split("?");
+  const pathSegments = pathWithoutQuery.split("/").filter(s => s !== '')
+  
+  // let segmentStart = 0
+  // let segmentIndex = 0
+  // const segments: string[] = []
+  
+  // for (let i = 0; i <= pathWithoutQuery.length; i++) {
+  //   if (i === pathWithoutQuery.length || pathWithoutQuery.charCodeAt(i) === 47) { // '/'
+  //     if (i > segmentStart) {
+  //       segments[segmentIndex++] = pathWithoutQuery.slice(segmentStart, i)
+  //     }
+  //     segmentStart = i + 1
+  //   }
+  // }
+
+  const start = pathSegments.length - paramNames.length
+
+  for (let i = 0; i < paramNames.length; i++) {
+    param[paramNames[i]] = pathSegments[start + i]
+  }
+  return param
+}
+
 export function extractDynamicParams(
   originalPath: string,
   incomingPath: string
@@ -322,7 +361,7 @@ async function parseBody(req: Request): Promise<ParseBodyResult> {
 
 
 
- 
+
 // Deprecated
 // export default function createCtx(
 //   req: Request,

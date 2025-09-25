@@ -643,7 +643,8 @@ export default class Diesel {
 
     const pathname = getPath(req.url);
     const routeHandler = this.router.find(req.method as HttpMethod, pathname);
-    const ctx = new Context(req, server, pathname, routeHandler?.path, env, executionContext);
+    // console.log(routeHandler)
+    const ctx = new Context(req, server, pathname, routeHandler?.path, routeHandler?.params, env, executionContext);
 
     try {
       if (this.hasOnReqHook)
