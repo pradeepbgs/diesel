@@ -1,6 +1,6 @@
 import { Server } from "bun";
 import { ContextType, DieselT, HookType } from "../types";
-export declare function runHooks<T extends any[]>(label: HookType, hooksArray: any, args: T): Promise<any>;
+export declare function runHooks<T extends any[]>(label: HookType, hooksArray: any, args: T): Promise<Response | undefined>;
 export declare function runMiddlewares(diesel: DieselT, pathname: string, ctx: ContextType): Promise<Response | null>;
 export declare function executeBunMiddlewares(middlewares: Function[], req: Request, server: Server): Promise<any>;
 export declare function runFilter(diesel: DieselT, path: string, ctx: ContextType): Promise<any>;

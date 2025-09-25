@@ -11,7 +11,6 @@ function authenticateJwtMiddleware(jwt: any, user_jwt_secret: string) {
         return ctx.json({ message: "Unauthorized", error: "No token provided" }, 401);
       }
 
-
       if (token.startsWith("Bearer ")) {
         token = token.slice(7);
       }

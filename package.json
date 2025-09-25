@@ -1,6 +1,6 @@
 {
   "name": "diesel-core",
-  "version": "1.5.0",
+  "version": "1.5.9",
   "description": "Web framework built on Web Standards",
   "main": "index.js",
   "types": "index.d.ts",
@@ -64,6 +64,11 @@
       "types": "./dist/middlewares/request-id/index.d.ts",
       "import": "./dist/middlewares/request-id/index.js",
       "require": "./dist/middlewares/request-id/index.js"
+    },
+    "./http-exception": {
+      "types": "./dist/http-exception.d.ts",
+      "import": "./dist/http-exception.js",
+      "require": "./dist/http-exception.js"
     }
   },
   "scripts": {
@@ -100,6 +105,7 @@
   "dependencies": {
     "@types/uuid": "^10.0.0",
     "ejs": "^3.1.10",
+    "find-my-way": "^9.3.0",
     "uuid": "^11.1.0"
   }
 }

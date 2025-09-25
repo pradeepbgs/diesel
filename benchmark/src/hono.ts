@@ -1,18 +1,12 @@
-import { Hono, type Context } from 'hono'
-const app = new Hono()
+import { Hono } from 'hono'
+import Diesel from '../../src/main'
 
-// app.use('*',(_, next) => {
-//     console.log('g')
-//     next()
-// })
+const app = new Hono().get('/', (c) => c.text('Hello Hono!'))
 
-app.get('/', (ctx: Context) => ctx.text("hello world!"))
+const dieselApp = new Diesel().get('/', () => new Response('Hello Diesel!'))
 
-app.get("/path/:name", (ctx: Context) => {
-    return ctx.text(`hello ${ctx.req.param('name')} with query: ${ctx.req.query('name')}`)
-})
+app.mount('/api', dieselApp.fetch())
 
-console.log('hono is running on port', 3001)
 Bun.serve({
     fetch: app.fetch,
     port: 3001,

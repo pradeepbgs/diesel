@@ -304,3 +304,22 @@ export const getQueryParams = (
 // `decodeURIComponent` is a long name.
 // By making it a function, we can use it commonly when minified, reducing the amount of code.
 export const decodeURIComponent_ = decodeURIComponent
+
+
+// let pathname;
+// const start = req.url.indexOf('/', req.url.indexOf(':') + 4);
+// let i = start;
+// for (; i < req.url.length; i++) {
+//   const charCode = req.url.charCodeAt(i);
+//   if (charCode === 37) {
+//     const queryIndex = req.url.indexOf('?', i);
+//     const path = req.url.slice(start, queryIndex === -1 ? undefined : queryIndex);
+//     pathname = tryDecodeURI(path.includes('%25') ? path.replace(/%25/g, '%2525') : path);
+//     break;
+//   } else if (charCode === 63) {
+//     break;
+//   }
+// }
+// if (!pathname) {
+//   pathname = req.url.slice(start, i);
+// }

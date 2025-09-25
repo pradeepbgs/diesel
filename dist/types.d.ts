@@ -1,4 +1,5 @@
 import { Server } from "bun";
+import { Router } from "./router/interface";
 export type listenCalllBackType = () => void;
 export type handlerFunction = (ctx: ContextType) => Response | Promise<Response | undefined>;
 export type middlewareFunc = (ctx: ContextType | Request | any, server: Server) => void | Response | Promise<undefined | Response>;
@@ -9,26 +10,29 @@ export type HttpMethodOfApp = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'opt
 export type HttpMethodLower = Lowercase<HttpMethod>;
 export type HookType = "onRequest" | "preHandler" | "postHandler" | "onSend" | "onError" | "onClose";
 export interface onError {
-    (error: Error, req: Request, pathname: string, server: Server): void | null | Response | Promise<void | null | undefined | Response>;
+    (error: Error, ctx: ContextType): void | null | Response | Promise<void | null | undefined | Response>;
 }
 export interface onRequest {
-    (req: Request, pathname: string, server: Server): void;
+    (ctx: ContextType): void;
 }
 export interface onSend {
     (ctx: ContextType, finalResult: Response): Promise<Response | undefined>;
 }
 export interface Hooks {
-    onRequest: onRequest[] | null;
-    preHandler: HookFunction[] | null;
-    postHandler: HookFunction[] | null;
-    onSend: onSend[] | null;
-    onError: onError[] | null;
-    onClose: HookFunction[] | null;
+    onRequest: onRequest[];
+    preHandler: HookFunction[];
+    postHandler: HookFunction[];
+    onSend: onSend[];
+    onError: onError[];
+    onClose: HookFunction[];
 }
 export interface ContextType {
     req: Request;
-    server: Server;
-    pathname: string;
+    server?: Server;
+    path?: string | undefined;
+    routePattern?: string | undefined;
+    env?: Record<string, any>;
+    executionContext?: any | undefined;
     headers: Headers;
     setHeader: (key: string, value: string) => this;
     json: (data: object, status?: number) => Response;
@@ -60,7 +64,7 @@ export interface CookieOptions {
     sameSite?: "Strict" | "Lax" | "None";
 }
 export interface RouteHandlerT {
-    method: string;
+    method?: string;
     handler: handlerFunction;
     isDynamic?: boolean;
     path?: string;
@@ -89,10 +93,10 @@ export interface DieselT {
     corsConfig: corsT | null;
     globalMiddlewares: Array<(ctx: ContextType, server?: Server) => void | Promise<void | Response>>;
     middlewares: Map<string, Array<(ctx: ContextType, server?: Server) => void | Promise<void | Response>>>;
-    trie: {
-        search: (pathname: string, method: string) => RouteHandlerT | undefined;
-    };
+    router: Router;
     staticPath: string | null;
+    staticRequestPath: string | null;
+    staticFiles: Record<string, string>;
     routeNotFoundFunc: RouteNotFoundHandler;
     routerInstance: DieselT;
     tempRoutes: Map<string, TempRouteEntry>;
@@ -127,7 +131,6 @@ export interface ParseBodyResult {
 }
 declare global {
     interface Request {
-        routePattern?: string;
         [key: string]: any;
     }
 }
@@ -139,4 +142,19 @@ export interface CompileConfig {
     hasPostHandlerHook: boolean;
     hasOnSendHook: boolean;
     hasFilterEnabled: boolean;
+}
+export type errorFormat = 'json' | 'text' | 'html' | string;
+export interface DieselOptions {
+    jwtSecret?: string;
+    baseApiUrl?: string;
+    enableFileRouting?: boolean;
+    idleTimeOut?: number;
+    prefixApiUrl?: string;
+    onError?: boolean;
+    logger?: boolean;
+    pipelineArchitecture?: boolean;
+    errorFormat?: errorFormat;
+    platform?: string;
+    router?: string;
+    routerInstance?: Router;
 }

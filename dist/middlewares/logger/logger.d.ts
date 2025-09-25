@@ -5,9 +5,9 @@ export type AdvancedLoggerOptions = {
     app: Diesel;
     logger?: () => void;
     logLevel?: LogLevel;
-    onRequest?: (req: Request, pathname: string) => void;
+    onRequest?: (ctx: ContextType) => void;
     onSend?: (ctx: ContextType) => Response | void | Promise<Response | void>;
-    onError?: (error: Error, req: Request, pathname: string) => Response | void | Promise<Response | void>;
+    onError?: (error: Error, ctx: ContextType) => Response | void | Promise<Response | void>;
 };
 export declare const advancedLogger: (options?: AdvancedLoggerOptions) => void;
 export type LoggerOptions = {

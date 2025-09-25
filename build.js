@@ -26,10 +26,13 @@
 Bun.build({
     entrypoints: [
         './src/main.ts',
-        './src/ctx.ts',
         './src/request_pipeline.ts',
         './src/handleRequest.ts',
-        './src/trie.ts',
+        './src/router/trie.ts',
+        './src/router/interface.ts',
+        './src/router/find-my-way.ts',
+        './src/http-exception.ts',
+        './src/ctx.ts',
     ],
     outdir: './dist',
     minify: true,

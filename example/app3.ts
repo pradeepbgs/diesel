@@ -1,44 +1,58 @@
 import Diesel from "../src/main";
-import { poweredBy } from "../src/middlewares/powered-by";
 import { ContextType } from "../src/types";
+import { HTTPException } from '../src/http-exception';
+import FindMyWay from 'find-my-way'
+import { FindMyWayRouter } from "../src/router/find-my-way";
+import { TrieRouter2 } from '../src/router/trie2'
 
-
+const t2 = new TrieRouter2()
 const app = new Diesel({
-    // pipelineArchitecture: false,
-    // onError:true,
-    // logger: true // allready includes onErr with logger
+    errorFormat: 'text',
+    // routerInstance: t2
+    // router: 'fastify',
 })
 
-// app.useAdvancedLogger({app})
-// app.addHooks('preHandler', () => {
-//     console.log('pre Handler hook hun mai')
-// })
-
-// app.routeNotFound((ctx) => {
-//     return ctx.send(`nahi mila ye route ${ctx.pathname}`)
-// })
-
 const msg = "hhhhh"
-// app.use(() => console.log(msg))
-// app.useLogger({ app , onError(error, req, pathname) {
-//     console.log('got en error ')
-// },})
-// app.use(() => { console.log("hi") })
-// app.BunRoute('get','/', "Helll")
-// app.get('/', (ctx) => {
-//     // ctx.setHeader("name",'pradeep')
-//     // console.log('req ', ctx.req.headers.set("ok",'pk'))
-//     // ctx.headers?.set("ok",'pk')
-//     // const q = ctx.query
-//     // console.log('q ', q)
-//     return ctx.text("Hell")
-//     // return Promise.reject(Error("k error"))
-// })
 
-// app.use('/ok', () => console.log('okk')).get("/ok", (ctx) => ctx.send("ok"))
+function addMiddleware() {
+    // app.use(() => console.log(msg))
 
-app.get("/", (ctx) => ctx.text("Hello world!"))
-// app.get('/', (ctx) => ctx.json({msg:"hello"}))
+    app.use(async () => { console.log("hi") })
+
+    // app.useAdvancedLogger({ app })
+
+    app.addHooks('preHandler', () => {
+        console.log('pre Handler hook hun mai')
+    })
+
+    // app.routeNotFound((ctx) => {
+    //     return ctx.send(`nahi mila ye route ${ctx.path}`)
+    // })
+
+    // app.use('/power', (ctx) => {
+    //     console.log('power middleware')
+    // })
+}
+
+// addMiddleware()
+
+app.get('/user/:id', (ctx) => {
+    const p = ctx.req
+    const id = ctx.params.id
+    console.log('id ', id)
+    return ctx.text(id)
+})
+
+
+app.BunRoute('get', '/bun', "Helll")
+
+
+
+app.get("/", (ctx) => {
+    // const ip = ctx.ip
+    // console.log('ip ', ip)
+    return ctx.text("hello world")
+})
 
 class UserService {
     users: Array<Object>
@@ -67,18 +81,10 @@ class UserService {
 const userService = new UserService()
 app.BunRoute('get', '/user', userService.getUser)
 
-// app.get('/user', userService.getUser)
-
-
-// app.use('/power', (ctx) => {
-//     console.log('power middleware')
-//     // ctx.set("ok",'ok')
-// })
-
+// app.use(async() => console.log('hloblalsssss'), async() => console.log("2nd"), () => console.log("3rd"))
+// app.use(async() => console.log('hloblal'))
+// app.use('/power', () => console.log('power middleware'))
 app.get("/power", (ctx) => {
-    // ctx.changeStatus(400)
-    // ctx.set("ok", "pradeep")
-    // console.log('ok ', ctx.get('ok'))
     return ctx.text("/power")
 })
 
@@ -91,8 +97,9 @@ app.get('/async', (ctx) => {
     })
 })
 
-app.get('/err', (ctx) => {
-    throw new Error("sync error");
+app.get('/err', (ctx: ContextType) => {
+    throw new HTTPException(405, { res: ctx.json({ msg: "unauthorized sir" }) })
+    throw new HTTPException(400, { message: 'Unauthorized' });
 });
 
 app.get('/aerr', async (ctx) => {
@@ -102,16 +109,17 @@ app.get('/aerr', async (ctx) => {
 
 async function someAsyncTask() { }
 
+
+
+app.get('/hello/2', (ctx) => ctx.send("/hello/2"))
+app.get('/hello/:id/:name', (ctx) => ctx.send('/helo/;id/;name'))
+
+
 app.listen(3000, () => console.log("diesel running on 3000"))
+
+
 // Bun.serve({
-//     port:3000,
-//     fetch:app.fetch() as any
+//     port: 3000,
+//     fetch: app.fetch() as any
 // })
 
-// fetch: (
-//     request: Request,
-//     Env?: E['Bindings'] | {},
-//     executionCtx?: ExecutionContext
-// ) => Response | Promise<Response> = (request, ...rest) => {
-//     return this.#dispatch(request, rest[1], rest[0], request.method)
-// }

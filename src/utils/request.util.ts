@@ -5,7 +5,7 @@ import { getMimeType } from "./mimeType";
 export async function runHooks<T extends any[]>(
   label: HookType,
   hooksArray: any,
-  args: T): Promise<any> {
+  args: T): Promise<Response | undefined> {
 
   if (!hooksArray?.length) return;
   for (let i = 0; i < hooksArray.length; i++) {
@@ -93,12 +93,21 @@ export async function handleBunFilterRequest(
 }
 
 export async function handleRouteNotFound(diesel: DieselT, ctx: ContextType, pathname: string): Promise<Response | undefined> {
-  if (diesel.staticPath) {
-    const staticRes = await handleStaticFiles(diesel, pathname, ctx);
-    if (staticRes) return staticRes;
 
-    const wildcard = diesel.trie.search("*", ctx.req.method);
-    if (wildcard?.handler) return await wildcard.handler(ctx);
+  if (diesel.staticPath) {
+    let isStaticRequest = true;
+
+    if (diesel.staticRequestPath) {
+      isStaticRequest = pathname.startsWith(diesel.staticRequestPath);
+    }
+
+    if (isStaticRequest) {
+      const staticRes = await handleStaticFiles(diesel, pathname, ctx);
+      if (staticRes) return staticRes;
+
+      const wildcard = diesel.router.find(ctx.req.method, '*');
+      if (wildcard?.handler) return await wildcard.handler(ctx);
+    }
   }
 
   const fallback = diesel.routeNotFoundFunc(ctx);

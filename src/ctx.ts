@@ -13,7 +13,6 @@ async function getEjs() {
   return ejsInstance;
 }
 
-
 const typeMap: any = {
   string: "text/plain; charset=utf-8",
   object: "application/json; charset=utf-8",
@@ -23,10 +22,12 @@ const typeMap: any = {
 
 export class Context implements ContextType {
   req: Request;
-  server: Server;
-  pathname: string;
+  server?: Server | undefined;
+  path?: string | undefined;
   routePattern?: string;
-
+  paramNames?: string[] | Record<string, string>
+  env?: Record<string, any>;
+  executionContext?: any | undefined;
   // status = 200;
   headers = new Headers();
 
@@ -39,11 +40,22 @@ export class Context implements ContextType {
   private urlObject: URL | null = null;
 
 
-  constructor(req: Request, server: Server, pathname: string, routePattern: string = "") {
+  constructor(
+    req: Request,
+    server?: Server,
+    path?: string,
+    routePattern?: string,
+    paramNames?: string[] | Record<string, string>,
+    env?: Record<string, any>,
+    executionContext?: any
+  ) {
     this.req = req;
     this.server = server;
-    this.pathname = pathname;
+    this.path = path;
     this.routePattern = routePattern;
+    this.executionContext = executionContext;
+    this.env = env;
+    this.paramNames = paramNames
   }
 
   // Methods
@@ -67,7 +79,8 @@ export class Context implements ContextType {
   }
 
   get ip(): string | null {
-    return this.server.requestIP(this.req)?.address ?? null;
+    if (this.server) return this.server.requestIP(this.req)?.address ?? null;
+    return this.req.headers.get("CF-Connecting-IP") || null;
   }
 
   get url(): URL {
@@ -85,9 +98,10 @@ export class Context implements ContextType {
   }
 
   get params(): Record<string, string> {
-    if (!this.parsedParams && this.routePattern) {
+    if (!this.parsedParams) {
       try {
-        this.parsedParams = extractDynamicParams(this.routePattern, this.pathname);
+        // console.log(this.path)
+        this.parsedParams = extractParam(this.paramNames as any, this.path!);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         throw new Error(`Failed to extract route parameters: ${message}`);
@@ -229,7 +243,7 @@ export class Context implements ContextType {
     });
     return new Response(stream, { headers });
   }
-  
+
   yieldStream(callback: () => AsyncIterable<any>): Response {
     return new Response(
       // {
@@ -240,241 +254,6 @@ export class Context implements ContextType {
       // { headers: this.headers }
     );
   }
-}
-
-
-
-// Deprecated
-export default function createCtx(
-  req: Request,
-  server: Server,
-  pathname: string,
-  // onn: (event: string | symbol, listener: EventListener) => void,
-  // emitter: (event: string | symbol, ...args: any) => void,
-  routePattern: string | undefined
-): ContextType {
-  let parsedQuery: Record<string, string> | null = null;
-  let parsedParams: Record<string, string> | null = null;
-  let parsedCookies: Record<string, string> | null = null;
-  let parsedBody: Promise<any> | null = null;
-  let contextData: Record<string, any> = {};
-  let urlObject: URL | null = null
-
-  return {
-    req,
-    server,
-    pathname,
-    // status: 200,
-    headers: new Headers(),
-
-    // on(event: string | symbol, listener: EventListener) {
-    //   onn(event, listener)
-    // },
-
-    // emit(event: string | symbol, ...args: any) {
-    //   emitter(event, ...args)
-    // },
-
-    setHeader(key: string, value: string): ContextType {
-      this.headers.set(key, value);
-      return this;
-    },
-
-    removeHeader(key: string): ContextType {
-      this.headers.delete(key)
-      return this
-    },
-
-    set<T>(key: string, value: T): ContextType {
-      contextData[key] = value;
-      return this;
-    },
-
-    get<T>(key: string): T | undefined {
-      return contextData[key];
-    },
-
-    get ip(): string | null {
-      return this.server.requestIP(req)?.address ?? null;
-    },
-
-    get url(): URL {
-      if (!urlObject) {
-        urlObject = new URL(req.url)
-      }
-      return urlObject
-    },
-
-    get query(): Record<string, string> {
-      if (!parsedQuery) {
-        if (!this.url.search) return {};
-        parsedQuery = Object.fromEntries(this.url.searchParams);
-      }
-      return parsedQuery;
-    },
-
-    get params(): Record<string, string> {
-      if (!parsedParams && routePattern) {
-        try {
-          parsedParams = extractDynamicParams(routePattern, pathname);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error)
-          throw new Error(`Failed to extract route parameters: ${message}`);
-        }
-      }
-      return parsedParams ?? {};
-    },
-
-    get body(): Promise<any> {
-      if (req.method === "GET") {
-        return Promise.resolve({});
-      }
-
-      if (!parsedBody) {
-        parsedBody = (async () => {
-          try {
-            const result = await parseBody(req);
-            if (result.error) {
-              throw new Error(result.error);
-            }
-            return Object.keys(result).length === 0 ? null : result;
-          } catch (error) {
-            throw new Error("Invalid request body format");
-            // const message = error instanceof Error ? error.message : String(error);
-            // throw new Error(`Failed to parse request body: ${message}`);
-          }
-        })();
-      }
-      return parsedBody;
-    },
-
-    text(data: string, status: number = 200) {
-      return new Response(data, {
-        status,
-        headers: this.headers
-      });
-    },
-
-    send<T>(data: T, status: number = 200): Response {
-      // this.status = status;
-
-      // const dataType = data instanceof Uint8Array ? "Uint8Array"
-      //   : data instanceof ArrayBuffer ? "ArrayBuffer"
-      //     : typeof data;
-
-      let dataType: string
-
-      if (data instanceof Uint8Array) dataType = "Uint8Array"
-      else if (data instanceof ArrayBuffer) dataType = 'ArrayBuffer'
-      else dataType = typeof data
-
-      // if (!this.headers.has("Content-Type")) {
-      //   this.headers.set("Content-Type", typeMap[dataType] ?? "text/plain; charset=utf-8");
-      // }
-
-      const responseData =
-        dataType === "object" && data !== null ? JSON.stringify(data) : (data as any);
-      return new Response(responseData, { status, headers: this.headers });
-    },
-
-    json<T>(object: T, status: number = 200): Response {
-      // this.status = status;
-      // if (!this.headers.has("Content-Type")) {
-      //   this.headers.set("Content-Type", "application/json; charset=utf-8");
-      // }
-      return Response.json(object, { status, headers: this.headers })
-    },
-
-    file(filePath: string, mime_Type?: string, status: number = 200): Response {
-      // this.status = status;
-      const file = Bun.file(filePath);
-      if (!this.headers.has("Content-Type")) {
-        this.headers.set("Content-Type", mime_Type ?? getMimeType(filePath));
-      }
-      return new Response(file, { status, headers: this.headers });
-    },
-
-    async ejs(viewPath: string, data = {}, status: number = 200): Promise<Response> {
-      // this.status = status;
-      const ejs = await getEjs();
-      try {
-        const template = await Bun.file(viewPath).text()
-        const rendered = ejs.render(template, data)
-        const headers = new Headers({ "Content-Type": "text/html; charset=utf-8" });
-        return new Response(rendered, { status, headers });
-      } catch (error) {
-        console.error("EJS Rendering Error:", error);
-        return new Response("Error rendering template", { status: 500 });
-      }
-    },
-
-    redirect(path: string, status: number = 302): Response {
-      // this.status = status
-      this.headers.set("Location", path);
-      return new Response(null, { status, headers: this.headers });
-    },
-
-    stream(callback: (controller: ReadableStreamDefaultController) => void) {
-      const headers = new Headers(this.headers)
-      const stream = new ReadableStream({
-        async start(controller) {
-          await callback(controller);
-          controller.close();
-        },
-      });
-
-      return new Response(stream, {
-        headers
-      });
-    },
-
-    yieldStream(callback: () => AsyncIterable<any>): Response {
-      return new Response("not working stream yet.")
-      // return new Response(
-      //   {
-      //     async *[Symbol.asyncIterator ]() {
-      //       yield* callback();
-      //     },
-      //   },
-      //   { headers: this.headers }
-      // );
-    },
-
-
-    setCookie(
-      name: string,
-      value: string,
-      options: CookieOptions = {}
-    ): ContextType {
-
-      let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(
-        value
-      )}`;
-
-      if (options.maxAge) cookieString += `; Max-Age=${options.maxAge}`;
-      if (options.expires)
-        cookieString += `; Expires=${options.expires.toUTCString()}`;
-      if (options.path) cookieString += `; Path=${options.path}`;
-      if (options.domain) cookieString += `; Domain=${options.domain}`;
-      if (options.secure) cookieString += `; Secure`;
-      if (options.httpOnly) cookieString += `; HttpOnly`;
-      if (options.sameSite) cookieString += `; SameSite=${options.sameSite}`;
-
-      this.headers.append("Set-Cookie", cookieString);
-
-      return this;
-    },
-
-
-    get cookies(): Record<string, string> {
-      if (!parsedCookies) {
-        const cookieHeader = this.req.headers.get("cookie");
-        parsedCookies = cookieHeader ? parseCookie(cookieHeader) : {};
-      }
-      return parsedCookies;
-    },
-
-  };
 }
 
 // function parseCookie(cookieHeader: string | undefined): Record<string, string> {
@@ -500,6 +279,34 @@ function parseCookie(cookieHeader: string): Record<string, string> {
       return [name, decodeURIComponent(valueParts.join("="))];
     })
   );
+}
+
+export function extractParam(paramNames: string[], incomingPath: string) {
+  // ["id","name"]
+  const param: Record<string, string> = {}
+  // inComingpath = /user/2/pradeep
+  const [pathWithoutQuery] = incomingPath.split("?");
+  const pathSegments = pathWithoutQuery.split("/").filter(s => s !== '')
+  
+  // let segmentStart = 0
+  // let segmentIndex = 0
+  // const segments: string[] = []
+  
+  // for (let i = 0; i <= pathWithoutQuery.length; i++) {
+  //   if (i === pathWithoutQuery.length || pathWithoutQuery.charCodeAt(i) === 47) { // '/'
+  //     if (i > segmentStart) {
+  //       segments[segmentIndex++] = pathWithoutQuery.slice(segmentStart, i)
+  //     }
+  //     segmentStart = i + 1
+  //   }
+  // }
+
+  const start = pathSegments.length - paramNames.length
+
+  for (let i = 0; i < paramNames.length; i++) {
+    param[paramNames[i]] = pathSegments[start + i]
+  }
+  return param
 }
 
 export function extractDynamicParams(
@@ -553,3 +360,237 @@ async function parseBody(req: Request): Promise<ParseBodyResult> {
 }
 
 
+
+
+// Deprecated
+// export default function createCtx(
+//   req: Request,
+//   server: Server,
+//   pathname: string,
+//   // onn: (event: string | symbol, listener: EventListener) => void,
+//   // emitter: (event: string | symbol, ...args: any) => void,
+//   routePattern: string | undefined
+// ): ContextType {
+//   let parsedQuery: Record<string, string> | null = null;
+//   let parsedParams: Record<string, string> | null = null;
+//   let parsedCookies: Record<string, string> | null = null;
+//   let parsedBody: Promise<any> | null = null;
+//   let contextData: Record<string, any> = {};
+//   let urlObject: URL | null = null
+
+//   return {
+//     req,
+//     server,
+//     pathname,
+//     // status: 200,
+//     headers: new Headers(),
+
+//     // on(event: string | symbol, listener: EventListener) {
+//     //   onn(event, listener)
+//     // },
+
+//     // emit(event: string | symbol, ...args: any) {
+//     //   emitter(event, ...args)
+//     // },
+
+//     setHeader(key: string, value: string): ContextType {
+//       this.headers.set(key, value);
+//       return this;
+//     },
+
+//     removeHeader(key: string): ContextType {
+//       this.headers.delete(key)
+//       return this
+//     },
+
+//     set<T>(key: string, value: T): ContextType {
+//       contextData[key] = value;
+//       return this;
+//     },
+
+//     get<T>(key: string): T | undefined {
+//       return contextData[key];
+//     },
+
+//     get ip(): string | null {
+//       return this.server.requestIP(req)?.address ?? null;
+//     },
+
+//     get url(): URL {
+//       if (!urlObject) {
+//         urlObject = new URL(req.url)
+//       }
+//       return urlObject
+//     },
+
+//     get query(): Record<string, string> {
+//       if (!parsedQuery) {
+//         if (!this.url.search) return {};
+//         parsedQuery = Object.fromEntries(this.url.searchParams);
+//       }
+//       return parsedQuery;
+//     },
+
+//     get params(): Record<string, string> {
+//       if (!parsedParams && routePattern) {
+//         try {
+//           parsedParams = extractDynamicParams(routePattern, pathname);
+//         } catch (error) {
+//           const message = error instanceof Error ? error.message : String(error)
+//           throw new Error(`Failed to extract route parameters: ${message}`);
+//         }
+//       }
+//       return parsedParams ?? {};
+//     },
+
+//     get body(): Promise<any> {
+//       if (req.method === "GET") {
+//         return Promise.resolve({});
+//       }
+
+//       if (!parsedBody) {
+//         parsedBody = (async () => {
+//           try {
+//             const result = await parseBody(req);
+//             if (result.error) {
+//               throw new Error(result.error);
+//             }
+//             return Object.keys(result).length === 0 ? null : result;
+//           } catch (error) {
+//             throw new Error("Invalid request body format");
+//             // const message = error instanceof Error ? error.message : String(error);
+//             // throw new Error(`Failed to parse request body: ${message}`);
+//           }
+//         })();
+//       }
+//       return parsedBody;
+//     },
+
+//     text(data: string, status: number = 200) {
+//       return new Response(data, {
+//         status,
+//         headers: this.headers
+//       });
+//     },
+
+//     send<T>(data: T, status: number = 200): Response {
+//       // this.status = status;
+
+//       // const dataType = data instanceof Uint8Array ? "Uint8Array"
+//       //   : data instanceof ArrayBuffer ? "ArrayBuffer"
+//       //     : typeof data;
+
+//       let dataType: string
+
+//       if (data instanceof Uint8Array) dataType = "Uint8Array"
+//       else if (data instanceof ArrayBuffer) dataType = 'ArrayBuffer'
+//       else dataType = typeof data
+
+//       // if (!this.headers.has("Content-Type")) {
+//       //   this.headers.set("Content-Type", typeMap[dataType] ?? "text/plain; charset=utf-8");
+//       // }
+
+//       const responseData =
+//         dataType === "object" && data !== null ? JSON.stringify(data) : (data as any);
+//       return new Response(responseData, { status, headers: this.headers });
+//     },
+
+//     json<T>(object: T, status: number = 200): Response {
+//       // this.status = status;
+//       // if (!this.headers.has("Content-Type")) {
+//       //   this.headers.set("Content-Type", "application/json; charset=utf-8");
+//       // }
+//       return Response.json(object, { status, headers: this.headers })
+//     },
+
+//     file(filePath: string, mime_Type?: string, status: number = 200): Response {
+//       // this.status = status;
+//       const file = Bun.file(filePath);
+//       if (!this.headers.has("Content-Type")) {
+//         this.headers.set("Content-Type", mime_Type ?? getMimeType(filePath));
+//       }
+//       return new Response(file, { status, headers: this.headers });
+//     },
+
+//     async ejs(viewPath: string, data = {}, status: number = 200): Promise<Response> {
+//       // this.status = status;
+//       const ejs = await getEjs();
+//       try {
+//         const template = await Bun.file(viewPath).text()
+//         const rendered = ejs.render(template, data)
+//         const headers = new Headers({ "Content-Type": "text/html; charset=utf-8" });
+//         return new Response(rendered, { status, headers });
+//       } catch (error) {
+//         console.error("EJS Rendering Error:", error);
+//         return new Response("Error rendering template", { status: 500 });
+//       }
+//     },
+
+//     redirect(path: string, status: number = 302): Response {
+//       // this.status = status
+//       this.headers.set("Location", path);
+//       return new Response(null, { status, headers: this.headers });
+//     },
+
+//     stream(callback: (controller: ReadableStreamDefaultController) => void) {
+//       const headers = new Headers(this.headers)
+//       const stream = new ReadableStream({
+//         async start(controller) {
+//           await callback(controller);
+//           controller.close();
+//         },
+//       });
+
+//       return new Response(stream, {
+//         headers
+//       });
+//     },
+
+//     yieldStream(callback: () => AsyncIterable<any>): Response {
+//       return new Response("not working stream yet.")
+//       // return new Response(
+//       //   {
+//       //     async *[Symbol.asyncIterator ]() {
+//       //       yield* callback();
+//       //     },
+//       //   },
+//       //   { headers: this.headers }
+//       // );
+//     },
+
+
+//     setCookie(
+//       name: string,
+//       value: string,
+//       options: CookieOptions = {}
+//     ): ContextType {
+
+//       let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(
+//         value
+//       )}`;
+
+//       if (options.maxAge) cookieString += `; Max-Age=${options.maxAge}`;
+//       if (options.expires)
+//         cookieString += `; Expires=${options.expires.toUTCString()}`;
+//       if (options.path) cookieString += `; Path=${options.path}`;
+//       if (options.domain) cookieString += `; Domain=${options.domain}`;
+//       if (options.secure) cookieString += `; Secure`;
+//       if (options.httpOnly) cookieString += `; HttpOnly`;
+//       if (options.sameSite) cookieString += `; SameSite=${options.sameSite}`;
+
+//       this.headers.append("Set-Cookie", cookieString);
+
+//       return this;
+//     },
+
+
+//     get cookies(): Record<string, string> {
+//       if (!parsedCookies) {
+//         const cookieHeader = this.req.headers.get("cookie");
+//         parsedCookies = cookieHeader ? parseCookie(cookieHeader) : {};
+//       }
+//       return parsedCookies;
+//     },
+
+//   };
+// }

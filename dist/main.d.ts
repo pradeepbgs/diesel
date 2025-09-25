@@ -1,17 +1,16 @@
-import Trie from "./trie.js";
-import { CompileConfig, ContextType, corsT, FilterMethods, HookType, listenArgsT, middlewareFunc, RouteNotFoundHandler, type handlerFunction, type Hooks } from "./types.js";
-import { BunRequest, Server } from "bun";
+import { CompileConfig, ContextType, corsT, DieselOptions, errorFormat, FilterMethods, HookType, listenArgsT, middlewareFunc, RouteNotFoundHandler, type handlerFunction, type Hooks } from "./types.js";
+import { Server } from "bun";
 import { AdvancedLoggerOptions, LoggerOptions } from "./middlewares/logger/logger.js";
 import { EventEmitter } from 'events';
+import { Router } from "./router/interface.js";
 export default class Diesel {
-    emitter: EventEmitter;
+    #private;
     private static instance;
-    fecth: any;
     routes: Record<string, Function>;
     private tempRoutes;
     globalMiddlewares: middlewareFunc[];
     middlewares: Map<string, middlewareFunc[]>;
-    trie: Trie;
+    router: Router;
     hasOnReqHook: boolean;
     hasMiddleware: boolean;
     hasPreHandlerHook: boolean;
@@ -25,7 +24,6 @@ export default class Diesel {
     filterFunction: Function[];
     private hasFilterEnabled;
     private serverInstance;
-    staticPath: any;
     staticFiles: any;
     user_jwt_secret: string;
     private baseApiUrl;
@@ -34,17 +32,12 @@ export default class Diesel {
     routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
     private prefixApiUrl;
     compileConfig: CompileConfig | null;
-    private newPipelineArchitecture;
-    constructor({ jwtSecret, baseApiUrl, enableFileRouting, idleTimeOut, prefixApiUrl, onError, logger, pipelineArchitecture }?: {
-        jwtSecret?: string;
-        baseApiUrl?: string;
-        enableFileRouting?: boolean;
-        idleTimeOut?: number;
-        prefixApiUrl?: string;
-        onError?: boolean;
-        logger?: boolean;
-        pipelineArchitecture?: boolean;
-    });
+    emitter: EventEmitter;
+    errorFormat: errorFormat;
+    platform: string;
+    staticPath: any;
+    staticRequestPath: string | undefined;
+    constructor(options?: DieselOptions);
     static router(prefix: string): Diesel;
     /**
      this filter is like user once specify which routes needs to be public and for rest routes use a global
@@ -54,10 +47,10 @@ export default class Diesel {
     */
     setupFilter(): FilterMethods;
     redirect(incomingPath: string, redirectPath: string, statusCode?: 302): this;
-    serveStatic(filePath: string): this;
-    static(path: string): this;
+    serveStatic(filePath: string, requestPath?: string): this;
+    static(path: string, requestPath?: string): this;
     staticHtml(args: Record<string, string>): this;
-    addHooks<T extends HookType>(typeOfHook: T, fnc: NonNullable<Hooks[T]>[number]): this;
+    addHooks<T extends HookType>(typeOfHook: T, fnc: Hooks[T][number]): this;
     private compile;
     private registerFileRoutes;
     private loadRoutes;
@@ -65,9 +58,14 @@ export default class Diesel {
     useAdvancedLogger(options: AdvancedLoggerOptions): this;
     BunRoute(method: string, path: string, ...handlersOrResponse: any[]): this;
     listen(port: any, ...args: listenArgsT[]): Server | void;
-    fetch(): (req: BunRequest, server: Server) => any;
-    private handleRequests;
     close(callback?: () => void): void;
+    cfFetch(): (request: Request, env: Record<string, any>, executionCtx: any) => Promise<any>;
+    fetch(): ((request: Request, env?: Record<string, any>, executionContext?: any) => Promise<any>) | ((req: Request, server: Server) => any) | ((req: Request, server?: Server, env?: Record<string, any>, executionContext?: any) => Promise<any>);
+    private handleError;
+    /**
+     * Mount method
+     */
+    mount(prefix: string, fetch: (request: Request, ...args: any) => Response | Promise<Response>): void;
     /**
      * Registers a router instance for subrouting.
      * Allows defining subroutes like:
@@ -97,7 +95,7 @@ export default class Diesel {
      * - app.use(["/home", "/user"], [h1, h2]) -> Adds `h1` and `h2` to `/home` and `/user`.
      * - app.use(h1, [h2, h1]) -> Runs `h1`, then `h2`, and `h1` again as specified.
      */
-    use(pathORHandler?: string | string[] | middlewareFunc | middlewareFunc[] | Function | Function[], handlers?: middlewareFunc | middlewareFunc[] | Function | Function[]): this;
+    use(pathORHandler?: string | string[] | middlewareFunc | middlewareFunc[] | Function | Function[], ...handlers: middlewareFunc | middlewareFunc[] | Function | Function[] | any): this;
     get(path: string, ...handlers: handlerFunction[]): this;
     post(path: string, ...handlers: handlerFunction[]): this;
     put(path: string, ...handlers: handlerFunction[]): this;

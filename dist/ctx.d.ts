@@ -2,9 +2,12 @@ import { Server } from "bun";
 import type { ContextType, CookieOptions } from "./types";
 export declare class Context implements ContextType {
     req: Request;
-    server: Server;
-    pathname: string;
+    server?: Server | undefined;
+    path?: string | undefined;
     routePattern?: string;
+    paramNames?: string[] | Record<string, string>;
+    env?: Record<string, any>;
+    executionContext?: any | undefined;
     headers: Headers;
     private parsedQuery;
     private parsedParams;
@@ -12,7 +15,7 @@ export declare class Context implements ContextType {
     private parsedBody;
     private contextData;
     private urlObject;
-    constructor(req: Request, server: Server, pathname: string, routePattern?: string);
+    constructor(req: Request, server?: Server, path?: string, routePattern?: string, paramNames?: string[] | Record<string, string>, env?: Record<string, any>, executionContext?: any);
     setHeader(key: string, value: string): this;
     removeHeader(key: string): this;
     set<T>(key: string, value: T): this;
@@ -33,5 +36,5 @@ export declare class Context implements ContextType {
     stream(callback: (controller: ReadableStreamDefaultController) => void): Response;
     yieldStream(callback: () => AsyncIterable<any>): Response;
 }
-export default function createCtx(req: Request, server: Server, pathname: string, routePattern: string | undefined): ContextType;
+export declare function extractParam(paramNames: string[], incomingPath: string): Record<string, string>;
 export declare function extractDynamicParams(originalPath: string, incomingPath: string): Record<string, string> | null;
