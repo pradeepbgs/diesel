@@ -13,7 +13,6 @@ import {
   listenArgsT,
   middlewareFunc,
   onError,
-  onRequest,
   onSend,
   RouteNotFoundHandler,
   TempRouteEntry,
@@ -55,7 +54,6 @@ import {
   handleRouteNotFound,
   runFilter,
   runHooks,
-  runMiddlewares
 } from "./utils/request.util.js";
 
 import { HTTPException } from "./http-exception";
@@ -119,6 +117,7 @@ export default class Diesel {
       logger,
       onError
     } = options;
+
     if (routerInstance) this.router = routerInstance
     else this.router = RouterFactory.create(router);
 
@@ -131,6 +130,7 @@ export default class Diesel {
     if (pipelineArchitecture) {
       this.#newPipelineArchitecture = true
     }
+
     this.errorFormat = errorFormat
     this.emitter = new EventEmitter()
 
@@ -140,7 +140,7 @@ export default class Diesel {
     this.idleTimeOut = idleTimeOut ?? 10
     this.enableFileRouter = enableFileRouting ?? false
     this.baseApiUrl = baseApiUrl || ''
-    this.user_jwt_secret = jwtSecret || process.env.DIESEL_JWT_SECRET || 'feault_diesel_secret_for_jwt'
+    this.user_jwt_secret = jwtSecret || process.env.DIESEL_JWT_SECRET || 'default_diesel_secret_for_jwt'
     this.tempRoutes = new Map<string, TempRouteEntry>();
     // this.globalMiddlewares = [];
     // this.middlewares = new Map();
@@ -162,9 +162,9 @@ export default class Diesel {
     };
 
     // if user wants to log Error and respective Res
-    if (onError) this.addHooks('onError', (err: ErrnoException, ctx: ContextType) => {
+    if (onError) this.addHooks('onError', (err: ErrnoException, path: string,) => {
       console.log('Got an exception:', err);
-      console.log('Request Path:', ctx.path);
+      console.log('Request Path:', path);
     });
 
     // if user wants to log
@@ -334,7 +334,7 @@ export default class Diesel {
 
     switch (typeOfHook) {
       case "onRequest":
-        this.hooks.onRequest?.push(fnc as onRequest)
+        // this.hooks.onRequest?.push(fnc as onRequest)
         this.router.addMiddleware('/', fnc)
         break;
       case "preHandler":
@@ -598,25 +598,23 @@ export default class Diesel {
   fetch() {
     const config: CompileConfig = this.compile();
 
-    // For Testing
-    // return (r: Request, s: Server) => {
-    //   return handleRequest(r, s, this as any, undefined, undefined)
-    //     .catch(async (error: any) => {
-    //       // console.error("Unhandled handler error:", error);
-    //       const errorResult = await runHooks(
-    //         "onError",
-    //         this.hooks.onError,
-    //         [error, {}]
-    //       );
-    //       return errorResult || generateErrorResponse(500, "Internal Server Error");
-    //     });
-    // }
-
     // if user is using for cloudflare workers
     if (this.platform === 'cf' || this.platform === 'cloudflare') {
+      if (this.#newPipelineArchitecture) {
+        const pipeline = buildRequestPipeline(config, this as any)
+        return (req: Request, env: Record<string, string>, executionContext: any) => {
+          return pipeline(req, this, undefined, env, executionContext)
+            .catch(async (error: any) => {
+              return this.handleError(error, getPath(req.url), req)
+            });
+        };
+      }
+
+      // cloudflare handler
       return (request: Request, env?: Record<string, any>, executionContext?: any) => {
         return this.#handleRequests(request, undefined, env, executionContext)
       }
+
     }
 
     // NORMAL WAY WITH BUN/NODE/DENO
@@ -625,15 +623,9 @@ export default class Diesel {
       // New way
       const pipeline = buildRequestPipeline(config, this as any)
       return (req: Request, server: Server) => {
-        return pipeline(req, server, this)
+        return pipeline(req, this, server, undefined, undefined)
           .catch(async (error: any) => {
-            console.error("Unhandled handler error:", error);
-            const errorResult = await runHooks(
-              "onError",
-              this.hooks.onError,
-              [error, req, getPath(req.url), server]
-            );
-            return errorResult || generateErrorResponse(500, "Internal Server Error");
+            return this.handleError(error, getPath(req.url), req)
           });
       };
     }
@@ -653,7 +645,15 @@ export default class Diesel {
     const pathname = getPath(req.url);
     const routeHandler = this.router.find(req.method as HttpMethod, pathname);
 
-    const ctx = new Context(req, server, pathname, routeHandler?.path, routeHandler?.params, env, executionContext);
+    const ctx = new Context(
+      req,
+      server,
+      pathname,
+      routeHandler?.path as string,
+      routeHandler?.params,
+      env,
+      executionContext
+    );
 
     try {
 
@@ -695,7 +695,7 @@ export default class Diesel {
       return await handleRouteNotFound(this as any, ctx, pathname)
       return ctx.text('Not Found', 404)
     } catch (err: any) {
-      return this.handleError(err, ctx)
+      return this.handleError(err, pathname, req)
     }
 
     // if we dont return a response then by default Bun shows a err 
@@ -704,13 +704,12 @@ export default class Diesel {
   }
 
   // HandleError
-  private async handleError(err: unknown, ctx: Context) {
+  private async handleError(err: unknown, path: string, req: Request) {
     const isDev = process.env.NODE_ENV === "developement";
     const format = this.errorFormat
-    const path = getPath(ctx.req.url)
-
+    console.log('called handle Err')
     // 1. user defined hooks
-    const hookResult = await runHooks("onError", this.hooks.onError, [err, ctx]);
+    const hookResult = await runHooks("onError", this.hooks.onError, [err, path, req]);
     if (hookResult) return hookResult;
 
     // 2. HTTPException
@@ -1105,6 +1104,7 @@ export default class Diesel {
   //   }
 
   // }
+
   on(event: string | symbol, listener: EventListener) {
     this.emitter.on(event, listener);
   }
