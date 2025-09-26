@@ -73,7 +73,7 @@ export type AdvancedLoggerOptions = {
     logLevel?: LogLevel
     onRequest?: (ctx: ContextType) => void
     onSend?: (ctx: ContextType) => Response | void | Promise<Response | void>
-    onError?: (error: Error, ctx: ContextType) => Response | void | Promise<Response | void>
+    onError?: (error: Error, path: string, req: Request) => Response | void | Promise<Response | void>
 }
 
 export const advancedLogger = (options?: AdvancedLoggerOptions) => {
@@ -120,15 +120,15 @@ export const advancedLogger = (options?: AdvancedLoggerOptions) => {
         if (res instanceof Response) return res;
     });
 
-    app?.addHooks('onError', async (error: Error, ctx:ContextType) => {
+    app?.addHooks('onError', async (error: Error, path: string, req: Request) => {
         logger?.() ?? log('error', 'Unhandled Error', {
-            method: ctx.req.method,
-            url: ctx.path,
+            method: req.method,
+            url: path,
             status: 500,
             error: error.message,
         });
 
-        const res = await onError?.(error, ctx);
+        const res = await onError?.(error, path, req);
         if (res instanceof Response) return res;
     });
 };
@@ -169,15 +169,15 @@ export type LoggerOptions = {
     onSend?: (ctx: ContextType) => Response | Promise<Response> | void;
     onError?: (
         error: Error,
+        pathname: string,
         req: Request,
-        pathname: string
     ) => Response | Promise<Response> | void;
 };
 
 export const logger = (options: LoggerOptions) => {
     const { app, log, onRequest, onSend, onError } = options;
 
-    app.addHooks("onRequest", (ctx:ContextType) => {
+    app.addHooks("onRequest", (ctx: ContextType) => {
         const req = ctx.req
         const pathname = ctx.path
         req.startTime = Date.now();
@@ -204,13 +204,12 @@ export const logger = (options: LoggerOptions) => {
         return res instanceof Response ? res : finalResult;
     });
 
-    app.addHooks("onError", async (error: Error, ctx:ContextType) => {
-        const req = ctx.req
-        const  pathname = ctx.path!
+    app.addHooks("onError", async (error: Error, path: string, req: Request) => {
+        const pathname = req.path!
         log?.() ??
             logFormatted(error.message as LogPrefix, req.method, pathname, 500);
 
-        const res = await onError?.(error, req, pathname);
+        const res = await onError?.(error, pathname, req);
         if (res instanceof Response) return res;
     });
 };

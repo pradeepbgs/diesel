@@ -8,9 +8,9 @@ import { TrieRouter2 } from '../src/router/trie2'
 // const t2 = new TrieRouter2()
 const app = new Diesel({
     errorFormat: 'text',
-    logger: true,
+    // logger: true,
     // router: 'trie'
-    // pipelineArchitecture:true
+    pipelineArchitecture: true
     // routerInstance: t2
     // router: 'fastify',
 })
@@ -102,7 +102,7 @@ app.get('/async', (ctx) => {
 })
 
 app.get('/err', (ctx: ContextType) => {
-    throw new HTTPException(405, { res: ctx.json({ msg: "unauthorized sir" }) })
+    throw new HTTPException(405, { message: "unauthorized sir" })
     throw new HTTPException(400, { message: 'Unauthorized' });
 });
 

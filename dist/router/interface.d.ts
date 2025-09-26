@@ -12,9 +12,11 @@ export interface RouteMatchResult {
     };
 }
 export interface NormalizedRoute {
-    handler: handlerFunction;
+    handler: handlerFunction | handlerFunction[] | middlewareFunc[];
     params?: Record<string, string> | string[];
-    path?: string;
+    path?: string | {
+        [k: string]: string | undefined;
+    };
     method?: string;
 }
 export declare class RouterFactory {

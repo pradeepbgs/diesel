@@ -54,7 +54,7 @@ export type HookType =
     | "onClose"
 
 export interface onError {
-    (error: Error, ctx: ContextType):
+    (error: Error, path:string, req: Request):
         | void
         | null
         | Response

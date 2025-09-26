@@ -57,8 +57,8 @@ export default class Diesel {
     BunRoute(method: string, path: string, ...handlersOrResponse: any[]): this;
     listen(port: any, ...args: listenArgsT[]): Server | void;
     close(callback?: () => void): void;
-    cfFetch(): (request: Request, env: Record<string, any>, executionCtx: any) => Promise<any>;
-    fetch(): ((request: Request, env?: Record<string, any>, executionContext?: any) => Promise<any>) | ((req: Request, server: Server) => any) | ((req: Request, server?: Server, env?: Record<string, any>, executionContext?: any) => Promise<any>);
+    cfFetch(): (request: Request, env: Record<string, any>, executionCtx: any) => Promise<Response | undefined>;
+    fetch(): ((request: Request, env?: Record<string, any>, executionContext?: any) => Promise<Response | undefined>) | ((req: Request, server: Server) => any) | ((req: Request, server?: Server, env?: Record<string, any>, executionContext?: any) => Promise<Response | undefined>);
     private handleError;
     /**
      * Mount method

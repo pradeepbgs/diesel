@@ -10,18 +10,23 @@ declare class TrieNode {
     methodMap: Map<string, handlerFunction>;
     segmentCount: number;
     params: string[];
+    middlewares: middlewareFunc[];
     constructor();
 }
 export default class Trie {
     root: TrieNode;
     cachedSegments: Map<string, string[]>;
+    globalMiddlewares: middlewareFunc[];
     constructor();
     pushMidl(path: string, ...middlewares: middlewareFunc[]): void;
     insert(path: string, route: RouteHandlerT): void;
     search(path: string, method: HttpMethod): {
-        handler: handlerFunction;
+        handler: middlewareFunc[];
+        params?: undefined;
+    } | {
         params: string[];
-    } | null;
+        handler: middlewareFunc[];
+    };
 }
 export declare class TrieRouter implements Router {
     private trie;
