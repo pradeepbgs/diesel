@@ -195,13 +195,13 @@ export const logger = (options: LoggerOptions) => {
                 LogPrefix.Outgoing,
                 method,
                 path,
-                finalResult.status,
+                finalResult?.status,
                 timeElapsed(ctx.req.startTime),
                 reqId as string
             );
 
         const res = await onSend?.(ctx);
-        if (res instanceof Response) return res;
+        return res instanceof Response ? res : finalResult;
     });
 
     app.addHooks("onError", async (error: Error, ctx:ContextType) => {

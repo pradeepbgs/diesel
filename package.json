@@ -1,6 +1,6 @@
 {
   "name": "diesel-core",
-  "version": "1.5.9",
+  "version": "1.6.0",
   "description": "Web framework built on Web Standards",
   "main": "index.js",
   "types": "index.d.ts",
@@ -103,6 +103,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@types/ejs": "^3.1.5",
     "@types/uuid": "^10.0.0",
     "ejs": "^3.1.10",
     "find-my-way": "^9.3.0",

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test'
 import {app} from './server'
-const port = process.env.PORT
+const port = process.env.PORT || 3000
 if (!port) {
   throw new Error("PORT environment variable is not set.");
 }
@@ -51,7 +51,6 @@ describe("GET /api/user/register", () => {
 
   it("should set Content-Type to application/json for JSON responses", async () => {
     const response = await fetch(`${baseUrl}/api/user/register`);
-    console.log('res ->', response)
     expect(response.headers.get("content-type")).toBe("application/json;charset=utf-8");
   });
   
@@ -96,7 +95,7 @@ describe("CORS Testing", () => {
         Origin: "http://localhost:3000",
       },
     });
-    console.log("Res of POST first testing: =>",await response.json())
+    // console.log("Res of POST first testing: =>",await response.json())
     expect(response.status).toBe(200);
   });
 
@@ -107,7 +106,7 @@ describe("CORS Testing", () => {
       },
     });
     const data = await response.json();
-    console.log("DATA of 2nd",data)
+    // console.log("DATA of 2nd",data)
     expect(response.status).toBe(200);
     expect(data.msg).toBe("Hello world!");
   });
@@ -118,7 +117,7 @@ describe("CORS Testing", () => {
         Origin: "http://evil.com",
       },
     });
-    console.log('DENY 3rd',await response.json())
+    // console.log('DENY 3rd',await response.json())
     expect(response.status).toBe(403);
   });
   it("should deny PUT requests from disallowed origin", async () => {
@@ -128,7 +127,7 @@ describe("CORS Testing", () => {
         Origin: "http://evil.com",
       },
     });
-    console.log("DENY 4th",response.json())
+    // console.log("DENY 4th",response.json())
     expect(response.status).toBe(403);
   });
 });

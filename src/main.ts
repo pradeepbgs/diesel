@@ -67,11 +67,14 @@ export default class Diesel {
   // fetch: any // ServerOptions['fetch']
   routes: Record<string, Function>
   private tempRoutes: Map<string, TempRouteEntry> | null;
-  globalMiddlewares: middlewareFunc[];
-  middlewares: Map<string, middlewareFunc[]>;
+  // globalMiddlewares: middlewareFunc[];
+  // middlewares: Map<string, middlewareFunc[]>;
+  // fofr storing midl temporary.
+  tempMiddlewares: Map<string, middlewareFunc[]> | null = new Map()
+
   router: Router
   hasOnReqHook: boolean;
-  hasMiddleware: boolean;
+  // hasMiddleware: boolean;
   hasPreHandlerHook: boolean;
   hasPostHandlerHook: boolean;
   hasOnSendHook: boolean;
@@ -139,11 +142,11 @@ export default class Diesel {
     this.baseApiUrl = baseApiUrl || ''
     this.user_jwt_secret = jwtSecret || process.env.DIESEL_JWT_SECRET || 'feault_diesel_secret_for_jwt'
     this.tempRoutes = new Map<string, TempRouteEntry>();
-    this.globalMiddlewares = [];
-    this.middlewares = new Map();
+    // this.globalMiddlewares = [];
+    // this.middlewares = new Map();
 
     this.corsConfig = null;
-    this.hasMiddleware = false;
+    // this.hasMiddleware = false;
     this.hasOnReqHook = false;
     this.hasPreHandlerHook = false;
     this.hasPostHandlerHook = false;
@@ -332,6 +335,7 @@ export default class Diesel {
     switch (typeOfHook) {
       case "onRequest":
         this.hooks.onRequest?.push(fnc as onRequest)
+        this.router.addMiddleware('/', fnc)
         break;
       case "preHandler":
         this.hooks.preHandler?.push(fnc as HookFunction)
@@ -371,18 +375,18 @@ export default class Diesel {
       this.hasFilterEnabled = true
     }
 
-    if (this?.globalMiddlewares?.length > 0) {
-      config.hasMiddleware = true;
-      this.hasMiddleware = true
-    }
+    // if (this?.globalMiddlewares?.length > 0) {
+    //   config.hasMiddleware = true;
+    //   // this.hasMiddleware = true
+    // }
 
-    for (const [_, middlewares] of this?.middlewares?.entries()) {
-      if (middlewares.length > 0) {
-        config.hasMiddleware = true;
-        this.hasMiddleware = true
-        break;
-      }
-    }
+    // for (const [_, middlewares] of this?.middlewares?.entries()) {
+    //   if (middlewares.length > 0) {
+    //     config.hasMiddleware = true;
+    //     // this.hasMiddleware = true
+    //     break;
+    //   }
+    // }
 
     if (this?.enableFileRouter) {
       const projectRoot = process.cwd();
@@ -418,6 +422,7 @@ export default class Diesel {
     //   this.tempRoutes = null
     // }, 2000);
     this.tempRoutes = null
+    this.tempMiddlewares = null
     this.compileConfig = config
     return config;
   }
@@ -639,22 +644,21 @@ export default class Diesel {
   }
 
   // Function where our request comes if new architecture is disabled.
-  async #handleRequests(req: Request, server?: Server, env?: Record<string, any>, executionContext?: any) {
+  async #handleRequests(
+    req: Request,
+    server?: Server,
+    env?: Record<string, any>,
+    executionContext?: any): Promise<Response | undefined> {
 
     const pathname = getPath(req.url);
     const routeHandler = this.router.find(req.method as HttpMethod, pathname);
-    // console.log(routeHandler)
+
     const ctx = new Context(req, server, pathname, routeHandler?.path, routeHandler?.params, env, executionContext);
 
     try {
-      if (this.hasOnReqHook)
-        await runHooks('onRequest', this.hooks.onRequest, [ctx])
 
-      // middleware execution
-      if (this.hasMiddleware) {
-        const mwResult = await runMiddlewares(this as any, pathname, ctx);
-        if (mwResult) return mwResult;
-      }
+      // if (this.hasOnReqHook)
+      //   await runHooks('onRequest', this.hooks.onRequest, [ctx])
 
       // filter execution
       if (this.hasFilterEnabled) {
@@ -662,27 +666,34 @@ export default class Diesel {
         if (filterResponse) return filterResponse;
       }
 
-      // if route not found
-      if (!routeHandler) return await handleRouteNotFound(this as any, ctx, pathname)
-
       // pre-handler
       if (this.hasPreHandlerHook) {
         const result = await runHooks('preHandler', this.hooks.preHandler, [ctx]);
         if (result) return result;
       }
 
-      const result = routeHandler.handler(ctx);
-      const finalResult = result instanceof Promise ? await result : result;
+      // console.log('routehandler ', routeHandler)
+
+      let finalResult
+      const arr: any = routeHandler?.handler;
+      for (let i = 0; i < arr?.length; i++) {
+        const result = arr[i]?.(ctx)
+        finalResult = result instanceof Promise ? await result : result;
+        if (finalResult instanceof Response) break
+      }
 
       // onSend
       if (this.hasOnSendHook) {
         const response = await runHooks('onSend', this.hooks.onSend, [ctx, finalResult]);
-        if (response) return response;
+        if (response instanceof Response) return response;
       }
 
       if (finalResult instanceof Response) {
         return finalResult;
       }
+
+      return await handleRouteNotFound(this as any, ctx, pathname)
+      return ctx.text('Not Found', 404)
     } catch (err: any) {
       return this.handleError(err, ctx)
     }
@@ -783,33 +794,26 @@ export default class Diesel {
       const cleanedPath = path.replace(/::\w+$/, "")
       const fullpath = `${basePath}${cleanedPath}`;
 
-      if (!this.middlewares.has(fullpath)) {
-        this.middlewares.set(fullpath, []);
-      }
-
       // Add all middleware functions for the route, preserving user-defined order.
       const middlewareHandlers = args.handlers.slice(0, -1) as middlewareFunc[];
+      this.router.addMiddleware(fullpath, ...middlewareHandlers)
 
-      middlewareHandlers.forEach((middleware: middlewareFunc) => {
-        const arr = this.middlewares.get(fullpath)!;
-        if (!arr.includes(middleware)) {
-          arr.push(middleware);
-        }
-      });
-
-      // final handler
       const handler = args.handlers[args.handlers.length - 1];
       const method = args.method;
       try {
-        // this.trie.insert(fullpath, {
-        //   handler: handler as handlerFunction,
-        //   method,
-        // });
         this.router.add(method, fullpath, handler as handlerFunction)
       } catch (error) {
         console.error(`Error inserting ${fullpath}:`, error);
       }
     }
+
+    // Middleware assigning
+    for (const [path, handlers] of routerInstance?.tempMiddlewares?.entries() as any) {
+      const fullPath = path === "/" ? basePath || "/" : `${basePath}${path}`;
+      this.router.addMiddleware(fullPath, ...handlers);
+    }
+
+
     // Nullify the router instance to prevent accidental reuse.
     // and to prevent memory leak
     routerInstance = null;
@@ -817,12 +821,7 @@ export default class Diesel {
   }
 
   /**
-   * Registers a router instance for subrouting.
-   * Allows defining subroutes like:
-   *   const userRoute = new Diesel();
-   *   userRoute.post("/login",handlerFunction)
-   *   userRoute.post("/register", handlerFunction)
-   *   app.register("/api/v1/user", userRoute);
+   same as Route
    */
   register(
     basePath: string | undefined,
@@ -849,18 +848,22 @@ export default class Diesel {
     const handler = handlers[handlers.length - 1];
 
     if (middlewareHandlers.length > 0) {
-      if (!this.middlewares.has(path)) this.middlewares.set(path, []);
+      // if (!this.middlewares.has(path)) this.middlewares.set(path, []);
 
       middlewareHandlers.forEach((middleware: middlewareFunc) => {
-        if (path === "/") {
-          this.globalMiddlewares = [
-            ...new Set([...this.globalMiddlewares, ...middlewareHandlers]),
-          ];
-        } else {
-          if (!this.middlewares.get(path)?.includes(middleware)) {
-            this.middlewares.get(path)?.push(middleware);
-          }
-        }
+        this.router.addMiddleware(path, middleware)
+        return
+
+        // if (path === "/") {
+        //   this.globalMiddlewares = [
+        //     ...new Set([...this.globalMiddlewares, ...middlewareHandlers]),
+        //   ];
+        // } else {
+        //   if (!this.middlewares.get(path)?.includes(middleware)) {
+        //     this.middlewares.get(path)?.push(middleware);
+        //   }
+        // }
+
       });
     }
 
@@ -893,10 +896,7 @@ export default class Diesel {
    *
    * Examples:
    * - app.use(h1) -> Adds a single global middleware.
-   * - app.use([h1, h2]) -> Adds multiple global middlewares.
    * - app.use("/home", h1) -> Adds `h1` middleware to the `/home` path.
-   * - app.use(["/home", "/user"], [h1, h2]) -> Adds `h1` and `h2` to `/home` and `/user`.
-   * - app.use(h1, [h2, h1]) -> Runs `h1`, then `h2`, and `h1` again as specified.
    */
 
   use(
@@ -904,154 +904,180 @@ export default class Diesel {
     ...handlers: middlewareFunc | middlewareFunc[] | Function | Function[] | any
   ): this {
 
+    if (typeof pathORHandler === 'string') {
+      let path = pathORHandler === "/" ? "/" : pathORHandler;
+      if (!this.tempMiddlewares?.has(path)) {
+        this.tempMiddlewares?.set(path, []);
+      }
+      this.tempMiddlewares?.get(path)!.push(...handlers);
+
+      this.router.addMiddleware(path, ...handlers)
+    }
+
+    else if (typeof pathORHandler === 'function') {
+      const arrs = [pathORHandler, ...handlers]
+      if (!this.tempMiddlewares?.has('/')) {
+        this.tempMiddlewares?.set('/', []);
+      }
+      this.tempMiddlewares?.get('/')!.push(...handlers)
+
+      for (const r of arrs) {
+        this.router.addMiddleware('/', r)
+      }
+
+    }
+
+    return this;
+
     /**
      * First, we check if the user has passed an array of global middlewares.
      * Example: app.use([h1, h2])
      */
-    if (Array.isArray(pathORHandler)) {
-      pathORHandler.forEach((handler) => {
-        /**
-         * Check if the array contains middleware functions (e.g., app.use([h1, h2]))
-         * and ensure they are not already added to globalMiddlewares.
-         */
-        if (typeof handler === "function") {
-          this.globalMiddlewares.push(handler as middlewareFunc);
-          // this.trie.pushMidl('/', handler as middlewareFunc)
-        }
-      });
-    }
+    // if (Array.isArray(pathORHandler)) {
+    //   pathORHandler?.forEach((handler) => {
+    //     /**
+    //      * Check if the array contains middleware functions (e.g., app.use([h1, h2]))
+    //      * and ensure they are not already added to globalMiddlewares.
+    //      */
+    //     if (typeof handler === "function") {
+    //       this.globalMiddlewares.push(handler as middlewareFunc);
+    //       // this.trie.pushMidl('/', handler as middlewareFunc)
+    //     }
+    //   });
+    // }
 
     /**
      *  Next, check if the user has passed a single middleware function as a global middleware.
      * Example: app.use(h1)
      */
-    if (typeof pathORHandler === "function") {
+    // if (typeof pathORHandler === "function") {
 
-      this.globalMiddlewares.push(pathORHandler as middlewareFunc);
-      // this.trie.pushMidl('/', pathORHandler as middlewareFunc)
+    //   this.globalMiddlewares.push(pathORHandler as middlewareFunc);
+    //   // this.trie.pushMidl('/', pathORHandler as middlewareFunc)
+    //   // this.router.addMiddleware('/', pathORHandler)
 
-      /**
-       * Additionally, check if there are multiple handlers passed as the second parameter.
-       * Example: app.use(h1, h2,h3,h4..)
-       */
-      if (Array.isArray(handlers)) {
-        handlers.forEach((handler: Function) => {
-          this.globalMiddlewares.push(handler as middlewareFunc);
-          // this.trie.pushMidl('/', handler as middlewareFunc)
-        });
-      }
-      return this;
-    }
+    //   /**
+    //    * Additionally, check if there are multiple handlers passed as the second parameter.
+    //    * Example: app.use(h1, h2,h3,h4..)
+    //    */
+    //   if (Array.isArray(handlers)) {
+    //     handlers.forEach((handler: Function) => {
+    //       this.globalMiddlewares.push(handler as middlewareFunc);
+    //       // this.trie.pushMidl('/', handler as middlewareFunc)
+    //     });
+    //   }
+    //   return this;
+    // }
 
     /**
      * If the user has passed one or more paths along with a middleware or multiple middlewares:
      * Example 1: app.use("/home", h1) - single path with a single middleware.
      * Example 2: app.use(["/home", "/user"], [h1, h2]) - multiple paths with multiple middlewares.
      */
-    const paths: string[] = Array.isArray(pathORHandler)
-      ? pathORHandler.filter((path): path is string => typeof path === "string")
-      : [pathORHandler].filter(
-        (path): path is string => typeof path === "string"
-      );
+    // const paths: string[] = Array.isArray(pathORHandler)
+    //   ? pathORHandler.filter((path): path is string => typeof path === "string")
+    //   : [pathORHandler].filter(
+    //     (path): path is string => typeof path === "string"
+    //   );
 
 
-    paths.forEach((path: string) => {
-      // Initialize the middleware array for the given path if it doesn't already exist.
-      if (!this.middlewares.has(path)) {
-        this.middlewares.set(path, []);
-      }
-      if (handlers) {
-        // Example: app.use('/home', h1) -> handlers becomes [h1].
-        const handlerArray = Array.isArray(handlers) ? handlers : [handlers];
+    // paths.forEach((path: string) => {
+    //   // Initialize the middleware array for the given path if it doesn't already exist.
+    //   if (!this.middlewares.has(path)) {
+    //     this.middlewares.set(path, []);
+    //   }
+    //   if (handlers) {
+    //     // Example: app.use('/home', h1) -> handlers becomes [h1].
+    //     const handlerArray = Array.isArray(handlers) ? handlers : [handlers];
 
-        handlerArray.forEach((handler: Function) => {
-          // if (!this.middlewares.get(path)?.includes(handler)) {
-          this.middlewares.get(path)?.push(handler as middlewareFunc);
-          // }
-        });
-      }
-    });
+    //     handlerArray.forEach((handler: Function) => {
+    //       // if (!this.middlewares.get(path)?.includes(handler)) {
+    //       this.middlewares.get(path)?.push(handler as middlewareFunc);
+    //       // }
+    //     });
+    //   }
+    // });
 
 
-    return this;
+    // return this;
 
-    // new try experimental
-    paths.forEach((path: string) => {
-      // console.log('midl', path, handlers)
-      // this.trie.pushMidl(path, handlers as any)
-    })
-    return this
+    // // new try experimental
+    // paths.forEach((path: string) => {
+    //   // console.log('midl', path, handlers)
+    //   // this.trie.pushMidl(path, handlers as any)
+    // })
+    // return this
   }
 
   get(
     path: string,
-    ...handlers: handlerFunction[]
+    ...handlers: handlerFunction[] | Function[]
   ): this {
-    this.addRoute("GET", path, handlers);
+    this.addRoute("GET", path, handlers as any);
     return this;
   }
 
   post(
     path: string,
-    ...handlers: handlerFunction[]
+    ...handlers: handlerFunction[] | Function[]
   ): this {
-    this.addRoute("POST", path, handlers);
+    this.addRoute("POST", path, handlers as any);
     return this;
   }
 
   put(
     path: string,
-    ...handlers: handlerFunction[]
+    ...handlers: handlerFunction[] | Function[]
   ): this {
-    this.addRoute("PUT", path, handlers);
+    this.addRoute("PUT", path, handlers as any);
     return this;
   }
 
   patch(
     path: string,
-    ...handlers: handlerFunction[]
+    ...handlers: handlerFunction[] | Function[]
   ): this {
-    this.addRoute("PATCH", path, handlers);
+    this.addRoute("PATCH", path, handlers as any);
     return this;
   }
 
   delete(
     path: string,
-    ...handlers: handlerFunction[]
+    ...handlers: handlerFunction[] | Function[]
   ): this {
-    this.addRoute("DELETE", path, handlers);
+    this.addRoute("DELETE", path, handlers as any);
     return this;
   }
 
   any(
     path: string,
-    ...handlers: handlerFunction[]
+    ...handlers: handlerFunction[] | Function[]
   ) {
-    this.addRoute("ANY", path, handlers);
+    this.addRoute("ANY", path, handlers as any);
     return this;
   }
 
   head(
     path: string,
-    ...handlers: handlerFunction[]
+    ...handlers: handlerFunction[] | Function[]
   ) {
-    this.addRoute("HEAD", path, handlers);
+    this.addRoute("HEAD", path, handlers as any);
     return this;
   }
 
   options(
     path: string,
-    ...handlers: handlerFunction[]
+    ...handlers: handlerFunction[] | Function[]
   ): this {
-    this.addRoute("OPTIONS", path, handlers);
+    this.addRoute("OPTIONS", path, handlers as any);
     return this;
   }
 
   propfind(
     path: string,
-    ...handlers: handlerFunction[]
+    ...handlers: handlerFunction[] | Function[]
   ): this {
-    this.addRoute("PROPFIND", path, handlers);
+    this.addRoute("PROPFIND", path, handlers as any);
     return this;
   }
 

@@ -1,4 +1,4 @@
-import { handlerFunction } from "../types";
+import { handlerFunction, middlewareFunc } from "../types";
 import { Handler, HTTPVersion } from 'find-my-way'
 import { TrieRouter } from "./trie";
 import { FindMyWayRouter } from './find-my-way'
@@ -7,6 +7,7 @@ import { TrieRouter2 } from "./trie2";
 export interface Router {
     add(method: string, path: string, handler: handlerFunction | Handler<HTTPVersion.V1>): void
     find(method: string, path: string): NormalizedRoute | null
+    addMiddleware(path: string, ...handlers: middlewareFunc[] | any): void
 }
 
 export interface RouteMatchResult {

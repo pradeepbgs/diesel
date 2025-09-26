@@ -134,6 +134,9 @@ export class Context implements ContextType {
   }
 
   text(data: string, status: number = 200) {
+    // if (!this.headers.has("Content-Type")) {
+    //   this.headers.set("Content-Type", "text/plain; charset=utf-8");
+    // }
     return new Response(data, {
       status,
       headers: this.headers
@@ -153,9 +156,9 @@ export class Context implements ContextType {
     else if (data instanceof ArrayBuffer) dataType = 'ArrayBuffer'
     else dataType = typeof data
 
-    // if (!this.headers.has("Content-Type")) {
-    //   this.headers.set("Content-Type", typeMap[dataType] ?? "text/plain; charset=utf-8");
-    // }
+    if (!this.headers.has("Content-Type")) {
+      this.headers.set("Content-Type", typeMap[dataType] ?? "text/plain; charset=utf-8");
+    }
 
     const responseData =
       dataType === "object" && data !== null ? JSON.stringify(data) : (data as any);

@@ -8,13 +8,14 @@
     // "declarationDir": "./dist",
     "emitDeclarationOnly": true,
     "strict": true,
-    "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "esModuleInterop": true
   },
   "include": [
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "src/adaptor/node/**/*"
   ],
   "exclude": [
     "node_modules"

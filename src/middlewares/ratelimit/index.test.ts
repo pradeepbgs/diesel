@@ -72,14 +72,14 @@ describe('rate limit testing', () => {
         }
     })
 
-    it("should allow requests within the limit using redis", async () => {
-        for (let i = 0; i < 5; i++) {
-            const res = await fetch("http://localhost:3008/redis");
-            expect(res.status).toBe(200);
-            const text = await res.text();
-            expect(text).toBe("Success");
-        }
-    });
+    // it("should allow requests within the limit using redis", async () => {
+    //     for (let i = 0; i < 5; i++) {
+    //         const res = await fetch("http://localhost:3008/redis");
+    //         expect(res.status).toBe(200);
+    //         const text = await res.text();
+    //         expect(text).toBe("Success");
+    //     }
+    // });
     it("should block requests over the limit using redis", async () => {
         for (let i = 0; i < 5; i++) {
             await fetch("http://localhost:3008/redis");

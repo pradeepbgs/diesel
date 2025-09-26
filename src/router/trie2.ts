@@ -1,5 +1,5 @@
 import { Handler, HTTPVersion } from "find-my-way";
-import { handlerFunction } from "../types";
+import { handlerFunction, middlewareFunc } from "../types";
 import { NormalizedRoute, Router } from "./interface";
 import { extractDynamicParams, extractParam } from "../ctx";
 
@@ -8,12 +8,13 @@ class TrieNodes {
     isEndOfWord: boolean
     handlers: Map<string, () => void>;
     paramName: string[]
-
+    middlewares: middlewareFunc[]
     constructor() {
         this.children = new Map()
         this.handlers = new Map()
         this.isEndOfWord = false
         this.paramName = []
+        this.middlewares = []
     }
 
 }
@@ -21,10 +22,39 @@ class TrieNodes {
 //
 export class TrieRouter {
     root: TrieNodes
+    globalMiddlewares: middlewareFunc[]
     constructor() {
         this.root = new TrieNodes()
+        this.globalMiddlewares = []
     }
 
+    pushMiddleware(path: string, ...handlers: middlewareFunc[]) {
+        if (path === '/') {
+            this.globalMiddlewares.push(...handlers)
+            return;
+        }
+
+        let node = this.root;
+        const pathSegments = path.split("/").filter(Boolean);
+
+        for (const element of pathSegments) {
+            let key = element
+            if (element.startsWith(':')) {
+                key = ':'
+            }
+            else if (element.startsWith('*')) {
+                node.middlewares.push(...handlers)
+            }
+
+            if (!node.children.has(key)) node.children.set(key, new TrieNodes());
+
+            node = node.children.get(key)!
+        }
+
+        node.middlewares.push(...handlers)
+
+        // node.isEndOfWord = true
+    }
 
     insert(method: string, path: string, handler: () => void) {
         let node = this.root
@@ -61,57 +91,52 @@ export class TrieRouter {
     search(method: string, path: string,) {
         let node = this.root
 
-        // custom 
-        // const startCutsom = performance.now();
-        // let segmentStart = 0
-        // let segmentIndex = 0
-        // const segments: string[] = []
-
-        // for (let i = 0; i <= path.length; i++) {
-        //     if (i === path.length || path.charCodeAt(i) === 47) { // 47 means /
-        //         console.log(path.slice(segmentStart, i))
-        //         if (i > segmentStart) {
-        //             segments.push(path.slice(segmentStart, i));
-        //         }
-        //         segmentStart = i + 1
-        //     }
-        // }
-        // const end = performance.now();
-
-        // const totalMs = end - startCutsom;
-        // console.log(`lookup time custom : ${totalMs.toFixed(2)} ms `);
-        // // normal
-
         const pathSegments = path.split('/').filter(Boolean);
 
-
-
+        let collected: middlewareFunc[] = [...this.globalMiddlewares];
+        // console.log('collected midl ', collected)
         for (const element of pathSegments) {
-            if (!node.children.has(element)) {
-                if (node.children.has(':')) {
-                    node = node.children.get(':')!
-                }
-                else if (node.children.has('*')) {
-                    node = node.children.get('*')!
-                    break;
-                }
-                else {
-                    return null
-                }
+            // if (node.children.has('*')) {
+            //     collected.push(...node.children.get('*')!.middlewares);
+            // }
+            if (node.children.has(element)) {
+                node = node.children.get(element)!;
+            } else if (node.children.has(':')) {
+                node = node.children.get(':')!;
+            } else if (node.children.has('*')) {
+                // collected.push(...node.children.get('*')!.middlewares);
+                node = node.children.get('*')!;
+                break;
+            } else {
+                // console.log('object');
+                return { handler: collected };
             }
-            else {
-                node = node.children.get(element)!
+
+            if (node.middlewares.length > 0) {
+                collected.push(...node.middlewares);
             }
         }
 
-        if (node.isEndOfWord) {
-            const h = node.handlers.get(method)
-            return h ? {
-                params: node.paramName as string[],
-                handler: h
-            } : null
+        // const handlers = [...collected];
+        const methodHandler = node.handlers.get(method);
+        if (methodHandler) collected.push(methodHandler);
+        return {
+            params: node.paramName as string[],
+            handler: collected
         }
-        return null
+
+        // if (node.isEndOfWord) {
+        //     const h = node.handlers.get(method)
+        //     return h ? {
+        //         params: node.paramName as string[],
+        //         handler: [...collected, node.handlers.get(method)]
+        //     } : {
+        //         handler: collected
+        //     }
+        // }
+        // return {
+        //     handler: [...this.globalMiddlewares]
+        // }
     }
 }
 
@@ -128,10 +153,14 @@ export class TrieRouter2 implements Router {
         this.trie.insert(method, path, handler as any)
     }
 
+    addMiddleware(path: string, ...handlers: middlewareFunc[] | any) {
+        this.trie.pushMiddleware(path, ...handlers)
+    }
+
     find(method: string, path: string): NormalizedRoute | null {
 
-        return this.trie.search(method,path) as any
-        
+        return this.trie.search(method, path) as any
+
         const cacheKey = method + ':' + path
         if (this.cache.has(cacheKey)) return this.cache.get(cacheKey)!
 
@@ -141,6 +170,48 @@ export class TrieRouter2 implements Router {
     }
 }
 
+
+// const t1 = new TrieRouter()
+// t1.insert('GET', '/', () => "Hello /")
+// t1.insert('GET', "/user", () => "Hell /user")
+// t1.insert('GET', '/user/*', () => 'user/* route')
+// t1.insert('GET', '/hello/*', () => '/hello/*')
+// t1.insert('GET', '/moon/:id', () => "/moon/:id")
+
+// t1.pushMiddleware('/', function home() {
+//     return "Midd /" as any
+// })
+// t1.pushMiddleware('/user/*', () => "user/* middleware " as any)
+
+// const h = t1.search('GET', '/user/2')
+
+// for (const k of h?.handler!) {
+//     console.log(k?.(null as any, null as any))
+// }
+
+// const router = new TrieRouter()
+// global middleware (applies to all requests)
+// router.pushMiddleware('/', () => 'log mid' as any);
+
+// // path-specific middleware
+// router.pushMiddleware('/users/*', () => "/user/* middleware" as any);        // applies to /users/* paths
+// router.pushMiddleware('/users/:id', () => "id checkmid " as any); // applies to /users/:id/*
+
+// routes
+// router.insert('GET', '/users', () => "get user by handlr") as any;
+// router.insert('GET', '/users/:id', () => "get user by id handler" as any);
+// router.insert('GET', '/users/:id/profile', () => "get user / id / profile");
+// router.insert('GET', '/users/hello', () => "Hello /user/hello")
+
+// const matched = router.search('POST', '/users/hello')
+// console.log(matched.handler?.length)
+// for (const k of matched?.handler!) {
+//     console.log(k?.(null as any, null as any))
+// }
+
+// for (let i = 0; i < 4; i++) {
+//     t1.f
+// }
 
 // const t = new TrieRouter2()
 // t.add('GET', '/user/:id/:name', () => 'root')
