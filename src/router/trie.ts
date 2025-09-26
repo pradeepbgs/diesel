@@ -44,7 +44,7 @@ export default class Trie {
     const segments = path.split("/").filter(Boolean);
 
     if (path === "/") {
-      node.handler = middlewares[0] as any // simple, only first middleware
+      node.handler = middlewares[0] as any 
 
       return;
     }
@@ -143,6 +143,10 @@ export class TrieRouter implements Router {
 
   add(method: string, path: string, handler: handlerFunction) {
     this.trie.insert(path, { method, handler });
+  }
+
+  addMiddleware(path: string, ...handlers: middlewareFunc[] | any): void {
+    
   }
 
   find(method: string, path: string): NormalizedRoute | null {

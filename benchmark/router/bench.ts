@@ -87,5 +87,5 @@ benchmarkFind(trieRouter2, "TrieRouter2");
 // ---------- Debug single match ----------
 console.log("\nSample lookup:");
 console.log(extractParam(trieRouter.find("GET", "/api/posts/42/comments/99")?.params as any, '/api/posts/42/comments/99'));
-console.log(extractParam(trieRouter2.find("GET", "/api/posts/42/comments/99")?.params as any, '/api/posts/42/comments/99'));
+console.log(trieRouter2.find("GET", "/api/posts/42/comments/99"), extractParam(trieRouter2.find("GET", "/api/posts/42/comments/99")?.params as any, '/api/posts/42/comments/99'));
 console.log(fastifyRouter.find("GET", "/api/posts/42/comments/99"))

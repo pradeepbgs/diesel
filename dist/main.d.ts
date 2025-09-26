@@ -8,11 +8,9 @@ export default class Diesel {
     private static instance;
     routes: Record<string, Function>;
     private tempRoutes;
-    globalMiddlewares: middlewareFunc[];
-    middlewares: Map<string, middlewareFunc[]>;
+    tempMiddlewares: Map<string, middlewareFunc[]> | null;
     router: Router;
     hasOnReqHook: boolean;
-    hasMiddleware: boolean;
     hasPreHandlerHook: boolean;
     hasPostHandlerHook: boolean;
     hasOnSendHook: boolean;
@@ -74,12 +72,7 @@ export default class Diesel {
      */
     route(basePath: string | undefined, routerInstance: Diesel | null): this;
     /**
-     * Registers a router instance for subrouting.
-     * Allows defining subroutes like:
-     *   const userRoute = new Diesel();
-     *   userRoute.post("/login",handlerFunction)
-     *   userRoute.post("/register", handlerFunction)
-     *   app.register("/api/v1/user", userRoute);
+     same as Route
      */
     register(basePath: string | undefined, routerInstance: Diesel): this;
     private addRoute;
@@ -90,21 +83,18 @@ export default class Diesel {
      *
      * Examples:
      * - app.use(h1) -> Adds a single global middleware.
-     * - app.use([h1, h2]) -> Adds multiple global middlewares.
      * - app.use("/home", h1) -> Adds `h1` middleware to the `/home` path.
-     * - app.use(["/home", "/user"], [h1, h2]) -> Adds `h1` and `h2` to `/home` and `/user`.
-     * - app.use(h1, [h2, h1]) -> Runs `h1`, then `h2`, and `h1` again as specified.
      */
     use(pathORHandler?: string | string[] | middlewareFunc | middlewareFunc[] | Function | Function[], ...handlers: middlewareFunc | middlewareFunc[] | Function | Function[] | any): this;
-    get(path: string, ...handlers: handlerFunction[]): this;
-    post(path: string, ...handlers: handlerFunction[]): this;
-    put(path: string, ...handlers: handlerFunction[]): this;
-    patch(path: string, ...handlers: handlerFunction[]): this;
-    delete(path: string, ...handlers: handlerFunction[]): this;
-    any(path: string, ...handlers: handlerFunction[]): this;
-    head(path: string, ...handlers: handlerFunction[]): this;
-    options(path: string, ...handlers: handlerFunction[]): this;
-    propfind(path: string, ...handlers: handlerFunction[]): this;
+    get(path: string, ...handlers: handlerFunction[] | Function[]): this;
+    post(path: string, ...handlers: handlerFunction[] | Function[]): this;
+    put(path: string, ...handlers: handlerFunction[] | Function[]): this;
+    patch(path: string, ...handlers: handlerFunction[] | Function[]): this;
+    delete(path: string, ...handlers: handlerFunction[] | Function[]): this;
+    any(path: string, ...handlers: handlerFunction[] | Function[]): this;
+    head(path: string, ...handlers: handlerFunction[] | Function[]): this;
+    options(path: string, ...handlers: handlerFunction[] | Function[]): this;
+    propfind(path: string, ...handlers: handlerFunction[] | Function[]): this;
     routeNotFound(handler: RouteNotFoundHandler): this;
     on(event: string | symbol, listener: EventListener): void;
     emit(event: string | symbol, ...args: any): void;

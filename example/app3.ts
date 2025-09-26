@@ -5,9 +5,10 @@ import FindMyWay from 'find-my-way'
 import { FindMyWayRouter } from "../src/router/find-my-way";
 import { TrieRouter2 } from '../src/router/trie2'
 
-const t2 = new TrieRouter2()
+// const t2 = new TrieRouter2()
 const app = new Diesel({
     errorFormat: 'text',
+    logger:true,
     // routerInstance: t2
     // router: 'fastify',
 })
@@ -51,7 +52,8 @@ app.BunRoute('get', '/bun', "Helll")
 app.get("/", (ctx) => {
     // const ip = ctx.ip
     // console.log('ip ', ip)
-    return ctx.text("hello world")
+    // ctx.setHeader("Content-Type", "application/json; charset=utf-8")
+    return ctx.text("Hello world!")
 })
 
 class UserService {
@@ -83,7 +85,7 @@ app.BunRoute('get', '/user', userService.getUser)
 
 // app.use(async() => console.log('hloblalsssss'), async() => console.log("2nd"), () => console.log("3rd"))
 // app.use(async() => console.log('hloblal'))
-// app.use('/power', () => console.log('power middleware'))
+app.use('/power', () => console.log('power middleware'))
 app.get("/power", (ctx) => {
     return ctx.text("/power")
 })
@@ -114,6 +116,13 @@ async function someAsyncTask() { }
 app.get('/hello/2', (ctx) => ctx.send("/hello/2"))
 app.get('/hello/:id/:name', (ctx) => ctx.send('/helo/;id/;name'))
 
+
+const ur = new Diesel()
+// ur.use("/", () => console.log("/* middleware"))
+// ur.use("/*", () => console.log("ur/* middleware"))
+ur.get('/', () => console.log("path midl"), () => new Response("/ hello ur"))
+
+app.route('/ur', ur)
 
 app.listen(3000, () => console.log("diesel running on 3000"))
 

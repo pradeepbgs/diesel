@@ -27,6 +27,7 @@ export declare class TrieRouter implements Router {
     private trie;
     private cache;
     add(method: string, path: string, handler: handlerFunction): void;
+    addMiddleware(path: string, ...handlers: middlewareFunc[] | any): void;
     find(method: string, path: string): NormalizedRoute | null;
 }
 export {};

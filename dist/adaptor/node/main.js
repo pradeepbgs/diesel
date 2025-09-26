@@ -40,9 +40,11 @@ exports.serve = serve;
 var http = require("node:http");
 function convertNodeReqToWebReq(req) {
     return __awaiter(this, void 0, void 0, function () {
-        var url, init;
-        return __generator(this, function (_a) {
-            url = "http://".concat(req.headers.host).concat(req.url);
+        var protocol, url, init;
+        var _a;
+        return __generator(this, function (_b) {
+            protocol = ((_a = req.headers['x-forwarded-proto']) === null || _a === void 0 ? void 0 : _a.split(',')[0]) || 'http';
+            url = "".concat(protocol, "://").concat(req.headers.host).concat(req.url);
             init = {
                 method: req.method,
                 headers: req.headers,
@@ -85,18 +87,16 @@ function sendWebResToNodeRes(webRes, nodeRes) {
         });
     });
 }
-function serve(app, port) {
+function serve(options) {
     var _this = this;
-    if (port === void 0) { port = 3000; }
     var server = http.createServer(function (request, response) { return __awaiter(_this, void 0, void 0, function () {
-        var webRequest, fetchHandler, webRes;
+        var webRequest, webRes;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0: return [4 /*yield*/, convertNodeReqToWebReq(request)];
                 case 1:
                     webRequest = _a.sent();
-                    fetchHandler = app.fetch();
-                    return [4 /*yield*/, fetchHandler(webRequest, server)];
+                    return [4 /*yield*/, options.fetch(webRequest, server)];
                 case 2:
                     webRes = _a.sent();
                     return [4 /*yield*/, sendWebResToNodeRes(webRes, response)];
@@ -106,5 +106,5 @@ function serve(app, port) {
             }
         });
     }); });
-    server.listen(port, function () { return console.log('node server running on port 3000'); });
+    server.listen(options.port, function () { return console.log('node server running on port 3000'); });
 }
