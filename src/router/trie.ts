@@ -17,6 +17,7 @@ class TrieNode {
   methodMap: Map<string, handlerFunction>; // O(1) method lookup
   segmentCount: number; // cached number of segments
   params: string[]
+  middlewares: middlewareFunc[]
   constructor() {
     this.children = {};
     this.isEndOfWord = false;
@@ -26,17 +27,20 @@ class TrieNode {
     this.path = "";
     this.methodMap = new Map();
     this.segmentCount = 0;
-    this.params = []
+    this.params = [];
+    this.middlewares = []
   }
 }
 
 export default class Trie {
   root: TrieNode;
   cachedSegments: Map<string, string[]>;
+  globalMiddlewares: middlewareFunc[]
 
   constructor() {
     this.root = new TrieNode();
     this.cachedSegments = new Map();
+    this.globalMiddlewares = []
   }
 
   pushMidl(path: string, ...middlewares: middlewareFunc[]) {
@@ -44,18 +48,21 @@ export default class Trie {
     const segments = path.split("/").filter(Boolean);
 
     if (path === "/") {
-      node.handler = middlewares[0] as any 
-
+      node.handler = middlewares[0] as any
+      this.globalMiddlewares.push(...middlewares)
       return;
     }
 
     for (const segment of segments) {
       let key = segment;
       if (segment.startsWith(":")) key = ":";
+
+      else if (segment.startsWith('*')) node.middlewares.push(...middlewares)
+
       if (!node.children[key]) node.children[key] = new TrieNode();
       node = node.children[key];
     }
-
+    node.middlewares.push(...middlewares)
     node.handler = middlewares[0] as any// store first middleware
   }
 
@@ -106,6 +113,7 @@ export default class Trie {
   search(path: string, method: HttpMethod) {
     let node = this.root;
     const pathSegments = this.cachedSegments.get(path) || path.split("/").filter(Boolean);
+    let collected: middlewareFunc[] = [...this.globalMiddlewares];
 
     for (const segment of pathSegments) {
       let key = segment;
@@ -118,20 +126,24 @@ export default class Trie {
         node = node.children["*"];
         break;
       } else {
-        return null;
+        return { handler: collected };;
+      }
+
+      if (node.middlewares.length > 0) {
+        collected.push(...node.middlewares);
       }
     }
 
-    if (!node.isEndOfWord || node.segmentCount !== pathSegments.length) return null;
+    if (!node.isEndOfWord || node.segmentCount !== pathSegments.length) return { handler: collected };;
 
     const handler = node.methodMap.get(method);
-    if (!handler) return null;
+    if (handler) collected.push(handler)
 
     return {
-      // path: node.path,
-      handler,
+      params: node.params,
+      handler: collected,
+      // path: node.path,x
       // pattern: node.pattern,
-      params: node.params
     };
   }
 }
@@ -146,12 +158,12 @@ export class TrieRouter implements Router {
   }
 
   addMiddleware(path: string, ...handlers: middlewareFunc[] | any): void {
-    
+    this.trie.pushMidl(path, ...handlers)
   }
 
   find(method: string, path: string): NormalizedRoute | null {
     return this.trie.search(path, method as HttpMethod)
-    
+
     // const cacheKey = `${method}:${path}`;
     // const cached = this.cache.get(cacheKey);
     // if (cached) return cached;

@@ -8,7 +8,9 @@ import { TrieRouter2 } from '../src/router/trie2'
 // const t2 = new TrieRouter2()
 const app = new Diesel({
     errorFormat: 'text',
-    logger:true,
+    logger: true,
+    // router: 'trie'
+    // pipelineArchitecture:true
     // routerInstance: t2
     // router: 'fastify',
 })

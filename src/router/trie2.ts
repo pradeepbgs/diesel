@@ -117,12 +117,12 @@ export class TrieRouter {
             }
         }
 
-        const handlers = [...collected];
+        // const handlers = [...collected];
         const methodHandler = node.handlers.get(method);
-        if (methodHandler) handlers.push(methodHandler);
+        if (methodHandler) collected.push(methodHandler);
         return {
             params: node.paramName as string[],
-            handler: handlers
+            handler: collected
         }
 
         // if (node.isEndOfWord) {

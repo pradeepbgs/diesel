@@ -106,7 +106,7 @@ export default class Diesel {
   constructor(options: DieselOptions = {}) {
 
     const {
-      router = 't2',
+      router = 'trie',
       routerInstance,
       errorFormat = 'json',
       platform = 'bun',
@@ -335,6 +335,7 @@ export default class Diesel {
     switch (typeOfHook) {
       case "onRequest":
         this.hooks.onRequest?.push(fnc as onRequest)
+        this.router.addMiddleware('/', fnc)
         break;
       case "preHandler":
         this.hooks.preHandler?.push(fnc as HookFunction)
@@ -643,7 +644,11 @@ export default class Diesel {
   }
 
   // Function where our request comes if new architecture is disabled.
-  async #handleRequests(req: Request, server?: Server, env?: Record<string, any>, executionContext?: any) {
+  async #handleRequests(
+    req: Request,
+    server?: Server,
+    env?: Record<string, any>,
+    executionContext?: any): Promise<Response | undefined> {
 
     const pathname = getPath(req.url);
     const routeHandler = this.router.find(req.method as HttpMethod, pathname);
@@ -651,15 +656,9 @@ export default class Diesel {
     const ctx = new Context(req, server, pathname, routeHandler?.path, routeHandler?.params, env, executionContext);
 
     try {
-      if (this.hasOnReqHook)
-        await runHooks('onRequest', this.hooks.onRequest, [ctx])
 
-      // console.log('temp midls ', this.tempMiddlewares)
-      // middleware execution
-      // if (this.hasMiddleware) {
-      //   const mwResult = await runMiddlewares(this as any, pathname, ctx);
-      //   if (mwResult) return mwResult;
-      // }
+      // if (this.hasOnReqHook)
+      //   await runHooks('onRequest', this.hooks.onRequest, [ctx])
 
       // filter execution
       if (this.hasFilterEnabled) {
@@ -1020,7 +1019,7 @@ export default class Diesel {
 
   post(
     path: string,
-    ...handlers: handlerFunction[]| Function[]
+    ...handlers: handlerFunction[] | Function[]
   ): this {
     this.addRoute("POST", path, handlers as any);
     return this;
@@ -1028,7 +1027,7 @@ export default class Diesel {
 
   put(
     path: string,
-    ...handlers: handlerFunction[]| Function[]
+    ...handlers: handlerFunction[] | Function[]
   ): this {
     this.addRoute("PUT", path, handlers as any);
     return this;
@@ -1036,7 +1035,7 @@ export default class Diesel {
 
   patch(
     path: string,
-    ...handlers: handlerFunction[]| Function[]
+    ...handlers: handlerFunction[] | Function[]
   ): this {
     this.addRoute("PATCH", path, handlers as any);
     return this;
@@ -1044,7 +1043,7 @@ export default class Diesel {
 
   delete(
     path: string,
-    ...handlers: handlerFunction[]| Function[]
+    ...handlers: handlerFunction[] | Function[]
   ): this {
     this.addRoute("DELETE", path, handlers as any);
     return this;
@@ -1052,7 +1051,7 @@ export default class Diesel {
 
   any(
     path: string,
-    ...handlers: handlerFunction[]| Function[]
+    ...handlers: handlerFunction[] | Function[]
   ) {
     this.addRoute("ANY", path, handlers as any);
     return this;
@@ -1060,7 +1059,7 @@ export default class Diesel {
 
   head(
     path: string,
-    ...handlers: handlerFunction[]| Function[]
+    ...handlers: handlerFunction[] | Function[]
   ) {
     this.addRoute("HEAD", path, handlers as any);
     return this;
@@ -1068,7 +1067,7 @@ export default class Diesel {
 
   options(
     path: string,
-    ...handlers: handlerFunction[]| Function[]
+    ...handlers: handlerFunction[] | Function[]
   ): this {
     this.addRoute("OPTIONS", path, handlers as any);
     return this;
@@ -1076,7 +1075,7 @@ export default class Diesel {
 
   propfind(
     path: string,
-    ...handlers: handlerFunction[]| Function[]
+    ...handlers: handlerFunction[] | Function[]
   ): this {
     this.addRoute("PROPFIND", path, handlers as any);
     return this;
