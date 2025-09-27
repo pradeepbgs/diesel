@@ -2,7 +2,7 @@ import { Handler, HTTPVersion } from "find-my-way";
 import { handlerFunction, middlewareFunc } from "../types";
 import { NormalizedRoute, Router } from "./interface";
 declare class TrieNodes {
-    children: Map<string, TrieNodes>;
+    children: Record<string, TrieNodes>;
     isEndOfWord: boolean;
     handlers: Map<string, () => void>;
     paramName: string[];

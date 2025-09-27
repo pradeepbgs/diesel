@@ -1,9 +1,13 @@
 import { Server } from "bun";
 import { Router } from "./router/interface";
+import Diesel from "./main";
 
 export type listenCalllBackType = () => void;
 
 export type handlerFunction = (ctx: ContextType) => Response | Promise<Response | undefined>;
+
+export type RouteHandler = (path: string, ...handlers: handlerFunction[] | middlewareFunc[]) => Diesel;
+
 
 export type middlewareFunc = (
     ctx: ContextType | Request | any,

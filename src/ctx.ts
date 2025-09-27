@@ -98,6 +98,10 @@ export class Context implements ContextType {
   }
 
   get params(): Record<string, string> {
+
+    if (!Array.isArray(this.paramNames)) {
+      return this.paramNames as Record<string, string>
+    }
     if (!this.parsedParams) {
       try {
         // console.log(this.path)
@@ -290,11 +294,11 @@ export function extractParam(paramNames: string[], incomingPath: string) {
   // inComingpath = /user/2/pradeep
   const [pathWithoutQuery] = incomingPath.split("?");
   const pathSegments = pathWithoutQuery.split("/").filter(s => s !== '')
-  
+
   // let segmentStart = 0
   // let segmentIndex = 0
   // const segments: string[] = []
-  
+
   // for (let i = 0; i <= pathWithoutQuery.length; i++) {
   //   if (i === pathWithoutQuery.length || pathWithoutQuery.charCodeAt(i) === 47) { // '/'
   //     if (i > segmentStart) {

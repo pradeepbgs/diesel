@@ -1,7 +1,9 @@
 import { Server } from "bun";
 import { Router } from "./router/interface";
+import Diesel from "./main";
 export type listenCalllBackType = () => void;
 export type handlerFunction = (ctx: ContextType) => Response | Promise<Response | undefined>;
+export type RouteHandler = (path: string, ...handlers: handlerFunction[] | middlewareFunc[]) => Diesel;
 export type middlewareFunc = (ctx: ContextType | Request | any, server: Server) => void | Response | Promise<undefined | Response>;
 export type HookFunction = (ctx: ContextType, result?: Response | null, server?: Server) => undefined | void | null | Response | Promise<void | null | undefined | Response>;
 export type RouteNotFoundHandler = (ctx: ContextType) => Response | Promise<Response>;
@@ -10,7 +12,7 @@ export type HttpMethodOfApp = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'opt
 export type HttpMethodLower = Lowercase<HttpMethod>;
 export type HookType = "onRequest" | "preHandler" | "postHandler" | "onSend" | "onError" | "onClose";
 export interface onError {
-    (error: Error, ctx: ContextType): void | null | Response | Promise<void | null | undefined | Response>;
+    (error: Error, path: string, req: Request): void | null | Response | Promise<void | null | undefined | Response>;
 }
 export interface onRequest {
     (ctx: ContextType): void;

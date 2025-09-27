@@ -103,13 +103,13 @@ const pushMiddlewares = (pipeline: string[], globalMiddlewares: middlewareFunc[]
   }
 }
 
-export const buildRequestPipeline = (config: CompileConfig, diesel: DieselT) => {
+export const buildRequestPipeline = (diesel: DieselT) => {
   const pipeline: string[] = [];
   const globalMiddlewares = diesel.globalMiddlewares || []
 
   // const onRequestHooks = config?.hasOnReqHook ? diesel.hooks.onRequest : [] as any;
-  const PreHandlerHook = config?.hasPreHandlerHook ? diesel.hooks.preHandler : [] as any;
-  const OnSendHook = config?.hasOnSendHook ? diesel.hooks.onSend : [] as any;
+  const PreHandlerHook = diesel?.hasPreHandlerHook ? diesel.hooks.preHandler : [] as any;
+  const OnSendHook = diesel?.hasOnSendHook ? diesel.hooks.onSend : [] as any;
 
   // parse pathname
   pushParsePathname(pipeline)
@@ -166,7 +166,7 @@ export const buildRequestPipeline = (config: CompileConfig, diesel: DieselT) => 
   // }
 
   // Filters
-  if (config.hasFilterEnabled) {
+  if (diesel.hasFilterEnabled) {
     pipeline.push(`
         const filterResponse = await runFilter(diesel, pathname, ctx);
         if (filterResponse) return filterResponse;
@@ -175,7 +175,7 @@ export const buildRequestPipeline = (config: CompileConfig, diesel: DieselT) => 
 
 
   // Pre-handler
-  if (config.hasPreHandlerHook) {
+  if (diesel.hasPreHandlerHook) {
     pushHooks(pipeline, PreHandlerHook, 'preHandler', 'ctx')
   }
 
@@ -191,7 +191,7 @@ export const buildRequestPipeline = (config: CompileConfig, diesel: DieselT) => 
     `);
 
   // onSend
-  if (config.hasOnSendHook) {
+  if (diesel.hasOnSendHook) {
     pushHooks(pipeline, OnSendHook, 'onSend', 'ctx', 'finalResult')
   }
 
@@ -229,7 +229,7 @@ export const buildRequestPipeline = (config: CompileConfig, diesel: DieselT) => 
 
 }
 
-export const BunRequestPipline = (config: CompileConfig, diesel: DieselT, method: string, path: string, ...handlersOrResponse: Function[]) => {
+export const BunRequestPipline = (diesel: DieselT, method: string, path: string, ...handlersOrResponse: Function[]) => {
   const pipeline: string[] = []
   // handlers
   let response_data: string | object | undefined;
@@ -238,12 +238,12 @@ export const BunRequestPipline = (config: CompileConfig, diesel: DieselT, method
   }
   const handlers = handlersOrResponse
 
-  const globalMiddlewares = config?.hasMiddleware ? diesel.globalMiddlewares : [];
-  const pathMiddlewares = config?.hasMiddleware ? diesel.middlewares.get(path) || [] : [];
+  const globalMiddlewares = diesel?.hasMiddleware ? diesel.globalMiddlewares : [];
+  const pathMiddlewares = diesel?.hasMiddleware ? diesel.middlewares.get(path) || [] : [];
   const allMiddlewares = [...globalMiddlewares, ...pathMiddlewares];
 
   // onReq hooks
-  const onRequestHooks = config?.hasOnReqHook ? diesel.hooks.onRequest : [];
+  const onRequestHooks = diesel?.hasOnReqHook ? diesel.hooks.onRequest : [];
 
   //filters
   const hasFilter = diesel.filters.has(path)
@@ -273,7 +273,7 @@ export const BunRequestPipline = (config: CompileConfig, diesel: DieselT, method
   }
 
   // filter 
-  if (config.hasFilterEnabled) {
+  if (diesel.hasFilterEnabled) {
     if (!hasFilter) {
       pipeline.push(
         `if (${filterFunctions.length}) {

@@ -1,5 +1,4 @@
-import path from 'path'
-import fs from 'fs'
+
 import {
   CompileConfig,
   ContextType,
@@ -9,11 +8,11 @@ import {
   FilterMethods,
   HookFunction,
   HookType,
-  HttpMethodOfApp,
   listenArgsT,
   middlewareFunc,
   onError,
   onSend,
+  RouteHandler,
   RouteNotFoundHandler,
   TempRouteEntry,
   type handlerFunction,
@@ -58,21 +57,19 @@ import {
 
 import { HTTPException } from "./http-exception";
 import { Router, RouterFactory } from "./router/interface.js";
+import { supportedMethods } from './constant.js';
+import { isPromise, isResponse } from "./utils/promise.js";
+
 
 
 export default class Diesel {
   private static instance: Diesel
-  // fetch: any // ServerOptions['fetch']
   routes: Record<string, Function>
   private tempRoutes: Map<string, TempRouteEntry> | null;
-  // globalMiddlewares: middlewareFunc[];
-  // middlewares: Map<string, middlewareFunc[]>;
-  // fofr storing midl temporary.
   tempMiddlewares: Map<string, middlewareFunc[]> | null = new Map()
 
   router: Router
   hasOnReqHook: boolean;
-  // hasMiddleware: boolean;
   hasPreHandlerHook: boolean;
   hasPostHandlerHook: boolean;
   hasOnSendHook: boolean;
@@ -86,7 +83,7 @@ export default class Diesel {
   private serverInstance: Server | null;
   staticFiles: any
   user_jwt_secret: string
-  private baseApiUrl: string
+  baseApiUrl: string
   private enableFileRouter: boolean
   idleTimeOut: number
   routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
@@ -101,7 +98,28 @@ export default class Diesel {
   // the request path where user wants static files should be server
   staticRequestPath: string | undefined = undefined;
 
+
+  get!: RouteHandler;
+  post!: RouteHandler;
+  put!: RouteHandler;
+  patch!: RouteHandler;
+  delete!: RouteHandler;
+  any!: RouteHandler;
+  head!: RouteHandler;
+  options!: RouteHandler;
+  propfind!: RouteHandler;
+
   constructor(options: DieselOptions = {}) {
+
+    supportedMethods.forEach((method) => {
+      (this as any)[method.toLocaleLowerCase()] = (
+        path: string,
+        ...handlers: any
+      ): this => {
+        this.addRoute(method as HttpMethod, path, handlers)
+        return this;
+      }
+    })
 
     const {
       router = 'trie',
@@ -142,11 +160,7 @@ export default class Diesel {
     this.baseApiUrl = baseApiUrl || ''
     this.user_jwt_secret = jwtSecret || process.env.DIESEL_JWT_SECRET || 'default_diesel_secret_for_jwt'
     this.tempRoutes = new Map<string, TempRouteEntry>();
-    // this.globalMiddlewares = [];
-    // this.middlewares = new Map();
-
     this.corsConfig = null;
-    // this.hasMiddleware = false;
     this.hasOnReqHook = false;
     this.hasPreHandlerHook = false;
     this.hasPostHandlerHook = false;
@@ -273,7 +287,7 @@ export default class Diesel {
     statusCode?: 302
   ): this {
 
-    this.any(incomingPath, (ctx) => {
+    this.any(incomingPath, (ctx: Context) => {
 
       const params = ctx.params
       let finalPathToRedirect = redirectPath
@@ -336,18 +350,23 @@ export default class Diesel {
       case "onRequest":
         // this.hooks.onRequest?.push(fnc as onRequest)
         this.router.addMiddleware('/', fnc)
+        this.hasOnReqHook = true
         break;
       case "preHandler":
         this.hooks.preHandler?.push(fnc as HookFunction)
+        this.hasPreHandlerHook = true
         break;
       case "postHandler":
         this.hooks.postHandler?.push(fnc as HookFunction)
+        this.hasPostHandlerHook = true
         break;
       case "onSend":
         this.hooks.onSend?.push(fnc as onSend)
+        this.hasOnSendHook = true
         break;
       case "onError":
         this.hooks.onError?.push(fnc as onError)
+        this.hasOnError = true
         break;
       case "onClose":
         this.hooks.onClose?.push(fnc as HookFunction)
@@ -358,137 +377,6 @@ export default class Diesel {
     return this;
   }
 
-  private compile() {
-
-    let config: CompileConfig = {
-      hasMiddleware: false,
-      hasOnReqHook: false,
-      hasPreHandlerHook: false,
-      hasOnError: false,
-      hasPostHandlerHook: false,
-      hasOnSendHook: false,
-      hasFilterEnabled: false
-    }
-
-    if (this.hasFilterEnabled) {
-      config.hasFilterEnabled = true
-      this.hasFilterEnabled = true
-    }
-
-    // if (this?.globalMiddlewares?.length > 0) {
-    //   config.hasMiddleware = true;
-    //   // this.hasMiddleware = true
-    // }
-
-    // for (const [_, middlewares] of this?.middlewares?.entries()) {
-    //   if (middlewares.length > 0) {
-    //     config.hasMiddleware = true;
-    //     // this.hasMiddleware = true
-    //     break;
-    //   }
-    // }
-
-    if (this?.enableFileRouter) {
-      const projectRoot = process.cwd();
-      const routesPath = path.join(projectRoot, 'src', 'routes');
-      if (fs?.existsSync(routesPath)) {
-        this.loadRoutes(routesPath, '');
-      }
-    }
-
-    // check hooks enables
-    if (this?.hooks?.onRequest && this.hooks.onRequest.length > 0) {
-      config.hasOnReqHook = true;
-      this.hasOnReqHook = true
-    }
-    if (this?.hooks?.preHandler && this.hooks.preHandler.length > 0) {
-      config.hasPreHandlerHook = true;
-      this.hasPreHandlerHook = true
-    }
-    if (this?.hooks?.postHandler && this.hooks.postHandler?.length > 0) {
-      config.hasPostHandlerHook = true;
-      this.hasPostHandlerHook = true
-    }
-    if (this?.hooks?.onSend && this.hooks.onSend?.length > 0) {
-      config.hasOnSendHook = true;
-      this.hasOnSendHook = true
-    }
-    if (this?.hooks?.onError && this.hooks.onError?.length > 0) {
-      config.hasOnError = true;
-      this.hasOnError = true
-    }
-    // console.log('this.hooks', this.hasOnReqHook)
-    // setTimeout(() => {
-    //   this.tempRoutes = null
-    // }, 2000);
-    this.tempRoutes = null
-    this.tempMiddlewares = null
-    this.compileConfig = config
-    return config;
-  }
-
-  // this func gives us power to do file based routing similar to Next.js
-  private async registerFileRoutes(
-    filePath: string,
-    baseRoute: string,
-    extension: string
-  ) {
-
-    const module = await import(filePath);
-
-    let pathRoute;
-    if (extension === '.ts') {
-      pathRoute = path.basename(filePath, '.ts');
-    }
-    else if (extension === '.js') {
-      pathRoute = path.basename(filePath, '.js');
-    }
-
-    let routePath = baseRoute + '/' + pathRoute;
-
-    if (routePath.endsWith('/index')) {
-      routePath = baseRoute
-    } else if (routePath.endsWith('/api')) {
-      routePath = baseRoute
-    }
-    // here we can check if routePath include [] like - user/[id] if yes then remove [] and add user:id
-    routePath = routePath.replace(/\[(.*?)\]/g, ':$1');
-
-    const supportedMethods: HttpMethod[] = [
-      'GET', 'POST', 'PUT', 'PATCH',
-      'DELETE', 'ANY', 'HEAD', 'OPTIONS', 'PROPFIND'
-    ];
-
-    for (const method of supportedMethods) {
-      if (module[method]) {
-        const lowerMethod = method.toLowerCase() as HttpMethodOfApp;
-        const handler = module[method] as handlerFunction;
-        this[lowerMethod](`${this.baseApiUrl}${routePath}`, handler)
-      }
-    }
-  }
-
-  // part of load Routes func family
-  private async loadRoutes(
-    dirPath: string,
-    baseRoute: string
-  ) {
-    const files = await fs.promises.readdir(dirPath);
-
-    for (const file of files) {
-      const filePath = path.join(dirPath, file);
-      const stat = await fs.promises.stat(filePath);
-
-      if (stat.isDirectory()) {
-        await this.loadRoutes(filePath, baseRoute + '/' + file);
-      } else if (file.endsWith('.ts')) {
-        await this.registerFileRoutes(filePath, baseRoute, '.ts');
-      } else if (file.endsWith('.js')) {
-        await this.registerFileRoutes(filePath, baseRoute, '.js');
-      }
-
-    }
-  }
 
   // For logging incoming requests
   useLogger(options: LoggerOptions) {
@@ -506,9 +394,6 @@ export default class Diesel {
   // when you use this , it will override existing endpoint with same path
   BunRoute(method: string, path: string, ...handlersOrResponse: any[]): this {
     if (!path || typeof path !== 'string') throw new Error("give a path in string format")
-    if (!this.compileConfig) {
-      this.compile();
-    }
 
     // Direct response send
     let response_data: string | object | undefined;
@@ -521,7 +406,7 @@ export default class Diesel {
         : JSON.stringify(response_data)
     }
 
-    const handlerFunction = BunRequestPipline(this.compileConfig!, this as any, method.toUpperCase(), path, ...handlersOrResponse)
+    const handlerFunction = BunRequestPipline(this as any, method.toUpperCase(), path, ...handlersOrResponse)
     this.routes[path] = handlerFunction
     return this
   }
@@ -589,19 +474,21 @@ export default class Diesel {
 
   // for cloudflare fetch
   cfFetch() {
-    this.compile()
+    this.tempRoutes = null
+    this.tempMiddlewares = null
+
     return (request: Request, env: Record<string, any>, executionCtx: any) => {
       return this.#handleRequests(request, undefined, env, executionCtx)
     }
   }
 
   fetch() {
-    const config: CompileConfig = this.compile();
-
+    this.tempRoutes = null
+    this.tempMiddlewares = null
     // if user is using for cloudflare workers
     if (this.platform === 'cf' || this.platform === 'cloudflare') {
       if (this.#newPipelineArchitecture) {
-        const pipeline = buildRequestPipeline(config, this as any)
+        const pipeline = buildRequestPipeline(this as any)
         return (req: Request, env: Record<string, string>, executionContext: any) => {
           return pipeline(req, this, undefined, env, executionContext)
             .catch(async (error: any) => {
@@ -621,7 +508,7 @@ export default class Diesel {
 
     if (this.#newPipelineArchitecture) {
       // New way
-      const pipeline = buildRequestPipeline(config, this as any)
+      const pipeline = buildRequestPipeline(this as any)
       return (req: Request, server: Server) => {
         return pipeline(req, this, server, undefined, undefined)
           .catch(async (error: any) => {
@@ -635,6 +522,8 @@ export default class Diesel {
 
   }
 
+
+
   // Function where our request comes if new architecture is disabled.
   async #handleRequests(
     req: Request,
@@ -644,7 +533,6 @@ export default class Diesel {
 
     const pathname = getPath(req.url);
     const routeHandler = this.router.find(req.method as HttpMethod, pathname);
-
     const ctx = new Context(
       req,
       server,
@@ -672,28 +560,28 @@ export default class Diesel {
         if (result) return result;
       }
 
-      // console.log('routehandler ', routeHandler)
-
+      // console.log('routeHandlers ',routeHandler)
       let finalResult
       const arr: any = routeHandler?.handler;
       for (let i = 0; i < arr?.length; i++) {
-        const result = arr[i]?.(ctx)
-        finalResult = result instanceof Promise ? await result : result;
-        if (finalResult instanceof Response) break
+        const result = arr[i](ctx)
+        finalResult = isPromise(result) ? await result : result;
+        // if (isResponse(finalResult)) break
+        if(finalResult) break
       }
 
       // onSend
       if (this.hasOnSendHook) {
         const response = await runHooks('onSend', this.hooks.onSend, [ctx, finalResult]);
-        if (response instanceof Response) return response;
+        if (response) return response;
       }
 
-      if (finalResult instanceof Response) {
-        return finalResult;
-      }
+      if(finalResult) return finalResult
+      // if (isResponse(finalResult)) {
+      //   return finalResult;
+      // }
 
       return await handleRouteNotFound(this as any, ctx, pathname)
-      return ctx.text('Not Found', 404)
     } catch (err: any) {
       return this.handleError(err, pathname, req)
     }
@@ -707,7 +595,7 @@ export default class Diesel {
   private async handleError(err: unknown, path: string, req: Request) {
     const isDev = process.env.NODE_ENV === "developement";
     const format = this.errorFormat
-    console.log('called handle Err')
+
     // 1. user defined hooks
     const hookResult = await runHooks("onError", this.hooks.onError, [err, path, req]);
     if (hookResult) return hookResult;
@@ -759,7 +647,7 @@ export default class Diesel {
   ) {
     const cleanPrefix = prefix.endsWith("/*") ? prefix.slice(0, -1) : prefix;
     const prefixLength = cleanPrefix === '/' ? 0 : cleanPrefix.length;
-    this.any(prefix, (ctx) => {
+    this.any(prefix, (ctx: Context) => {
       // build new url for fetch
       const url = new URL(ctx.req.url);
       // here we slice orgininal coming url like /hono/hello so we have to slice /hono
@@ -778,6 +666,7 @@ export default class Diesel {
    *   const userRoute = new Diesel();
    *   app.route("/api/v1/user", userRoute);
    */
+
   route(
     basePath: string | undefined,
     routerInstance: Diesel | null
@@ -1007,79 +896,6 @@ export default class Diesel {
     // })
     // return this
   }
-
-  get(
-    path: string,
-    ...handlers: handlerFunction[] | Function[]
-  ): this {
-    this.addRoute("GET", path, handlers as any);
-    return this;
-  }
-
-  post(
-    path: string,
-    ...handlers: handlerFunction[] | Function[]
-  ): this {
-    this.addRoute("POST", path, handlers as any);
-    return this;
-  }
-
-  put(
-    path: string,
-    ...handlers: handlerFunction[] | Function[]
-  ): this {
-    this.addRoute("PUT", path, handlers as any);
-    return this;
-  }
-
-  patch(
-    path: string,
-    ...handlers: handlerFunction[] | Function[]
-  ): this {
-    this.addRoute("PATCH", path, handlers as any);
-    return this;
-  }
-
-  delete(
-    path: string,
-    ...handlers: handlerFunction[] | Function[]
-  ): this {
-    this.addRoute("DELETE", path, handlers as any);
-    return this;
-  }
-
-  any(
-    path: string,
-    ...handlers: handlerFunction[] | Function[]
-  ) {
-    this.addRoute("ANY", path, handlers as any);
-    return this;
-  }
-
-  head(
-    path: string,
-    ...handlers: handlerFunction[] | Function[]
-  ) {
-    this.addRoute("HEAD", path, handlers as any);
-    return this;
-  }
-
-  options(
-    path: string,
-    ...handlers: handlerFunction[] | Function[]
-  ): this {
-    this.addRoute("OPTIONS", path, handlers as any);
-    return this;
-  }
-
-  propfind(
-    path: string,
-    ...handlers: handlerFunction[] | Function[]
-  ): this {
-    this.addRoute("PROPFIND", path, handlers as any);
-    return this;
-  }
-
 
 
   routeNotFound(
