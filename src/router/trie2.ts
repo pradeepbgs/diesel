@@ -4,13 +4,13 @@ import { NormalizedRoute, Router } from "./interface";
 import { extractDynamicParams, extractParam } from "../ctx";
 
 class TrieNodes {
-    children: Map<string, TrieNodes>
+    children: Record<string, TrieNodes>
     isEndOfWord: boolean
     handlers: Map<string, () => void>;
     paramName: string[]
     middlewares: middlewareFunc[]
     constructor() {
-        this.children = new Map()
+        this.children = {}
         this.handlers = new Map()
         this.isEndOfWord = false
         this.paramName = []
@@ -46,9 +46,9 @@ export class TrieRouter {
                 node.middlewares.push(...handlers)
             }
 
-            if (!node.children.has(key)) node.children.set(key, new TrieNodes());
+            if (!node.children[key]) node.children[key] = new TrieNodes()
 
-            node = node.children.get(key)!
+            node = node.children[key]
         }
 
         node.middlewares.push(...handlers)
@@ -75,9 +75,9 @@ export class TrieRouter {
                 key = ':'
             }
 
-            if (!node.children.has(key)) node.children.set(key, new TrieNodes());
+            if (!node.children[key]) node.children[key] = new TrieNodes()
 
-            node = node.children.get(key)!
+            node = node.children[key]
         }
 
         node.paramName = pathSegments
@@ -94,21 +94,17 @@ export class TrieRouter {
         const pathSegments = path.split('/').filter(Boolean);
 
         let collected: middlewareFunc[] = [...this.globalMiddlewares];
-        // console.log('collected midl ', collected)
+
         for (const element of pathSegments) {
-            // if (node.children.has('*')) {
-            //     collected.push(...node.children.get('*')!.middlewares);
-            // }
-            if (node.children.has(element)) {
-                node = node.children.get(element)!;
-            } else if (node.children.has(':')) {
-                node = node.children.get(':')!;
-            } else if (node.children.has('*')) {
-                // collected.push(...node.children.get('*')!.middlewares);
-                node = node.children.get('*')!;
+
+            if (node.children[element]) {
+                node = node.children[element]!;
+            } else if (node.children[':']) {
+                node = node.children[':'];
+            } else if (node.children['*']) {
+                node = node.children['*'];
                 break;
             } else {
-                // console.log('object');
                 return { handler: collected };
             }
 
@@ -124,19 +120,7 @@ export class TrieRouter {
             params: node.paramName as string[],
             handler: collected
         }
-
-        // if (node.isEndOfWord) {
-        //     const h = node.handlers.get(method)
-        //     return h ? {
-        //         params: node.paramName as string[],
-        //         handler: [...collected, node.handlers.get(method)]
-        //     } : {
-        //         handler: collected
-        //     }
-        // }
-        // return {
-        //     handler: [...this.globalMiddlewares]
-        // }
+        
     }
 }
 

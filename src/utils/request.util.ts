@@ -1,6 +1,7 @@
 import { Server } from "bun";
-import { ContextType, DieselT, HookType } from "../types";
+import { ContextType, DieselT, handlerFunction, HookType } from "../types";
 import { getMimeType } from "./mimeType";
+import { isPromise, isResponse } from "./promise";
 
 export async function runHooks<T extends any[]>(
   label: HookType,
@@ -50,7 +51,7 @@ export async function executeBunMiddlewares(
 
 export async function runFilter(diesel: DieselT, path: string, ctx: ContextType) {
   const filterResponse = await handleFilterRequest(diesel, path, ctx);
-  const finalResult = filterResponse instanceof Promise ? await filterResponse : filterResponse;
+  const finalResult = isPromise(filterResponse) ? await filterResponse : filterResponse;
   if (finalResult) return finalResult;
 }
 
@@ -104,11 +105,14 @@ export async function handleRouteNotFound(diesel: DieselT, ctx: ContextType, pat
     if (isStaticRequest) {
       const staticRes = await handleStaticFiles(diesel, pathname, ctx);
       if (staticRes) return staticRes;
-
-      const wildcard = diesel.router.find(ctx.req.method, '*');
-      if (wildcard?.handler) return await wildcard.handler(ctx);
     }
   }
+
+  const wildcard = diesel.router.find(ctx.req.method, '*');
+  const arr: handlerFunction[] | any = wildcard?.handler
+  const handler = arr.slice(-1)
+  const res = await handler[0](ctx)
+  if (isResponse(res)) return res
 
   const fallback = diesel.routeNotFoundFunc(ctx);
   return fallback instanceof Promise ? await fallback : fallback || generateErrorResponse(404, `404 Route not found for ${pathname}`);

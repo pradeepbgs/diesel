@@ -1,9 +1,13 @@
 import { Hono } from "hono"
 import Diesel from "../../src/main"
+import type { Context } from "elysia"
+import type { ContextType } from "diesel-core"
 // import { Hono } from '/home/pradeep/Desktop/hono/src/hono'
 
-const app = new Diesel({})
-    .get('/', (c) => c.text("Hello Diesel!"))
+const app = new Diesel({
+    router:'t2'
+})
+    .get('/', (c:ContextType) => c.text("Hello Diesel!"))
 
 const honoApp = new Hono()
     .get("/", (c) => c.text("Hello Hono!"))

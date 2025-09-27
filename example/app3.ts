@@ -4,16 +4,21 @@ import { HTTPException } from '../src/http-exception';
 import FindMyWay from 'find-my-way'
 import { FindMyWayRouter } from "../src/router/find-my-way";
 import { TrieRouter2 } from '../src/router/trie2'
+import { Context } from "../src/ctx";
+
 
 // const t2 = new TrieRouter2()
+
+
 const app = new Diesel({
     errorFormat: 'text',
     // logger: true,
-    // router: 'trie'
-    pipelineArchitecture: true
+    // router: 'fastify',
+    // pipelineArchitecture: true
     // routerInstance: t2
     // router: 'fastify',
 })
+
 
 const msg = "hhhhh"
 
@@ -39,7 +44,7 @@ function addMiddleware() {
 
 // addMiddleware()
 
-app.get('/user/:id', (ctx) => {
+app.get('/user/:id', (ctx: ContextType) => {
     const p = ctx.req
     const id = ctx.params.id
     console.log('id ', id)
@@ -49,14 +54,15 @@ app.get('/user/:id', (ctx) => {
 
 app.BunRoute('get', '/bun', "Helll")
 
+app.static('','')
+app.get('*', (c) => c.text("hello"))
 
-
-app.get("/", (ctx) => {
-    // const ip = ctx.ip
-    // console.log('ip ', ip)
-    // ctx.setHeader("Content-Type", "application/json; charset=utf-8")
-    return ctx.text("Hello world!")
-})
+// app.get("/", (ctx: ContextType) => {
+//     // const ip = ctx.ip
+//     // console.log('ip ', ip)
+//     // ctx.setHeader("Content-Type", "application/json; charset=utf-8")
+//     return ctx.text("Hello world!")
+// })
 
 class UserService {
     users: Array<Object>
@@ -86,14 +92,14 @@ const userService = new UserService()
 app.BunRoute('get', '/user', userService.getUser)
 
 // app.use(async() => console.log('hloblalsssss'), async() => console.log("2nd"), () => console.log("3rd"))
-// app.use(async() => console.log('hloblal'))
+app.use(async() => console.log('hloblal'))
 app.use('/power', () => console.log('power middleware'))
-app.get("/power", (ctx) => {
+app.get("/power", (ctx: Context) => {
     return ctx.text("/power")
 })
 
 
-app.get('/async', (ctx) => {
+app.get('/async', (ctx: Context): any => {
     return new Promise((resolve, reject) => {
         setTimeout(() => {
             resolve(ctx.text("maybe resolved"))
@@ -102,11 +108,10 @@ app.get('/async', (ctx) => {
 })
 
 app.get('/err', (ctx: ContextType) => {
-    throw new HTTPException(405, { message: "unauthorized sir" })
     throw new HTTPException(400, { message: 'Unauthorized' });
 });
 
-app.get('/aerr', async (ctx) => {
+app.get('/aerr', async (ctx: Context) => {
     await someAsyncTask();
     throw new Error("async error");
 });
@@ -115,12 +120,12 @@ async function someAsyncTask() { }
 
 
 
-app.get('/hello/2', (ctx) => ctx.send("/hello/2"))
-app.get('/hello/:id/:name', (ctx) => ctx.send('/helo/;id/;name'))
+app.get('/hello/2', (ctx: Context) => ctx.send("/hello/2"))
+app.get('/hello/:id/:name', (ctx: Context) => ctx.send('/helo/;id/;name'))
 
 
 const ur = new Diesel()
-// ur.use("/", () => console.log("/* middleware"))
+ur.use("/", () => console.log("/* middleware"))
 // ur.use("/*", () => console.log("ur/* middleware"))
 ur.get('/', () => console.log("path midl"), () => new Response("/ hello ur"))
 

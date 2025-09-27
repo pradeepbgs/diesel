@@ -1,4 +1,4 @@
-import { CompileConfig, ContextType, corsT, DieselOptions, errorFormat, FilterMethods, HookType, listenArgsT, middlewareFunc, RouteNotFoundHandler, type handlerFunction, type Hooks } from "./types.js";
+import { CompileConfig, ContextType, corsT, DieselOptions, errorFormat, FilterMethods, HookType, listenArgsT, middlewareFunc, RouteHandler, RouteNotFoundHandler, type Hooks } from "./types.js";
 import { Server } from "bun";
 import { AdvancedLoggerOptions, LoggerOptions } from "./middlewares/logger/logger.js";
 import { EventEmitter } from 'events';
@@ -24,7 +24,7 @@ export default class Diesel {
     private serverInstance;
     staticFiles: any;
     user_jwt_secret: string;
-    private baseApiUrl;
+    baseApiUrl: string;
     private enableFileRouter;
     idleTimeOut: number;
     routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
@@ -35,6 +35,15 @@ export default class Diesel {
     platform: string;
     staticPath: any;
     staticRequestPath: string | undefined;
+    get: RouteHandler;
+    post: RouteHandler;
+    put: RouteHandler;
+    patch: RouteHandler;
+    delete: RouteHandler;
+    any: RouteHandler;
+    head: RouteHandler;
+    options: RouteHandler;
+    propfind: RouteHandler;
     constructor(options?: DieselOptions);
     static router(prefix: string): Diesel;
     /**
@@ -49,16 +58,13 @@ export default class Diesel {
     static(path: string, requestPath?: string): this;
     staticHtml(args: Record<string, string>): this;
     addHooks<T extends HookType>(typeOfHook: T, fnc: Hooks[T][number]): this;
-    private compile;
-    private registerFileRoutes;
-    private loadRoutes;
     useLogger(options: LoggerOptions): this;
     useAdvancedLogger(options: AdvancedLoggerOptions): this;
     BunRoute(method: string, path: string, ...handlersOrResponse: any[]): this;
     listen(port: any, ...args: listenArgsT[]): Server | void;
     close(callback?: () => void): void;
     cfFetch(): (request: Request, env: Record<string, any>, executionCtx: any) => Promise<Response | undefined>;
-    fetch(): ((request: Request, env?: Record<string, any>, executionContext?: any) => Promise<Response | undefined>) | ((req: Request, server: Server) => any) | ((req: Request, server?: Server, env?: Record<string, any>, executionContext?: any) => Promise<Response | undefined>);
+    fetch(): ((req: Request, env: Record<string, string>, executionContext: any) => any) | ((request: Request, env?: Record<string, any>, executionContext?: any) => Promise<Response | undefined>) | ((req: Request, server: Server) => any) | ((req: Request, server?: Server, env?: Record<string, any>, executionContext?: any) => Promise<Response | undefined>);
     private handleError;
     /**
      * Mount method
@@ -86,15 +92,6 @@ export default class Diesel {
      * - app.use("/home", h1) -> Adds `h1` middleware to the `/home` path.
      */
     use(pathORHandler?: string | string[] | middlewareFunc | middlewareFunc[] | Function | Function[], ...handlers: middlewareFunc | middlewareFunc[] | Function | Function[] | any): this;
-    get(path: string, ...handlers: handlerFunction[] | Function[]): this;
-    post(path: string, ...handlers: handlerFunction[] | Function[]): this;
-    put(path: string, ...handlers: handlerFunction[] | Function[]): this;
-    patch(path: string, ...handlers: handlerFunction[] | Function[]): this;
-    delete(path: string, ...handlers: handlerFunction[] | Function[]): this;
-    any(path: string, ...handlers: handlerFunction[] | Function[]): this;
-    head(path: string, ...handlers: handlerFunction[] | Function[]): this;
-    options(path: string, ...handlers: handlerFunction[] | Function[]): this;
-    propfind(path: string, ...handlers: handlerFunction[] | Function[]): this;
     routeNotFound(handler: RouteNotFoundHandler): this;
     on(event: string | symbol, listener: EventListener): void;
     emit(event: string | symbol, ...args: any): void;

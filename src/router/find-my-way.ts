@@ -10,12 +10,12 @@ export class FindMyWayRouter implements Router {
     }
 
     addMiddleware(path: string, ...handlers: middlewareFunc[] | any): void {
-        throw new Error("Middl is disbaled for fastify router , use native t2 for now")
+        // throw new Error("Middl is disbaled for fastify router , use native t2 for now")
     }
 
     find(method: string, path: string): NormalizedRoute | null {
         const result = this.router.find(method as HTTPMethod, path) as any
-        if (result) return { handler: result.handler, params: result.params };
+        if (result) return { handler: [result.handler], params: result.params };
         return null;
     }
 }
