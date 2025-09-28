@@ -1,1 +1,0 @@
-class r{redis;constructor(t){this.redis=t}async get(t){let e=await this.redis.get(t);return e?parseInt(e):null}async set(t,e,s){await this.redis.set(t,e,"PX",s)}async reset(t){await this.redis.del(t)}}export{r as RedisStore};

@@ -1,1 +1,0 @@
-var o=(e)=>e!==null&&typeof e==="object"&&typeof e.then==="function",n=(e)=>e!==null&&typeof e==="object"&&typeof e.status==="number"&&typeof e.headers==="object";export{n as isResponse,o as isPromise};
