@@ -4,12 +4,26 @@ import type { Context } from "elysia"
 import type { ContextType } from "diesel-core"
 // import { Hono } from '/home/pradeep/Desktop/hono/src/hono'
 
-const app = new Diesel({
-    router:'t2'
+export const app = new Diesel({
+    router: 't2'
 })
-    .get('/', (c:ContextType) => c.text("Hello Diesel!"))
+    // .use(() => { Math.random() })
+    // .use(() => { Math.random() })
+    // .use(() => { Math.random() })
+    .get('/', (c: ContextType) => c.text("Hello Diesel!"))
 
 const honoApp = new Hono()
+    // .use((c, next) => {
+    //     Math.random()
+    //     return next()
+    // })
+    // .use((c, next) => {
+    //     Math.random()
+    //     return next()
+    // }).use((c, next) => {
+    //     Math.random()
+    //     return next()
+    // })
     .get("/", (c) => c.text("Hello Hono!"))
 
 

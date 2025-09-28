@@ -60,7 +60,8 @@ Bun.build({
         './src/utils/jwt.ts',
         './src/utils/mimeType.ts',
         './src/utils/urls.ts',
-        './src/utils/request.util.ts'
+        './src/utils/request.util.ts',
+        './src/utils/promise.ts'
     ],
     outdir: './dist/utils',
     minify: true

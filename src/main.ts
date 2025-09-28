@@ -122,7 +122,7 @@ export default class Diesel {
     })
 
     const {
-      router = 'trie',
+      router = 't2',
       routerInstance,
       errorFormat = 'json',
       platform = 'bun',
@@ -532,13 +532,13 @@ export default class Diesel {
     executionContext?: any): Promise<Response | undefined> {
 
     const pathname = getPath(req.url);
-    const routeHandler = this.router.find(req.method as HttpMethod, pathname);
+    const matchedRouteHandler = this.router.find(req.method as HttpMethod, pathname);
     const ctx = new Context(
       req,
       server,
       pathname,
-      routeHandler?.path as string,
-      routeHandler?.params,
+      matchedRouteHandler?.path as string,
+      matchedRouteHandler?.params,
       env,
       executionContext
     );
@@ -562,12 +562,18 @@ export default class Diesel {
 
       // console.log('routeHandlers ',routeHandler)
       let finalResult
-      const arr: any = routeHandler?.handler;
-      for (let i = 0; i < arr?.length; i++) {
-        const result = arr[i](ctx)
+      const handlers: any = matchedRouteHandler?.handler;
+
+      if (handlers.length === 1) {
+        const result = handlers[0](ctx);
         finalResult = isPromise(result) ? await result : result;
-        // if (isResponse(finalResult)) break
-        if(finalResult) break
+      }
+      else {
+        for (let i = 0; i < handlers.length; i++) {
+          const result = handlers[i](ctx);
+          finalResult = isPromise(result) ? await result : result;
+          if (finalResult) break;
+        }
       }
 
       // onSend
@@ -576,7 +582,7 @@ export default class Diesel {
         if (response) return response;
       }
 
-      if(finalResult) return finalResult
+      if (finalResult) return finalResult
       // if (isResponse(finalResult)) {
       //   return finalResult;
       // }

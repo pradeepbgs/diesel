@@ -11,7 +11,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "diesel-core": "^1.5.5",
+    "diesel-core": "^1.6.4",
     "elysia": "^1.4.5",
     "express": "^5.1.0",
     "fastify": "^5.6.0",

@@ -55,14 +55,14 @@ app.get('/user/:id', (ctx: ContextType) => {
 app.BunRoute('get', '/bun', "Helll")
 
 app.static('','')
-app.get('*', (c) => c.text("hello"))
+// app.get('*', (c) => c.text("hello"))
 
-// app.get("/", (ctx: ContextType) => {
-//     // const ip = ctx.ip
-//     // console.log('ip ', ip)
-//     // ctx.setHeader("Content-Type", "application/json; charset=utf-8")
-//     return ctx.text("Hello world!")
-// })
+app.get("/", (ctx: ContextType) => {
+    // const ip = ctx.ip
+    // console.log('ip ', ip)
+    // ctx.setHeader("Content-Type", "application/json; charset=utf-8")
+    return ctx.text("Hello world!")
+})
 
 class UserService {
     users: Array<Object>
@@ -92,7 +92,7 @@ const userService = new UserService()
 app.BunRoute('get', '/user', userService.getUser)
 
 // app.use(async() => console.log('hloblalsssss'), async() => console.log("2nd"), () => console.log("3rd"))
-app.use(async() => console.log('hloblal'))
+// app.use(async() => console.log('hloblal'))
 app.use('/power', () => console.log('power middleware'))
 app.get("/power", (ctx: Context) => {
     return ctx.text("/power")

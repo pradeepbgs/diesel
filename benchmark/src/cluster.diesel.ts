@@ -1,6 +1,6 @@
 import cluster from "cluster";
 import os from "os";
-import app from "./diesel";
+import Diesel from "../../src/main";
 
 const numCPUs = os.cpus().length;
 
@@ -17,6 +17,8 @@ if (cluster.isPrimary) {
         cluster.fork();
     });
 } else {
+    const app = new Diesel()
+    app.get('/', (c) => c.json({msg:"Hello world"}))
     Bun.serve({
         fetch: app.fetch() as any,
         port: 3000,

@@ -1,6 +1,6 @@
 const NUM_IT = 1000_000;
 
-const isPromise = (v: any): v is Promise<any> =>
+const isPromise = (v: any): boolean =>
     v !== null && typeof v === "object" && typeof (v as any).then === "function";
 
 
@@ -16,7 +16,7 @@ const startBenchInstanceOf = () => {
     const start = performance.now();
     for (let i = 0; i < NUM_IT; i++) {
         if (result instanceof Promise) { }
-        if (result instanceof Response){}
+        // if (result instanceof Response){}
     }
     const end = performance.now();
 
@@ -34,7 +34,7 @@ const startBenchIsPromise = () => {
     const start = performance.now();
     for (let i = 0; i < NUM_IT; i++) {
         if (isPromise(result)) { }
-        if (isResponse(result)){}
+        // if (isResponse(result)){}
     }
     const end = performance.now();
 

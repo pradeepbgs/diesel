@@ -2,11 +2,10 @@
 
 # DieselJS
 
-**made only for bun***
 
 **Diesel** is a simple and lightweight HTTP server library for Bun.js that provides you with complete control over your API routes and middleware. It is designed to be intuitive and efficient, allowing you to quickly set up a server, define routes, and optimize important paths for faster response times. 
 
-With built-in support for TypeScript, DieselJS ensures type safety and improved developer experience, making it easier to catch errors during development. Whether you are building a small application or a large API, DieselJS helps you manage your routes and middleware seamlessly.
+**Now Supports Node.js & Cloduflare adaptors**
 
 
 ## Installation
@@ -40,30 +39,56 @@ app.listen(port, () => {
 **In Diesel there are almost all http methods that you can use**
 
 ```javascript
-app.get()
+app.get() app.post() app.put() 
+app.patch() app.delete() app.any() 
+app.head() app.options() , app.onMethod(method,path,handler)
+```
+# Cloudflare workers
 
-app.post()
+### now you can use diesel.js for cloudflare workers apis
 
-app.put()
+```ts
+import {Diesel} from "diesel-core"
+const app = new Diesel({
+    platform: 'cf',
+    logger: true
+})
+.get("/", (ctx) => ctx.text("Welcome to Diesel.js on Cloudflare Workers!"));
 
-app.patch()
-
-app.delete()
-
-app.any() // used for all http methods such as GET,POST,PUT..
-
-app.head()
-
-app.options()
+export default {
+  fetch: app.fetch()
+}
 
 ```
+**Note make sure to add platform:'cf' & call fetch(), it gives you real fetch handler**
 
+# Node.js adaptor
+### Now you can use Diesel.js for Node.js
+
+```ts
+import { Diesel } from "diesel-core"
+import { serve } from 'diesel-core/node'
+
+const app = 
+new Diesel({
+    logger:true
+})
+.get("/", (c) => {
+  return c.text(`hello from node diesel/`)
+})
+
+
+serve({
+    fetch: app.fetch(),
+    port: 3000
+})
+```
 
 # CORS
 
 ### Diesel supports cors out of the box
 
-``` javascript
+``` ts
 app.use(cors{
   origin: ['http://localhost:5173','*'],
   methods: ['GET','POST','PUT','DELETE'],
@@ -163,9 +188,9 @@ DieselJS allows you to enhance your request handling by utilizing hooks at vario
 
 1. **onRequest**: Triggered when a request is received.
 2. **preHandler**: Invoked just before the request handler executes.
-3. **postHandler**: Executed after the request handler completes but before sending the response.
-4. **onSend**: Called just before the response is sent to the client.
-5. **onError** : Executes if any error occurs
+<!-- 3. **postHandler**: Executed after the request handler completes but before sending the response. -->
+3. **onSend**: Called just before the response is sent to the client.
+4. **onError** : Executes if any error occurs
 
 ### How to Define Hooks
 
@@ -197,11 +222,6 @@ app.addHooks("preHandler",(ctx:ContextType) =>{
   }
 })
 
-// Define a postHandler hook
-app.addHooks('postHandler', async (ctx:ContextType) => {
-  console.log(`Response sent for: ${ctx.req.url}`);
-});
-
 // Define an onSend hook
 app.addHooks('onSend',async (ctx, result) => {
   console.log(`Sending response with status: ${result.status}`);
@@ -216,7 +236,7 @@ app.addHooks('onSend',async (ctx, result) => {
 **just dont return , if evrything goes right**
 
 ```javascript
-async function authJwt (ctx:ContextType, server?:Server): Promise<void | Response> {
+async function authJwt (ctx:ContextType): Promise<void | Response> {
   
   try {
     const token = ctx.cookies?.accessToken
@@ -234,12 +254,12 @@ async function authJwt (ctx:ContextType, server?:Server): Promise<void | Respons
 // this is a global middleware
 app.use(authJwt)
 OR 
-app.use([authJwt,middleware2 , ...])
+app.use(authJwt,middleware2 , ...)
 
 // path middleware example
 app.use("/user",authJWT)
 OR
-app.use(["/user","/home"],[authJWT,middleware2])
+// app.use(["/user","/home"],[authJWT,middleware2])
 //means /user and /home has two middlewares
 
 
