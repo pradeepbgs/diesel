@@ -1,1 +1,0 @@
-var t=(e)=>{e.setHeader("Strict-Transport-Security","max-age=31536000; includeSubDomains"),e.setHeader("Content-Security-Policy","default-src 'self'"),e.setHeader("X-Content-Type-Options","nosniff"),e.setHeader("X-Frame-Options","DENY")};export{t as securityMiddleware};
