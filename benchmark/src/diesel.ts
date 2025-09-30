@@ -11,6 +11,7 @@ export const app = new Diesel({
     // .use(() => { Math.random() })
     // .use(() => { Math.random() })
     .get('/', (c: ContextType) => c.text("Hello Diesel!"))
+    // .BunRoute('GET', '/', () => new Response("Hello bun"))
 
 const honoApp = new Hono()
     // .use((c, next) => {

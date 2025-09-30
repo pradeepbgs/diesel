@@ -25,6 +25,8 @@ export interface NormalizedRoute {
 
 
 export class RouterFactory {
+
+
     static create(name?: string): Router {
         switch (name) {
             case 't2':
@@ -42,4 +44,5 @@ export class RouterFactory {
             default: return new TrieRouter()
         }
     }
+    
 }
