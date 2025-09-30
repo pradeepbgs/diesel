@@ -7,3 +7,4 @@ make.sh
 src/PipeLineRequestHandle.ts
 .env
 src/routes
+dist/

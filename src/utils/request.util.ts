@@ -111,8 +111,10 @@ export async function handleRouteNotFound(diesel: DieselT, ctx: ContextType, pat
   const wildcard = diesel.router.find(ctx.req.method, '*');
   const arr: handlerFunction[] | any = wildcard?.handler
   const handler = arr.slice(-1)
-  const res = await handler[0](ctx)
-  if (isResponse(res)) return res
+  if (handler.length > 0) {
+    const res = await handler[0](ctx)
+    if (isResponse(res)) return res
+  }
 
   const fallback = diesel.routeNotFoundFunc(ctx);
   return fallback instanceof Promise ? await fallback : fallback || generateErrorResponse(404, `404 Route not found for ${pathname}`);

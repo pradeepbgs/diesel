@@ -1,4 +1,3 @@
-
 import {
   CompileConfig,
   ContextType,
@@ -49,7 +48,6 @@ import { EventEmitter } from 'events';
 import { Context } from "./ctx.js";
 
 import {
-  generateErrorResponse,
   handleRouteNotFound,
   runFilter,
   runHooks,
@@ -58,7 +56,7 @@ import {
 import { HTTPException } from "./http-exception";
 import { Router, RouterFactory } from "./router/interface.js";
 import { supportedMethods } from './constant.js';
-import { isPromise, isResponse } from "./utils/promise.js";
+import { isPromise } from "./utils/promise.js";
 
 
 
@@ -307,14 +305,6 @@ export default class Diesel {
     return this
   }
 
-  serveStatic(
-    filePath: string,
-    requestPath?: string
-  ) {
-    this.staticPath = filePath;
-    this.staticRequestPath = requestPath
-    return this;
-  }
 
   static(
     path: string,
@@ -452,9 +442,7 @@ export default class Diesel {
 
     this.serverInstance = Bun?.serve(ServerOptions);
 
-    if (callback) {
-      callback();
-    }
+    callback && callback()
 
     return this.serverInstance;
   }
@@ -521,8 +509,6 @@ export default class Diesel {
     return this.#handleRequests.bind(this)
 
   }
-
-
 
   // Function where our request comes if new architecture is disabled.
   async #handleRequests(
@@ -591,9 +577,6 @@ export default class Diesel {
     } catch (err: any) {
       return this.handleError(err, pathname, req)
     }
-
-    // if we dont return a response then by default Bun shows a err 
-    return generateErrorResponse(500, "No response returned from handler.");
 
   }
 
@@ -912,27 +895,35 @@ export default class Diesel {
   }
 
 
-  // on(methods: string | (HttpMethod | string)[], path: string, ...handlers: handlerFunction[]) {
-  //   const methodArray = Array.isArray(methods) ? methods : [methods]
+  onMethod(
+    methods: string | (HttpMethod | string)[],
+    path: string,
+    ...handlers: handlerFunction[]
+  ) {
+    const methodArray = Array.isArray(methods) ? methods : [methods]
 
-  //   for (const method of methodArray) {
-  //     const methodNormalized = method.toUpperCase();
-  //     if (methodNormalized.toLocaleLowerCase() in this) {
-  //       this[methodNormalized.toLocaleLowerCase() as HttpMethodLower](path, ...handlers)
-  //     }
-  //     else {
-  //       this.addRoute(methodNormalized as HttpMethod, path, handlers)
-  //     }
-  //   }
+    for (const method of methodArray) {
+      const httpMethod = method.toLowerCase()
 
-  // }
+      if (httpMethod in this) {
+        (this as any)[httpMethod](path, ...handlers)
+      } else {
+        this.addRoute(method.toUpperCase() as HttpMethod, path, handlers)
+      }
+    }
+
+    return this
+  }
+
 
   on(event: string | symbol, listener: EventListener) {
     this.emitter.on(event, listener);
+    return this;
   }
 
   emit(event: string | symbol, ...args: any) {
     this.emitter.emit(event, ...args);
+    return this;
   }
 }
 
