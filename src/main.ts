@@ -182,9 +182,9 @@ export default class Diesel {
     // if user wants to log
     if (logger) this.useLogger({
       app: this,
-      onError(err) {
-        console.error('Got an exception:', err);
-      },
+      // onError(err) {
+      //   console.error('Got an exception:', err?.message ?? err?.cause);
+      // },
     })
 
 
@@ -583,6 +583,7 @@ export default class Diesel {
   // HandleError
   private async handleError(err: unknown, path: string, req: Request) {
     const isDev = process.env.NODE_ENV === "developement";
+
     const format = this.errorFormat
 
     // 1. user defined hooks
@@ -593,6 +594,15 @@ export default class Diesel {
     if (err && typeof err === 'object' && (err as any).name === 'HTTPException') {
       // If a custom Response was provided, use it
       const httpErr = err as HTTPException;
+      console.error(`HTTPException on path: ${path}`, {
+        status: httpErr.status,
+        message: httpErr.message,
+        cause: httpErr.cause,
+        res: httpErr.res,
+        stack: httpErr.stack,
+      });
+
+
       if (httpErr.res) return httpErr.res
 
       return format === "json"
@@ -603,6 +613,9 @@ export default class Diesel {
     // 3. Default fallback
     const errorMessage = err instanceof Error ? err.message : "Internal Server Error";
     const errorStack = err instanceof Error ? err.stack : undefined;
+
+    console.error(`Error on path: ${path}`, { message: errorMessage, stack: errorStack });
+
     if (format === 'json') {
       const body: Record<string, any> = {
         error: errorMessage,
@@ -926,4 +939,3 @@ export default class Diesel {
     return this;
   }
 }
-

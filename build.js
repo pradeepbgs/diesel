@@ -33,6 +33,7 @@ Bun.build({
         './src/router/find-my-way.ts',
         './src/http-exception.ts',
         './src/ctx.ts',
+        './src/constant.ts'
     ],
     outdir: './dist',
     minify: true,

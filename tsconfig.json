@@ -3,21 +3,22 @@
     "target": "ES6",
     "module": "ESNext",
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "src",          // <-- use src as root
     "declaration": true,
-    // "declarationDir": "./dist",
-    "emitDeclarationOnly": true,
+    "declarationDir": "./dist",
     "strict": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "emitDeclarationOnly": false
   },
   "include": [
     "src/**/*.ts",
-    "src/adaptor/node/**/*"
+    // "src/adaptor/node/**/*"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "dist"
   ]
 }

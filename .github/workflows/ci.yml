@@ -1,9 +1,9 @@
 name: Ci of Diesel-project
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
+      - test
 
 jobs:
   build:
