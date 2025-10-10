@@ -28,7 +28,6 @@ export class Context implements ContextType {
   paramNames?: string[] | Record<string, string>
   env?: Record<string, any>;
   executionContext?: any | undefined;
-  // status = 200;
   headers = new Headers();
 
   // Lazily initialized
@@ -104,7 +103,6 @@ export class Context implements ContextType {
     }
     if (!this.parsedParams) {
       try {
-        // console.log(this.path)
         this.parsedParams = extractParam(this.paramNames as any, this.path!);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)

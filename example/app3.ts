@@ -54,12 +54,12 @@ app.get('/user/:id', (ctx: ContextType) => {
 
 app.BunRoute('get', '/bun', "Helll")
 
-app.static('','')
+app.static('', '')
 // app.get('*', (c) => c.text("hello"))
 
 app.get("/", (ctx: ContextType) => {
-    // const ip = ctx.ip
-    // console.log('ip ', ip)
+    const ip = ctx.ip
+    console.log('ip ', ip)
     // ctx.setHeader("Content-Type", "application/json; charset=utf-8")
     return ctx.text("Hello world!")
 })
@@ -108,9 +108,10 @@ app.get('/async', (ctx: Context): any => {
 })
 
 app.get('/err', (ctx: ContextType) => {
-    throw new HTTPException(400, { message: 'Unauthorized' });
-});
-
+    // throw new Error("async error");
+    throw new HTTPException(400,{res:ctx.json({msg:"error shwn"})})
+    throw new HTTPException(400, { message: "hehhehe" , cause:'casueeee'})
+})
 app.get('/aerr', async (ctx: Context) => {
     await someAsyncTask();
     throw new Error("async error");

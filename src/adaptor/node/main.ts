@@ -8,7 +8,7 @@ export interface options {
 async function convertNodeReqToWebReq(req: http.IncomingMessage) {
     const protocol = (req.headers['x-forwarded-proto'] as string)?.split(',')[0] || 'http';
     const url = `${protocol}://${req.headers.host}${req.url}`;
-    
+
     const init: RequestInit = {
         method: req.method,
         headers: req.headers as Record<string, string>,
@@ -40,7 +40,7 @@ async function sendWebResToNodeRes(webRes: Response, nodeRes: http.ServerRespons
     nodeRes.end()
 }
 
-export function serve(options: options) {
+export function serve(options: options): http.Server<typeof http.IncomingMessage, typeof http.ServerResponse> {
     const server = http.createServer(async (request, response) => {
         const webRequest = await convertNodeReqToWebReq(request);
 
@@ -50,7 +50,8 @@ export function serve(options: options) {
         await sendWebResToNodeRes(webRes, response)
     })
 
-    server.listen(options.port, () => console.log('node server running on port 3000'))
+    server.listen(options.port ?? 3000, () => console.log(`node server running on port ${options.port ?? 3000}`))
+    return server;
 }
 
 

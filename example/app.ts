@@ -15,6 +15,7 @@ import { authenticateJwt } from '../src/middlewares/jwt/index'
 import { redis } from './src/utils/redis'
 import { RedisStore } from "../src/middlewares/ratelimit/implementation";
 import { requestId } from '../src/middlewares/request-id/index'
+import { Context } from "../src/ctx";
 const app = new Diesel({
 });
 
@@ -131,16 +132,33 @@ app.get("/str", async (c) => {
   })
 });
 
-app.get("/stream", async (c) => {
+app.get("/stream", async (c: Context) => {
+
+  c.setHeader('Content-Type','text/event-stream')
+  return c.stream(async (controller) => {
+    controller.enqueue("from")
+    await Bun.sleep(1000)
+    controller.enqueue("/stream method")
+    await Bun.sleep(1000)
+    controller.enqueue("kaisa laga??")
+    await Bun.sleep(1000)
+  })
+
   const stream = new ReadableStream({
     async start(controller) {
       controller.enqueue("hello ");
       await Bun.sleep(2000)
       controller.enqueue("world");
+      await Bun.sleep(1000)
+      controller.enqueue('kaise ho bhai?')
       controller.close();
     },
   });
-  return new Response(stream)
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream'
+    }
+  })
 });
 
 app.get('/r', () => {
