@@ -3,6 +3,7 @@ import Diesel from "../../main";
 import { authenticateJwt } from "./index";
 import jwt from "jsonwebtoken";
 import { authenticateJwtMiddleware } from "../../utils/jwt";
+import { ContextType } from "../../types";
 
 describe("jwt test middleware", () => {
     const app = new Diesel();
@@ -25,8 +26,8 @@ describe("jwt test middleware", () => {
         })
     );
 
-    app.get("/", (ctx) => ctx.send("this will need to get through jwt test"));
-    app.get("/public", (ctx) => ctx.send("public route"));
+    app.get("/", (ctx:ContextType) => ctx.send("this will need to get through jwt test"));
+    app.get("/public", (ctx:ContextType) => ctx.send("public route"));
 
 
     it("should reject request without token", async () => {

@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import Diesel from "../../main";
 import { rateLimit } from "./rate-limit";
 import { RedisStore } from "./implementation";
+import { ContextType } from "../../types";
 // import {redis} from '../../../example/src/utils/redis'
 
 
@@ -21,9 +22,9 @@ describe('rate limit testing', () => {
         max: 5,
     }))
 
-    app.get("/one", (ctx) => ctx.send("Success"));
-    app.get("/", (ctx) => ctx.send("Success"));
-    app.get("/redis", (ctx) => ctx.send('Success'))
+    app.get("/one", (ctx:ContextType) => ctx.send("Success"));
+    app.get("/", (ctx:ContextType) => ctx.send("Success"));
+    app.get("/redis", (ctx:ContextType) => ctx.send('Success'))
     beforeAll(() => app.listen(3008))
     afterAll(() => app.close())
 

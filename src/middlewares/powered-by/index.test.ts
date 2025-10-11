@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import Diesel from "../../main"
 import { poweredBy } from "./index";
+import { ContextType } from "../../types";
 
 
 describe('powered-by middleware testing', () => {
@@ -9,14 +10,14 @@ describe('powered-by middleware testing', () => {
 
 
     app.use('/poweredBy', poweredBy())
-    app.get('/poweredBy', (c) => c.text('root'))
+    app.get('/poweredBy', (c:ContextType) => c.text('root'))
 
     app.use('/poweredBy2', poweredBy())
     app.use('/poweredBy2', poweredBy())
-    app.get('/poweredBy2', (c) => c.text('root'))
+    app.get('/poweredBy2', (c:ContextType) => c.text('root'))
 
     app.use('/poweredBy3', poweredBy({ serverName: 'Foo' }))
-    app.get('/poweredBy3', (c) => c.text('root'))
+    app.get('/poweredBy3', (c:ContextType) => c.text('root'))
 
     beforeAll(() => {
         app.listen(3008)

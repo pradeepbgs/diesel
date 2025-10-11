@@ -1,13 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import Diesel from "../../main";
 import { securityMiddleware } from "./security";
+import { ContextType } from "../../types";
 
 describe("security middleware test", () => {
   const app = new Diesel();
 
   app.use(securityMiddleware);
 
-  app.get("/", (ctx) => ctx.send("success"));
+  app.get("/", (ctx:ContextType) => ctx.send("success"));
 
   beforeAll(() => {
     app.listen(3000);

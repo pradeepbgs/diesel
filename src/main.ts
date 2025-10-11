@@ -77,7 +77,7 @@ export default class Diesel {
   FilterRoutes: string[] | null | undefined;
   filters: Set<string>;
   filterFunction: Function[];
-  private hasFilterEnabled: boolean;
+  hasFilterEnabled: boolean;
   private serverInstance: Server | null;
   staticFiles: any
   user_jwt_secret: string
@@ -546,7 +546,6 @@ export default class Diesel {
         if (result) return result;
       }
 
-      // console.log('routeHandlers ',routeHandler)
       let finalResult
       const handlers: any = matchedRouteHandler?.handler;
 
@@ -649,7 +648,7 @@ export default class Diesel {
   ) {
     const cleanPrefix = prefix.endsWith("/*") ? prefix.slice(0, -1) : prefix;
     const prefixLength = cleanPrefix === '/' ? 0 : cleanPrefix.length;
-    this.any(prefix, (ctx: Context) => {
+    this.use(prefix, (ctx: Context) => {
       // build new url for fetch
       const url = new URL(ctx.req.url);
       // here we slice orgininal coming url like /hono/hello so we have to slice /hono

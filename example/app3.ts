@@ -117,9 +117,13 @@ app.get('/aerr', async (ctx: Context) => {
     throw new Error("async error");
 });
 
-async function someAsyncTask() { }
 
+function someAsyncTask() {
 
+ }
+
+app.use('/',someAsyncTask)
+app.use('/',() => console.log(''), new Response("hello"))
 
 app.get('/hello/2', (ctx: Context) => ctx.send("/hello/2"))
 app.get('/hello/:id/:name', (ctx: Context) => ctx.send('/helo/;id/;name'))

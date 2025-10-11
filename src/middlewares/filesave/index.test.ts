@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import Diesel from "../../main";
 import { fileSaveMiddleware } from "./savefile";
-import fs from 'fs'
-import { handlerFunction } from "../../types";
+import * as fs from 'fs'
+import { ContextType, handlerFunction } from "../../types";
 
 describe("FileSaveMidlleware", () => {
 
@@ -10,7 +10,7 @@ describe("FileSaveMidlleware", () => {
     app.post(
         "/upload",
         fileSaveMiddleware({ fields: ["file"] }) as handlerFunction,
-        (ctx) => {
+        (ctx: ContextType) => {
             return ctx.json({
                 savedPath: ctx.req.files["file"],
             });
@@ -20,7 +20,7 @@ describe("FileSaveMidlleware", () => {
     app.post(
         "/upload-multiple",
         fileSaveMiddleware({ fields: ["file", 'file2'] }) as handlerFunction,
-        (ctx) => {
+        (ctx: ContextType) => {
             const file = ctx.req.files.file;
             const file2 = ctx.req.files.file2;
             return ctx.json({
