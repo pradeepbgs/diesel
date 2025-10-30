@@ -12,7 +12,7 @@ export type RouteHandler = (path: string, ...handlers: handlerFunction[] | middl
 export type middlewareFunc = (
     ctx: ContextType | Request | any,
     server: Server
-) => void | Response | Promise<undefined | Response>;
+) => void | undefined | Response | Promise<undefined | void | Response>;
 
 export type HookFunction = (
     ctx: ContextType,
@@ -22,7 +22,7 @@ export type HookFunction = (
 
 export type RouteNotFoundHandler = (
     ctx: ContextType
-) => Response | Promise<Response>;
+) => Response | void | undefined | Promise<Response>;
 
 export type HttpMethod =
     | "GET"
@@ -58,7 +58,7 @@ export type HookType =
     | "onClose"
 
 export interface onError {
-    (error: Error, path:string, req: Request):
+    (error: Error, path: string, req: Request):
         | void
         | null
         | Response
@@ -86,17 +86,17 @@ export interface ContextType {
     req: Request;
     server?: Server;
     path?: string | undefined;
-    routePattern?: string|undefined
+    routePattern?: string | undefined
     env?: Record<string, any>;
     executionContext?: any | undefined;
-    
+
     headers: Headers;
     // status: number;
     setHeader: (key: string, value: string) => this;
-    json: (data: object, status?: number) => Response;
-    text: (data: string, status?: number) => Response;
-    send: <T>(data: T, status?: number) => Response;
-    file: (filePath: string, mimeType?: string, status?: number) => Response;
+    json: (data: object, status?: number, customHeaders?:HeadersInit) => Response;
+    text: (data: string, status?: number, customHeaders?:HeadersInit) => Response;
+    send: <T>(data: T, status?: number, customHeaders?:HeadersInit) => Response;
+    file: (filePath: string, mimeType?: string, status?: number, customHeaders?:HeadersInit) => Response;
     redirect: (path: string, status?: number) => Response;
     setCookie: (name: string, value: string, options?: CookieOptions) => this;
     ip: string | null;
@@ -157,7 +157,7 @@ export interface DieselT {
     corsConfig: corsT | null;
     globalMiddlewares: Array<(ctx: ContextType, server?: Server) => void | Promise<void | Response>>;
     middlewares: Map<string, Array<(ctx: ContextType, server?: Server) => void | Promise<void | Response>>>;
-    router:Router
+    router: Router
     staticPath: string | null;
     staticRequestPath: string | null;
     staticFiles: Record<string, string>;
@@ -227,6 +227,8 @@ export interface DieselOptions {
     pipelineArchitecture?: boolean;
     errorFormat?: errorFormat
     platform?: string;
-    router?: string;             
-    routerInstance?: Router;    
+    router?: string;
+    routerInstance?: Router;
 }
+
+

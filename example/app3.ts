@@ -14,7 +14,7 @@ const app = new Diesel({
     errorFormat: 'text',
     // logger: true,
     // router: 'fastify',
-    // pipelineArchitecture: true
+    pipelineArchitecture: true
     // routerInstance: t2
     // router: 'fastify',
 })
@@ -44,7 +44,7 @@ function addMiddleware() {
 
 // addMiddleware()
 
-app.get('/user/:id', (ctx: ContextType) => {
+app.get('/user/:id', (ctx: ContextType): Response => {
     const p = ctx.req
     const id = ctx.params.id
     console.log('id ', id)
@@ -57,11 +57,13 @@ app.BunRoute('get', '/bun', "Helll")
 app.static('', '')
 // app.get('*', (c) => c.text("hello"))
 
-app.get("/", (ctx: ContextType) => {
-    const ip = ctx.ip
-    console.log('ip ', ip)
+app.get("/", (ctx: Context) => {
+    // const ip = ctx.ip
+    // console.log('ip ', ip)
     // ctx.setHeader("Content-Type", "application/json; charset=utf-8")
-    return ctx.text("Hello world!")
+    return ctx.text("Hello world!", 200, {
+        'Content-Type': 'text/plain'
+    })
 })
 
 class UserService {
@@ -93,7 +95,7 @@ app.BunRoute('get', '/user', userService.getUser)
 
 // app.use(async() => console.log('hloblalsssss'), async() => console.log("2nd"), () => console.log("3rd"))
 // app.use(async() => console.log('hloblal'))
-app.use('/power', () => console.log('power middleware'))
+// app.use('/power', () => console.log('power middleware'))
 app.get("/power", (ctx: Context) => {
     return ctx.text("/power")
 })
@@ -107,30 +109,53 @@ app.get('/async', (ctx: Context): any => {
     })
 })
 
+app.get('/stream', (c: Context) => {
+    c.setHeader('Content-Type', 'text/event-stream')
+    return c.stream(
+        async (controller) => {
+            controller.enqueue("Hello ")
+            await Bun.sleep(200)
+            controller.enqueue('World!')
+            controller.close()
+        }
+    )
+})
+
 app.get('/err', (ctx: ContextType) => {
     // throw new Error("async error");
-    throw new HTTPException(400,{res:ctx.json({msg:"error shwn"})})
-    throw new HTTPException(400, { message: "hehhehe" , cause:'casueeee'})
+    throw new HTTPException(400, { res: ctx.json({ msg: "error shwn" }) })
+    throw new HTTPException(400, { message: "hehhehe", cause: 'casueeee' })
 })
 app.get('/aerr', async (ctx: Context) => {
     await someAsyncTask();
     throw new Error("async error");
 });
 
-async function someAsyncTask() { }
 
+function someAsyncTask() {
 
+}
+
+// app.use('/', someAsyncTask)
+// app.use('/', () => console.log(''), () => new Response("hello2"))
 
 app.get('/hello/2', (ctx: Context) => ctx.send("/hello/2"))
 app.get('/hello/:id/:name', (ctx: Context) => ctx.send('/helo/;id/;name'))
 
 
 const ur = new Diesel()
-ur.use("/", () => console.log("/* middleware"))
+// ur.use("/", () => console.log("/* middleware"))
 // ur.use("/*", () => console.log("ur/* middleware"))
 ur.get('/', () => console.log("path midl"), () => new Response("/ hello ur"))
 
 app.route('/ur', ur)
+
+
+const router = Diesel.router('/router')
+router.use(async function () { console.log("router middleware") })
+router.get('/', (c: Context) => c.text("from /router"))
+
+
 
 app.listen(3000, () => console.log("diesel running on 3000"))
 

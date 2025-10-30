@@ -77,7 +77,7 @@ export default class Diesel {
   FilterRoutes: string[] | null | undefined;
   filters: Set<string>;
   filterFunction: Function[];
-  private hasFilterEnabled: boolean;
+  hasFilterEnabled: boolean;
   private serverInstance: Server | null;
   staticFiles: any
   user_jwt_secret: string
@@ -212,8 +212,16 @@ export default class Diesel {
     return new Proxy(this.instance, {
       get(target, prop, reciever) {
         return (path: string, handler: any) => {
-          const fullPath = prefix + path
-          return (target as any)[prop](fullPath, handler)
+          let givenHandler = handler
+          let givenPath = ''
+
+          if (typeof path === 'string') givenPath = path;
+          else if (typeof path === 'function') givenHandler = path;
+          else if (typeof path !== 'string') givenPath = '';
+
+          const fullPath = prefix + givenPath
+          // console.log(fullPath)
+          return (target as any)[prop](fullPath, givenHandler)
           // if (typeof path === 'string') return (target as any)[prop](fullPath, handler)
           // else if (typeof path === 'function') return (target as any)[prop](path)
 
@@ -546,7 +554,6 @@ export default class Diesel {
         if (result) return result;
       }
 
-      // console.log('routeHandlers ',routeHandler)
       let finalResult
       const handlers: any = matchedRouteHandler?.handler;
 
@@ -649,7 +656,7 @@ export default class Diesel {
   ) {
     const cleanPrefix = prefix.endsWith("/*") ? prefix.slice(0, -1) : prefix;
     const prefixLength = cleanPrefix === '/' ? 0 : cleanPrefix.length;
-    this.any(prefix, (ctx: Context) => {
+    this.use(prefix, (ctx: Context) => {
       // build new url for fetch
       const url = new URL(ctx.req.url);
       // here we slice orgininal coming url like /hono/hello so we have to slice /hono
@@ -793,7 +800,6 @@ export default class Diesel {
     pathORHandler?: string | string[] | middlewareFunc | middlewareFunc[] | Function | Function[],
     ...handlers: middlewareFunc | middlewareFunc[] | Function | Function[] | any
   ): this {
-
     if (typeof pathORHandler === 'string') {
       let path = pathORHandler === "/" ? "/" : pathORHandler;
       if (!this.tempMiddlewares?.has(path)) {

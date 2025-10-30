@@ -4,12 +4,13 @@ import type { DieselT } from "./types";
 import { tryDecodeURI } from "./utils/urls";
 import { generateErrorResponse, handleRouteNotFound, runFilter, runHooks, runMiddlewares } from "./utils/request.util";
 import { isPromise } from "./utils/promise";
+import Diesel from "./main";
 
 
 export default async function handleRequest(
   req: Request,
   server: Server,
-  diesel: DieselT,
+  diesel: Diesel,
   env?: Record<string, any>,
   executionContext?: any
 ): Promise<Response | undefined> {
@@ -43,10 +44,10 @@ export default async function handleRequest(
   //   await runHooks('onRequest', diesel.hooks.onRequest, [req, pathname, server])
 
   // middleware execution
-  if (diesel.hasMiddleware) {
-    const mwResult = await runMiddlewares(diesel, pathname, ctx);
-    if (mwResult) return mwResult;
-  }
+  // if (diesel.hasMiddleware) {
+  //   const mwResult = await runMiddlewares(diesel, pathname, ctx);
+  //   if (mwResult) return mwResult;
+  // }
 
   // filter execution
   if (diesel.hasFilterEnabled) {

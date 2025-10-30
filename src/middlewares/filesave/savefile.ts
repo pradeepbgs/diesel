@@ -1,6 +1,6 @@
 import path from "path";
 import { v4 as uuid4 } from "uuid";
-import fs from "fs";
+import * as fs from "fs";
 import { ContextType } from "../../types";
 
 // Replace fileURLToPath usage with Bun's import.meta.dir

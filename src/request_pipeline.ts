@@ -1,6 +1,7 @@
 import { CompileConfig, DieselT, HookFunction, middlewareFunc } from "./types";
 import { Context } from "./ctx";
 import { executeBunMiddlewares, generateErrorResponse, handleRouteNotFound, runFilter, runHooks } from "./utils/request.util";
+import { isPromise } from "./utils/promise";
 
 
 function extractBody(fn: Function) {
@@ -105,9 +106,7 @@ const pushMiddlewares = (pipeline: string[], globalMiddlewares: middlewareFunc[]
 
 export const buildRequestPipeline = (diesel: DieselT) => {
   const pipeline: string[] = [];
-  const globalMiddlewares = diesel.globalMiddlewares || []
 
-  // const onRequestHooks = config?.hasOnReqHook ? diesel.hooks.onRequest : [] as any;
   const PreHandlerHook = diesel?.hasPreHandlerHook ? diesel.hooks.preHandler : [] as any;
   const OnSendHook = diesel?.hasOnSendHook ? diesel.hooks.onSend : [] as any;
 
@@ -116,54 +115,22 @@ export const buildRequestPipeline = (diesel: DieselT) => {
 
   // finc routeHandler
   pipeline.push(`
-      const routeHandler = diesel.router.find(req.method, pathname);
+      const matchedRouteHandler = diesel.router.find(req.method, pathname);
     `);
 
-  // Hooks
-  // if (onRequestHooks && onRequestHooks.length > 0) {
-  //   pushHooks(pipeline, onRequestHooks, 'onRequest', 'req', 'pathname', 'server')
-  // }
 
   pipeline.push(`
           const ctx = new Context(
           req, 
           server, 
           pathname, 
-          routeHandler?.path,
-          routeHandler?.params,
+          matchedRouteHandler?.path,
+          matchedRouteHandler?.params,
           env,
           executionContext
           )
     `)
 
-  // Middlewares
-  // if (config?.hasMiddleware) {
-  //   if (globalMiddlewares.length > 0) {
-
-  //     pushMiddlewares(pipeline, globalMiddlewares as any)
-  //   }
-  //   // Local/path-specific middlewares still run via function
-
-  //   if (diesel.middlewares.size > 0) {
-  //     pipeline.push(`
-  //     const local = diesel.middlewares.get(pathname)
-  //     if (local && local.length) {
-  //       for (const middleware of local) {
-  //         const result = await middleware(ctx);
-  //         if (result) return result;
-  //       }
-  //     }
-  //       `)
-  //   }
-
-  //   // if (diesel.middlewares.size > 0) {
-  //   //   pipeline.push(`
-  //   //     const mwResult = await runMiddlewares(diesel, pathname, ctx);
-  //   //     if (mwResult) return mwResult;
-  //   //   `);
-  //   // }
-
-  // }
 
   // Filters
   if (diesel.hasFilterEnabled) {
@@ -181,13 +148,20 @@ export const buildRequestPipeline = (diesel: DieselT) => {
 
   // Actual route handler
   pipeline.push(`
-        let finalResult
-      let arr = routeHandler?.handler;
-      for (let i = 0; i < arr?.length; i++) {
-        const result = arr[i]?.(ctx)
-        finalResult = result instanceof Promise ? await result : result;
-        if (finalResult instanceof Response) break
-      }
+          let finalResult
+                const handlers = matchedRouteHandler?.handler;
+          
+                if (handlers.length === 1) {
+                  const result = handlers[0](ctx);
+                  finalResult = isPromise(result) ? await result : result;
+                }
+                else {
+                  for (let i = 0; i < handlers.length; i++) {
+                    const result = handlers[i](ctx);
+                    finalResult = isPromise(result) ? await result : result;
+                    if (finalResult) break;
+                  }
+                }
     `);
 
   // onSend
@@ -197,7 +171,7 @@ export const buildRequestPipeline = (diesel: DieselT) => {
 
   // Final response
   pipeline.push(`
-      if (finalResult instanceof Response) return finalResult;
+      if (finalResult) return finalResult;
     `);
 
   // Route not found check
@@ -216,12 +190,14 @@ export const buildRequestPipeline = (diesel: DieselT) => {
     "handleRouteNotFound",
     "generateErrorResponse",
     "Context",
+    "isPromise",
     fnBody
   )(
     runFilter,
     handleRouteNotFound,
     generateErrorResponse,
-    Context
+    Context,
+    isPromise
   );
 
   // console.log(fnc.toString())

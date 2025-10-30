@@ -2,6 +2,7 @@ import { Server } from "bun";
 import { ContextType, DieselT, handlerFunction, HookType } from "../types";
 import { getMimeType } from "./mimeType";
 import { isPromise, isResponse } from "./promise";
+import Diesel from "../main";
 
 export async function runHooks<T extends any[]>(
   label: HookType,
@@ -49,14 +50,14 @@ export async function executeBunMiddlewares(
   }
 }
 
-export async function runFilter(diesel: DieselT, path: string, ctx: ContextType) {
+export async function runFilter(diesel: Diesel, path: string, ctx: ContextType) {
   const filterResponse = await handleFilterRequest(diesel, path, ctx);
   const finalResult = isPromise(filterResponse) ? await filterResponse : filterResponse;
   if (finalResult) return finalResult;
 }
 
 export async function handleFilterRequest(
-  diesel: DieselT,
+  diesel: Diesel,
   path: string,
   ctx: ContextType) {
   if (path.endsWith("/")) {
@@ -93,7 +94,7 @@ export async function handleBunFilterRequest(
   }
 }
 
-export async function handleRouteNotFound(diesel: DieselT, ctx: ContextType, pathname: string): Promise<Response | undefined> {
+export async function handleRouteNotFound(diesel: Diesel, ctx: ContextType, pathname: string): Promise<Response | undefined> {
 
   if (diesel.staticPath) {
     let isStaticRequest = true;
@@ -116,8 +117,8 @@ export async function handleRouteNotFound(diesel: DieselT, ctx: ContextType, pat
     if (isResponse(res)) return res
   }
 
-  const fallback = diesel.routeNotFoundFunc(ctx);
-  return fallback instanceof Promise ? await fallback : fallback || generateErrorResponse(404, `404 Route not found for ${pathname}`);
+  const fallback = await Promise.resolve(diesel.routeNotFoundFunc(ctx));
+  return isResponse(fallback) ? fallback : generateErrorResponse(404, `404 Route not found for ${pathname}`);
 }
 
 
@@ -132,7 +133,7 @@ export function generateErrorResponse(
 }
 
 export async function handleStaticFiles(
-  diesel: DieselT,
+  diesel: Diesel,
   pathname: string,
   ctx: ContextType
 ): Promise<Response | null> {
