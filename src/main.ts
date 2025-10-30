@@ -212,8 +212,16 @@ export default class Diesel {
     return new Proxy(this.instance, {
       get(target, prop, reciever) {
         return (path: string, handler: any) => {
-          const fullPath = prefix + path
-          return (target as any)[prop](fullPath, handler)
+          let givenHandler = handler
+          let givenPath = ''
+
+          if (typeof path === 'string') givenPath = path;
+          else if (typeof path === 'function') givenHandler = path;
+          else if (typeof path !== 'string') givenPath = '';
+
+          const fullPath = prefix + givenPath
+          // console.log(fullPath)
+          return (target as any)[prop](fullPath, givenHandler)
           // if (typeof path === 'string') return (target as any)[prop](fullPath, handler)
           // else if (typeof path === 'function') return (target as any)[prop](path)
 
@@ -792,7 +800,6 @@ export default class Diesel {
     pathORHandler?: string | string[] | middlewareFunc | middlewareFunc[] | Function | Function[],
     ...handlers: middlewareFunc | middlewareFunc[] | Function | Function[] | any
   ): this {
-
     if (typeof pathORHandler === 'string') {
       let path = pathORHandler === "/" ? "/" : pathORHandler;
       if (!this.tempMiddlewares?.has(path)) {

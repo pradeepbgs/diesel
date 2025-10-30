@@ -4,6 +4,7 @@
     "": {
       "name": "benchmark",
       "dependencies": {
+        "@morojs/moro": "^1.6.4",
         "diesel-core": "^1.6.9",
         "elysia": "^1.4.5",
         "express": "^5.1.0",
@@ -28,6 +29,8 @@
     "@fastify/merge-json-schemas": ["@fastify/merge-json-schemas@0.2.1", "", { "dependencies": { "dequal": "^2.0.3" } }, "sha512-OA3KGBCy6KtIvLf8DINC5880o5iBlDX4SxzLQS8HorJAbqluzLRn80UXU0bxZn7UOFhFgpRJDasfwn9nG4FG4A=="],
 
     "@fastify/proxy-addr": ["@fastify/proxy-addr@5.0.0", "", { "dependencies": { "@fastify/forwarded": "^3.0.0", "ipaddr.js": "^2.1.0" } }, "sha512-37qVVA1qZ5sgH7KpHkkC4z9SK6StIsIcOmpjvMPXNb3vx2GQxhZocogVYbr2PbbeLCQxYIPDok307xEvRZOzGA=="],
+
+    "@morojs/moro": ["@morojs/moro@1.6.4", "", { "peerDependencies": { "@auth/core": "^0.37.3", "better-sqlite3": "^12.2.0", "class-validator": "^0.14.0", "drizzle-orm": "^0.44.5", "ioredis": "^5.7.0", "joi": "^17.0.0", "mongodb": "^6.19.0", "mysql2": "^3.14.5", "pg": "^8.16.3", "socket.io": "^4.8.1", "swagger-ui-dist": "^5.28.1", "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.52.0", "ws": "^8.18.0", "yup": "^1.7.1" }, "optionalPeers": ["@auth/core", "better-sqlite3", "class-validator", "drizzle-orm", "ioredis", "joi", "mongodb", "mysql2", "pg", "socket.io", "swagger-ui-dist", "uWebSockets.js", "ws", "yup"] }, "sha512-rctTJI4Ua4hKHy2jmwsHoEiuBpwjHkMTpcoCOX3NEPVyee54uJs4R6OU1YaBLkHeRxyd1ZxJbm4LGUoI1YRV1A=="],
 
     "@sinclair/typebox": ["@sinclair/typebox@0.34.41", "", {}, "sha512-6gS8pZzSXdyRHTIqoqSVknxolr1kzfy4/CeDnrzsVz8TTIWUbOBr6gnzOmTYJ3eXQNh4IYHIGi5aIL7sOZ2G/g=="],
 

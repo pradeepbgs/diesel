@@ -5,19 +5,15 @@ import type { ContextType } from '../../src/types'
 
 
 
-const app = new Diesel({
-    logger:true
-})
-
-//app.BunRoute('get', '/', 'Hello bun/')
-app.get('/', (ctx:ContextType) => ctx.text('hello diesel'))
+const app = new Diesel({})
+app.get('/', (ctx: ContextType) => ctx.text("hello diesel"))
 
 // app.get('/path/:name', (ctx) => {
 //     return ctx.text(`hello ${ctx.params.name} with query: ${ctx.query.name}`)
 // })
 
-app.get('/err', (ctx:ContextType) => {
-    throw new HTTPException(400,{res:ctx.json({msg:"error shwn"})})
+app.get('/err', (ctx: ContextType) => {
+    throw new HTTPException(400, { res: ctx.json({ msg: "error shwn" }) })
 })
 
 app.listen(3000)

@@ -11,6 +11,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@morojs/moro": "^1.6.4",
     "diesel-core": "^1.6.9",
     "elysia": "^1.4.5",
     "express": "^5.1.0",

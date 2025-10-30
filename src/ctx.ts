@@ -1,6 +1,6 @@
 import { Server } from "bun";
 
-import type {  CookieOptions, ParseBodyResult } from "./types";
+import type { CookieOptions, ParseBodyResult } from "./types";
 import { getMimeType } from "./utils/mimeType";
 
 let ejsInstance: any = null;
@@ -114,6 +114,7 @@ export class Context {
 
   get body(): Promise<any> {
     if (this.req.method === "GET") {
+      console.error(`you are trying to access body in GET method ${this.path}`)
       return Promise.resolve({});
     }
 
@@ -135,54 +136,73 @@ export class Context {
     return this.parsedBody;
   }
 
-  text(data: string, status: number = 200) {
-    // if (!this.headers.has("Content-Type")) {
-    //   this.headers.set("Content-Type", "text/plain; charset=utf-8");
-    // }
-    return new Response(data, {
-      status,
-      headers: this.headers
-    });
+  text(data: string, status: number = 200, customHeaders?: HeadersInit): Response {
+    if (customHeaders) {
+      for (const [key, value] of Object.entries(customHeaders)) {
+        this.headers.set(key, value);
+      }
+    }
+
+    if (!this.headers.has("Content-Type")) {
+      this.headers.set("Content-Type", "text/plain; charset=utf-8");
+    }
+
+    return new Response(data, { status, headers: this.headers });
   }
 
-  send<T>(data: T, status: number = 200): Response {
-    // this.status = status;
+  send<T>(data: T, status: number = 200, customHeaders?: HeadersInit): Response {
+    if (customHeaders) {
+      for (const [key, value] of Object.entries(customHeaders)) {
+        this.headers.set(key, value);
+      }
+    }
 
-    // const dataType = data instanceof Uint8Array ? "Uint8Array"
-    //   : data instanceof ArrayBuffer ? "ArrayBuffer"
-    //     : typeof data;
-
-    let dataType: string
-
-    if (data instanceof Uint8Array) dataType = "Uint8Array"
-    else if (data instanceof ArrayBuffer) dataType = 'ArrayBuffer'
-    else dataType = typeof data
+    let dataType: string;
+    if (data instanceof Uint8Array) dataType = "Uint8Array";
+    else if (data instanceof ArrayBuffer) dataType = "ArrayBuffer";
+    else dataType = typeof data;
 
     if (!this.headers.has("Content-Type")) {
       this.headers.set("Content-Type", typeMap[dataType] ?? "text/plain; charset=utf-8");
     }
 
     const responseData =
-      dataType === "object" && data !== null ? JSON.stringify(data) : (data as any);
+      dataType === "object" && data !== null
+        ? JSON.stringify(data)
+        : (data as any);
+
     return new Response(responseData, { status, headers: this.headers });
   }
 
-  json<T>(object: T, status: number = 200): Response {
-    // this.status = status;
-    // if (!this.headers.has("Content-Type")) {
-    //   this.headers.set("Content-Type", "application/json; charset=utf-8");
-    // }
-    return Response.json(object, { status, headers: this.headers })
+  json<T>(object: T, status: number = 200, customHeaders?: HeadersInit): Response {
+    if (customHeaders) {
+      for (const [key, value] of Object.entries(customHeaders)) {
+        this.headers.set(key, value);
+      }
+    }
+
+    if (!this.headers.has("Content-Type")) {
+      this.headers.set("Content-Type", "application/json; charset=utf-8");
+    }
+
+    return new Response(JSON.stringify(object), { status, headers: this.headers });
   }
 
-  file(filePath: string, mime_Type?: string, status: number = 200): Response {
-    // this.status = status;
-    const file = Bun.file(filePath);
-    if (!this.headers.has("Content-Type")) {
-      this.headers.set("Content-Type", mime_Type ?? getMimeType(filePath));
+  file(filePath: string, mimeType?: string, status: number = 200, customHeaders?: HeadersInit): Response {
+    if (customHeaders) {
+      for (const [key, value] of Object.entries(customHeaders)) {
+        this.headers.set(key, value);
+      }
     }
+
+    if (!this.headers.has("Content-Type")) {
+      this.headers.set("Content-Type", mimeType ?? getMimeType(filePath));
+    }
+
+    const file = Bun.file(filePath);
     return new Response(file, { status, headers: this.headers });
   }
+
 
   async ejs(viewPath: string, data = {}, status: number = 200): Promise<Response> {
     // this.status = status;
@@ -199,7 +219,6 @@ export class Context {
   }
 
   redirect(path: string, status: number = 302): Response {
-    // this.status = status
     this.headers.set("Location", path);
     return new Response(null, { status, headers: this.headers });
   }

@@ -93,10 +93,10 @@ export interface ContextType {
     headers: Headers;
     // status: number;
     setHeader: (key: string, value: string) => this;
-    json: (data: object, status?: number) => Response;
-    text: (data: string, status?: number) => Response;
-    send: <T>(data: T, status?: number) => Response;
-    file: (filePath: string, mimeType?: string, status?: number) => Response;
+    json: (data: object, status?: number, customHeaders?:HeadersInit) => Response;
+    text: (data: string, status?: number, customHeaders?:HeadersInit) => Response;
+    send: <T>(data: T, status?: number, customHeaders?:HeadersInit) => Response;
+    file: (filePath: string, mimeType?: string, status?: number, customHeaders?:HeadersInit) => Response;
     redirect: (path: string, status?: number) => Response;
     setCookie: (name: string, value: string, options?: CookieOptions) => this;
     ip: string | null;
