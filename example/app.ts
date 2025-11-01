@@ -47,10 +47,12 @@ app.use(cors({
 }))
 
 
-// app.setupFilter()
-//   .publicRoutes("/cookie", '/api/user/', '/health')
-//   .permitAll()
-//   .authenticate([authJwt])
+app.setupFilter()
+  .publicRoutes("/cookie", '/api/user/', '/health')
+  .permitAll()
+  // .authenticateJwt(jwt)
+
+  .authenticate([authJwt])
 
 
 // app.use(authenticateJwt({
