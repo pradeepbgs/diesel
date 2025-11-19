@@ -10,6 +10,7 @@ import {
   listenArgsT,
   middlewareFunc,
   onError,
+  onRequest,
   onSend,
   RouteHandler,
   RouteNotFoundHandler,
@@ -346,8 +347,7 @@ export default class Diesel {
 
     switch (typeOfHook) {
       case "onRequest":
-        // this.hooks.onRequest?.push(fnc as onRequest)
-        this.router.addMiddleware('/', fnc)
+        this.hooks.onRequest?.push(fnc as onRequest)
         this.hasOnReqHook = true
         break;
       case "preHandler":
@@ -539,8 +539,8 @@ export default class Diesel {
 
     try {
 
-      // if (this.hasOnReqHook)
-      //   await runHooks('onRequest', this.hooks.onRequest, [ctx])
+      if (this.hasOnReqHook)
+        await runHooks('onRequest', this.hooks.onRequest, [ctx])
 
       // filter execution
       if (this.hasFilterEnabled) {
