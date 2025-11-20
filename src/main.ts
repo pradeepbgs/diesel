@@ -242,9 +242,7 @@ export default class Diesel {
     this.hasFilterEnabled = true;
 
     return {
-      publicRoutes: (
-        ...routes: string[]
-      ) => {
+      publicRoutes: (...routes: string[]) => {
         this.FilterRoutes = routes;
         return this.setupFilter();
       },
@@ -256,36 +254,54 @@ export default class Diesel {
           }
           this.filters.add(route);
         }
-        this.FilterRoutes = null;
         return this.setupFilter();
       },
 
-      authenticate: (
-        fnc?: Function[] | middlewareFunc[]
-      ) => {
+      authenticate: (fnc?: Function[] | middlewareFunc[]) => {
         if (fnc?.length) {
-          for (const fn of fnc) {
-            this.filterFunction.push(fn);
-          }
+          const wrapper = async (ctx: ContextType, server: Server) => {
+            const pathname = ctx.path!;
+            for (const pub of this.filters) {
+              if (pathname.startsWith(pub)) return;
+            }
+
+            for (const fn of fnc) {
+              const resp = await fn(ctx, server);
+              if (resp) return resp;
+            }
+          };
+          this.router.addMiddleware('/', wrapper);
         }
       },
 
       authenticateJwt: (jwt: any) => {
-        this.filterFunction
-          .push(
-            authenticateJwtMiddleware(jwt, this.user_jwt_secret)
-          );
+        const wrapper = async (ctx: ContextType) => {
+          const pathname = ctx.path!;
+          for (const pub of this.filters) {
+            if (pathname.startsWith(pub)) return;
+          }
+
+          const res = authenticateJwtMiddleware(jwt, this.user_jwt_secret)(ctx);
+          if (res) return res;
+        };
+        this.router.addMiddleware('/', wrapper);
       },
 
       authenticateJwtDB: (jwt: any, User: any) => {
-        this.filterFunction
-          .push(
-            authenticateJwtDbMiddleware(jwt, User, this.user_jwt_secret)
-          );
-      }
+        const wrapper = async (ctx: ContextType) => {
+          const pathname = ctx.path!;
+          for (const pub of this.filters) {
+            if (pathname.startsWith(pub)) return;
+          }
 
+          const res = authenticateJwtDbMiddleware(jwt, User, this.user_jwt_secret)(ctx);
+          if (res) return res;
+        };
+        this.router.addMiddleware('/', wrapper);
+      },
     };
   }
+
 
   // for redirect on a specific path
   redirect(
@@ -388,22 +404,9 @@ export default class Diesel {
   }
 
 
-  // this is for high performance api endpoint and when u use this no app.use midl works here
-  // when you use this , it will override existing endpoint with same path
+  // this is for high performance api endpoint.
   BunRoute(method: string, path: string, ...handlersOrResponse: any[]): this {
     if (!path || typeof path !== 'string') throw new Error("give a path in string format")
-
-    // Direct response send
-    let response_data: string | object | undefined;
-    if (typeof handlersOrResponse[0] === "string" || typeof handlersOrResponse[0] === "object") {
-      response_data = handlersOrResponse[0];
-    }
-    if (typeof response_data !== "undefined") {
-      const data = typeof response_data === "string"
-        ? response_data
-        : JSON.stringify(response_data)
-    }
-
     const handlerFunction = BunRequestPipline(this as any, method.toUpperCase(), path, ...handlersOrResponse)
     this.routes[path] = handlerFunction
     return this
@@ -518,7 +521,6 @@ export default class Diesel {
 
   }
 
-  // Function where our request comes if new architecture is disabled.
   async #handleRequests(
     req: Request,
     server?: Server,
@@ -543,10 +545,10 @@ export default class Diesel {
         await runHooks('onRequest', this.hooks.onRequest, [ctx])
 
       // filter execution
-      if (this.hasFilterEnabled) {
-        const filterResponse = await runFilter(this as any, pathname, ctx);
-        if (filterResponse) return filterResponse;
-      }
+      // if (this.hasFilterEnabled && req.method !== 'OPTIONS') {
+      //   const filterResp = await runFilter(this as any, pathname, ctx);
+      //   if (filterResp) return filterResp;
+      // }
 
       // pre-handler
       if (this.hasPreHandlerHook) {
@@ -648,6 +650,7 @@ export default class Diesel {
 
   /**
    * Mount method
+   * we can use 3rd party framework with diesel.js
    */
 
   mount(
@@ -710,7 +713,6 @@ export default class Diesel {
       this.router.addMiddleware(fullPath, ...handlers);
     }
 
-
     // Nullify the router instance to prevent accidental reuse.
     // and to prevent memory leak
     routerInstance = null;
@@ -744,25 +746,8 @@ export default class Diesel {
     const middlewareHandlers = handlers.slice(0, -1) as middlewareFunc[];
     const handler = handlers[handlers.length - 1];
 
-    if (middlewareHandlers.length > 0) {
-      // if (!this.middlewares.has(path)) this.middlewares.set(path, []);
+    if (middlewareHandlers.length > 0) this.router.addMiddleware(path, ...middlewareHandlers)
 
-      middlewareHandlers.forEach((middleware: middlewareFunc) => {
-        this.router.addMiddleware(path, middleware)
-        return
-
-        // if (path === "/") {
-        //   this.globalMiddlewares = [
-        //     ...new Set([...this.globalMiddlewares, ...middlewareHandlers]),
-        //   ];
-        // } else {
-        //   if (!this.middlewares.get(path)?.includes(middleware)) {
-        //     this.middlewares.get(path)?.push(middleware);
-        //   }
-        // }
-
-      });
-    }
 
     try {
       if (method === "ANY") {
@@ -802,107 +787,19 @@ export default class Diesel {
   ): this {
     if (typeof pathORHandler === 'string') {
       let path = pathORHandler === "/" ? "/" : pathORHandler;
-      if (!this.tempMiddlewares?.has(path)) {
-        this.tempMiddlewares?.set(path, []);
-      }
+      if (!this.tempMiddlewares?.has(path)) this.tempMiddlewares?.set(path, []);
       this.tempMiddlewares?.get(path)!.push(...handlers);
 
       this.router.addMiddleware(path, ...handlers)
-    }
-
-    else if (typeof pathORHandler === 'function') {
+    } else if (typeof pathORHandler === 'function') {
       const arrs = [pathORHandler, ...handlers]
-      if (!this.tempMiddlewares?.has('/')) {
-        this.tempMiddlewares?.set('/', []);
-      }
+      if (!this.tempMiddlewares?.has('/')) this.tempMiddlewares?.set('/', []);
       this.tempMiddlewares?.get('/')!.push(...handlers)
 
-      for (const r of arrs) {
-        this.router.addMiddleware('/', r)
-      }
-
+      this.router.addMiddleware('/', ...arrs)
     }
 
     return this;
-
-    /**
-     * First, we check if the user has passed an array of global middlewares.
-     * Example: app.use([h1, h2])
-     */
-    // if (Array.isArray(pathORHandler)) {
-    //   pathORHandler?.forEach((handler) => {
-    //     /**
-    //      * Check if the array contains middleware functions (e.g., app.use([h1, h2]))
-    //      * and ensure they are not already added to globalMiddlewares.
-    //      */
-    //     if (typeof handler === "function") {
-    //       this.globalMiddlewares.push(handler as middlewareFunc);
-    //       // this.trie.pushMidl('/', handler as middlewareFunc)
-    //     }
-    //   });
-    // }
-
-    /**
-     *  Next, check if the user has passed a single middleware function as a global middleware.
-     * Example: app.use(h1)
-     */
-    // if (typeof pathORHandler === "function") {
-
-    //   this.globalMiddlewares.push(pathORHandler as middlewareFunc);
-    //   // this.trie.pushMidl('/', pathORHandler as middlewareFunc)
-    //   // this.router.addMiddleware('/', pathORHandler)
-
-    //   /**
-    //    * Additionally, check if there are multiple handlers passed as the second parameter.
-    //    * Example: app.use(h1, h2,h3,h4..)
-    //    */
-    //   if (Array.isArray(handlers)) {
-    //     handlers.forEach((handler: Function) => {
-    //       this.globalMiddlewares.push(handler as middlewareFunc);
-    //       // this.trie.pushMidl('/', handler as middlewareFunc)
-    //     });
-    //   }
-    //   return this;
-    // }
-
-    /**
-     * If the user has passed one or more paths along with a middleware or multiple middlewares:
-     * Example 1: app.use("/home", h1) - single path with a single middleware.
-     * Example 2: app.use(["/home", "/user"], [h1, h2]) - multiple paths with multiple middlewares.
-     */
-    // const paths: string[] = Array.isArray(pathORHandler)
-    //   ? pathORHandler.filter((path): path is string => typeof path === "string")
-    //   : [pathORHandler].filter(
-    //     (path): path is string => typeof path === "string"
-    //   );
-
-
-    // paths.forEach((path: string) => {
-    //   // Initialize the middleware array for the given path if it doesn't already exist.
-    //   if (!this.middlewares.has(path)) {
-    //     this.middlewares.set(path, []);
-    //   }
-    //   if (handlers) {
-    //     // Example: app.use('/home', h1) -> handlers becomes [h1].
-    //     const handlerArray = Array.isArray(handlers) ? handlers : [handlers];
-
-    //     handlerArray.forEach((handler: Function) => {
-    //       // if (!this.middlewares.get(path)?.includes(handler)) {
-    //       this.middlewares.get(path)?.push(handler as middlewareFunc);
-    //       // }
-    //     });
-    //   }
-    // });
-
-
-    // return this;
-
-    // // new try experimental
-    // paths.forEach((path: string) => {
-    //   // console.log('midl', path, handlers)
-    //   // this.trie.pushMidl(path, handlers as any)
-    // })
-    // return this
   }
 
 
