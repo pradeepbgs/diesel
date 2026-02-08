@@ -12,7 +12,8 @@
   "description": "",
   "dependencies": {
     "@morojs/moro": "^1.6.4",
-    "diesel-core": "^1.6.9",
+    "cpeak": "^2.5.0",
+    "diesel-core": "^1.7.3",
     "elysia": "^1.4.5",
     "express": "^5.1.0",
     "fastify": "^5.6.0",

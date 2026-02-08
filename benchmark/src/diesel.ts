@@ -1,18 +1,19 @@
-import { Hono } from "hono"
-import Diesel from "../../src/main"
-import type { ContextType } from "diesel-core"
+  import Diesel from "../../src/main"
+  import type { ContextType } from "diesel-core"
 
-export const app = new Diesel({pipelineArchitecture:true})
+  export const app = new Diesel({pipelineArchitecture:false})
 
 
-app
-    .get('/', (c: ContextType) => {
-        return c.text("hello diesel")
-    })
+  app
+      .get('/', (c: ContextType) => {
+          return c.json({ message: "Hi there!" });
+      })
 
-Bun
-    .serve({
-        fetch: app.fetch() as any,
-        port: 3000,
-    })
+  for (let i = 0; i < 100; i++) {
+    app.get(`/r${i}`, (ctx:ContextType) => {
+      return ctx.json({ ok: true, route: i });
+    });
+  }
 
+
+  app.listen(3000)

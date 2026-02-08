@@ -52,3 +52,4 @@ const startBenchIsPromise = () => {
 
 startBenchInstanceOf();
 startBenchIsPromise();
+

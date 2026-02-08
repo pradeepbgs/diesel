@@ -9,6 +9,27 @@ fastify.get('/', function (request, reply) {
   reply.send("Hello world")
 })
 
+fastify.register(async (app) => {
+  app.addHook('onRequest', (_,ok,done) => {
+    console.log('module hook')
+    done()
+  })
+  app.get('/test', async () => {
+    return "Hello test"
+  })
+  // app.addHook('onSend', () => {
+  //   console.log('onsend module hook')
+  // })
+})
+
+fastify.addHook('onRequest', (_,ok,done) => {
+  console.log('global hook')
+  done()
+})
+// fastify.addHook('onSend', async (request, reply, payload) => {
+//   return payload
+// })
+
 // Run the server!
 fastify.listen({ port: 3003 }, function (err, address) {
     console.log('fastify running on 3003')

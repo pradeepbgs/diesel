@@ -1,7 +1,6 @@
 import { Handler, HTTPVersion } from "find-my-way";
 import { handlerFunction, middlewareFunc } from "../types";
 import { NormalizedRoute, Router } from "./interface";
-import { extractDynamicParams, extractParam } from "../ctx";
 
 class TrieNodes {
     children: Record<string, TrieNodes>
@@ -28,7 +27,8 @@ export class TrieRouter {
         this.globalMiddlewares = []
     }
 
-    pushMiddleware(path: string, ...handlers: middlewareFunc[]) {
+    pushMiddleware(path: string, handlers: middlewareFunc | middlewareFunc[]) {
+        if (!Array.isArray(handlers)) handlers = [handlers];
         if (path === '/') {
             this.globalMiddlewares.push(...handlers)
             return;
@@ -93,7 +93,7 @@ export class TrieRouter {
 
         const pathSegments = path.split('/').filter(Boolean);
 
-        let collected: middlewareFunc[] = [...this.globalMiddlewares];
+        let collected: middlewareFunc[] = this.globalMiddlewares.slice()
 
         for (const element of pathSegments) {
 
@@ -109,19 +109,21 @@ export class TrieRouter {
             }
 
             if (node.middlewares.length > 0) {
-                collected.push(...node.middlewares);
+                const mw = node.middlewares;
+                for (let j = 0; j < mw.length; j++) {
+                    collected.push(mw[j]);
+                }
             }
         }
 
-        // const handlers = [...collected];
         const methodHandler = node.handlers.get(method);
         if (methodHandler) collected.push(methodHandler);
         return {
             params: node.paramName as string[],
             handler: collected
         }
-        
     }
+
 }
 
 
@@ -137,20 +139,14 @@ export class TrieRouter2 implements Router {
         this.trie.insert(method, path, handler as any)
     }
 
-    addMiddleware(path: string, ...handlers: middlewareFunc[] | any) {
-        this.trie.pushMiddleware(path, ...handlers)
+    addMiddleware(path: string, handlers: middlewareFunc[] | any) {
+        this.trie.pushMiddleware(path, handlers)
     }
 
     find(method: string, path: string): NormalizedRoute | null {
 
         return this.trie.search(method, path) as any
 
-        const cacheKey = method + ':' + path
-        if (this.cache.has(cacheKey)) return this.cache.get(cacheKey)!
-
-        const result = this.trie.search(method, path) as any
-        this.cache.set(cacheKey, result)
-        return result
     }
 }
 

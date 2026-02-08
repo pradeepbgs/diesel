@@ -50,7 +50,6 @@ import { Context } from "./ctx.js";
 
 import {
   handleRouteNotFound,
-  runFilter,
   runHooks,
 } from "./utils/request.util.js";
 
@@ -58,8 +57,9 @@ import { HTTPException } from "./http-exception";
 import { Router, RouterFactory } from "./router/interface.js";
 import { supportedMethods } from './constant.js';
 import { isPromise } from "./utils/promise.js";
+import path from "path";
 
-
+export const EMPTY_OBJ = Object.freeze({});
 
 export default class Diesel {
   private static instance: Diesel
@@ -221,8 +221,7 @@ export default class Diesel {
           else if (typeof path !== 'string') givenPath = '';
 
           const fullPath = prefix + givenPath
-          // console.log(fullPath)
-          return (target as any)[prop](fullPath, givenHandler)
+            return (target as any)[prop](fullPath, givenHandler)
           // if (typeof path === 'string') return (target as any)[prop](fullPath, handler)
           // else if (typeof path === 'function') return (target as any)[prop](path)
 
@@ -270,7 +269,7 @@ export default class Diesel {
               if (resp) return resp;
             }
           };
-          this.router.addMiddleware('/', wrapper);
+          this.router.addMiddleware('/', [wrapper]);
         }
       },
 
@@ -416,8 +415,6 @@ export default class Diesel {
     port: any,
     ...args: listenArgsT[]
   ): Server | void {
-    if (typeof Bun === "undefined")
-      throw new Error(".listen() is designed to run on Bun only...");
 
     let hostname = "0.0.0.0";
     let callback: (() => void) | undefined = undefined;
@@ -517,7 +514,7 @@ export default class Diesel {
     }
 
     // Default
-    return this.#handleRequests.bind(this)
+    return this.#handleRequests.bind(this);
 
   }
 
@@ -531,12 +528,11 @@ export default class Diesel {
     const matchedRouteHandler = this.router.find(req.method as HttpMethod, pathname);
     const ctx = new Context(
       req,
-      server,
+      server || null,
       pathname,
-      matchedRouteHandler?.path as string,
-      matchedRouteHandler?.params,
-      env,
-      executionContext
+      matchedRouteHandler?.params || EMPTY_OBJ,
+      env ||null,
+      executionContext || null
     );
 
     try {
@@ -582,7 +578,7 @@ export default class Diesel {
       //   return finalResult;
       // }
 
-      return await handleRouteNotFound(this as any, ctx, pathname)
+      return await handleRouteNotFound(this as any, ctx as any, pathname)
     } catch (err: any) {
       return this.handleError(err, pathname, req)
     }
@@ -662,7 +658,7 @@ export default class Diesel {
     this.use(prefix, (ctx: Context) => {
       // build new url for fetch
       const url = new URL(ctx.req.url);
-      // here we slice orgininal coming url like /hono/hello so we have to slice /hono
+      // here we slice orgininal coming url like /diesel/hello so we have to slice /diesel
       // and only /hello should become new url
       url.pathname = url.pathname.slice(prefixLength) || '/';
       // create new Request with that url 
@@ -681,7 +677,7 @@ export default class Diesel {
 
   route(
     basePath: string | undefined,
-    routerInstance: Diesel | null
+    routerInstance: Diesel
   ): this {
 
     basePath = (basePath && basePath.length > 0)
@@ -696,7 +692,7 @@ export default class Diesel {
 
       // Add all middleware functions for the route, preserving user-defined order.
       const middlewareHandlers = args.handlers.slice(0, -1) as middlewareFunc[];
-      this.router.addMiddleware(fullpath, ...middlewareHandlers)
+      this.router.addMiddleware(fullpath, middlewareHandlers)
 
       const handler = args.handlers[args.handlers.length - 1];
       const method = args.method;
@@ -710,12 +706,12 @@ export default class Diesel {
     // Middleware assigning
     for (const [path, handlers] of routerInstance?.tempMiddlewares?.entries() as any) {
       const fullPath = path === "/" ? basePath || "/" : `${basePath}${path}`;
-      this.router.addMiddleware(fullPath, ...handlers);
+      this.router.addMiddleware(fullPath, handlers);
     }
 
     // Nullify the router instance to prevent accidental reuse.
     // and to prevent memory leak
-    routerInstance = null;
+    routerInstance = null as any;
     return this;
   }
 
@@ -723,12 +719,18 @@ export default class Diesel {
    same as Route
    */
   register(
-    basePath: string | undefined,
-    routerInstance: Diesel
+    module:(app:Diesel) => void
   ): this {
-    return this.route(basePath, routerInstance);
+    const newAPP = new Diesel()
+    const wrapper = () => {
+      
+    }
+    return this
   }
 
+  private addMiddlewareInRouter(path: string, handlers: middlewareFunc | middlewareFunc[]) {
+    this.router.addMiddleware(path, handlers);
+  }
 
   private addRoute(
     method: HttpMethod,
@@ -746,7 +748,7 @@ export default class Diesel {
     const middlewareHandlers = handlers.slice(0, -1) as middlewareFunc[];
     const handler = handlers[handlers.length - 1];
 
-    if (middlewareHandlers.length > 0) this.router.addMiddleware(path, ...middlewareHandlers)
+    if (middlewareHandlers.length > 0) this.addMiddlewareInRouter(path, middlewareHandlers)
 
 
     try {
@@ -790,13 +792,13 @@ export default class Diesel {
       if (!this.tempMiddlewares?.has(path)) this.tempMiddlewares?.set(path, []);
       this.tempMiddlewares?.get(path)!.push(...handlers);
 
-      this.router.addMiddleware(path, ...handlers)
+      this.router.addMiddleware(path, handlers)
     } else if (typeof pathORHandler === 'function') {
       const arrs = [pathORHandler, ...handlers]
       if (!this.tempMiddlewares?.has('/')) this.tempMiddlewares?.set('/', []);
       this.tempMiddlewares?.get('/')!.push(...handlers)
 
-      this.router.addMiddleware('/', ...arrs)
+      this.router.addMiddleware('/', arrs)
     }
 
     return this;
@@ -841,4 +843,5 @@ export default class Diesel {
     this.emitter.emit(event, ...args);
     return this;
   }
+    
 }

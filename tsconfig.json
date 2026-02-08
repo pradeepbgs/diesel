@@ -11,11 +11,11 @@
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node",
     "esModuleInterop": true,
-    "emitDeclarationOnly": false
+    "emitDeclarationOnly": true
   },
   "include": [
     "src/**/*.ts",
-    // "src/adaptor/node/**/*"
+    "src/adaptor/node/**/*"
   ],
   "exclude": [
     "node_modules",

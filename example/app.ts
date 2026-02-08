@@ -1,7 +1,6 @@
 import Diesel from "../src/main";
 import jwt from "jsonwebtoken";
 import { ContextType, CookieOptions } from "../src/types";
-import { newRoute, userRoute } from "./route";
 import homapge from './templates/index.html'
 import aboutpage from './templates/about.html'
 import { cors } from "../src/middlewares/cors/cors";
@@ -47,12 +46,12 @@ app.use(cors({
 }))
 
 
-app.setupFilter()
-  .publicRoutes("/cookie", '/api/user/', '/health')
-  .permitAll()
-  // .authenticateJwt(jwt)
+// app.setupFilter()
+//   .publicRoutes("/cookie", '/api/user/', '/health')
+//   .permitAll()
+//   // .authenticateJwt(jwt)
 
-  .authenticate([authJwt])
+//   .authenticate([authJwt])
 
 
 // app.use(authenticateJwt({
@@ -248,7 +247,7 @@ app.get("/ejs", async (ctx: ContextType) => {
   return await ctx.ejs(`${import.meta.dirname}/templates/look.ejs`, { name: "linux" })
 })
 
-app.route("/api/user", userRoute)
+// app.route("/api/user", userRoute)
 
 // app.listen(port, () => {
 //   console.log(`Server is running on port ${port}`);
@@ -260,9 +259,16 @@ const shutdown = (): any => {
   process.exit()
 };
 
+app.get('/api/user', (ctx) => { return ctx.send("GETTT user") })
+app.post('/api/user', (ctx) => { return ctx.send("Send posstt user") })
+
+const fetchapp = app.fetch()
 Bun.serve({
   port,
-  fetch: app.fetch() as any
+  routes: {
+    '/*': homapge,
+    '/api/*': fetchapp as any
+  },
 })
 console.log(`Server is running on port ${port}`);
 

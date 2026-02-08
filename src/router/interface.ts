@@ -7,7 +7,7 @@ import { TrieRouter2 } from "./trie2";
 export interface Router {
     add(method: string, path: string, handler: handlerFunction | Handler<HTTPVersion.V1>): void
     find(method: string, path: string): NormalizedRoute | null
-    addMiddleware(path: string, ...handlers: middlewareFunc[] | any): void
+    addMiddleware(path: string, handlers: middlewareFunc[] | any): void
 }
 
 export interface RouteMatchResult {
@@ -22,11 +22,7 @@ export interface NormalizedRoute {
     method?: string;
 }
 
-
-
 export class RouterFactory {
-
-
     static create(name?: string): Router {
         switch (name) {
             case 't2':
@@ -44,5 +40,4 @@ export class RouterFactory {
             default: return new TrieRouter()
         }
     }
-    
 }

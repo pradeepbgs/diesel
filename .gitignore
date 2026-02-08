@@ -8,3 +8,4 @@ src/PipeLineRequestHandle.ts
 .env
 src/routes
 dist/
+.npmrc

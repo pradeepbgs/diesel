@@ -1,7 +1,6 @@
 import { Server } from "bun";
 import { Context } from "./ctx";
-import type { DieselT } from "./types";
-import { tryDecodeURI } from "./utils/urls";
+import { getPath, tryDecodeURI } from "./utils/urls";
 import { generateErrorResponse, handleRouteNotFound, runFilter, runHooks, runMiddlewares } from "./utils/request.util";
 import { isPromise } from "./utils/promise";
 import Diesel from "./main";
@@ -15,27 +14,11 @@ export default async function handleRequest(
   executionContext?: any
 ): Promise<Response | undefined> {
 
-  let pathname;
-  const start = req.url.indexOf('/', req.url.indexOf(':') + 4);
-  let i = start;
-  for (; i < req.url.length; i++) {
-    const charCode = req.url.charCodeAt(i);
-    if (charCode === 37) { // percent-encoded
-      const queryIndex = req.url.indexOf('?', i);
-      const path = req.url.slice(start, queryIndex === -1 ? undefined : queryIndex);
-      pathname = tryDecodeURI(path.includes('%25') ? path.replace(/%25/g, '%2525') : path);
-      break;
-    } else if (charCode === 63) {
-      break;
-    }
-  }
-  if (!pathname) {
-    pathname = req.url.slice(start, i);
-  }
+  const pathname = getPath(req.url)
 
   const matchedRouteHandler = diesel.router.find(req.method, pathname)
 
-  const ctx = new Context(req, server, pathname, matchedRouteHandler?.path as any, env, executionContext)
+  const ctx = new Context(req, server, pathname, matchedRouteHandler?.path as any, env??null, executionContext)
   // const ctx = createCtx(req,server,pathname,routeHandler?.path)
 
 
@@ -50,10 +33,10 @@ export default async function handleRequest(
   // }
 
   // filter execution
-  if (diesel.hasFilterEnabled) {
-    const filterResponse = await runFilter(diesel, pathname, ctx);
-    if (filterResponse) return filterResponse;
-  }
+  // if (diesel.hasFilterEnabled) {
+  //   const filterResponse = await runFilter(diesel, pathname, ctx);
+  //   if (filterResponse) return filterResponse;
+  // }
 
   // if route not found
   // if (!routeHandler) return await handleRouteNotFound(diesel, ctx, pathname)
@@ -84,7 +67,7 @@ export default async function handleRequest(
     if (response) return response;
   }
 
-  return finalResult ?? await handleRouteNotFound(diesel, ctx, pathname)
+  return finalResult ?? await handleRouteNotFound(diesel, ctx as any, pathname)
 
   // if we dont return a response then by default Bun shows a err 
   return generateErrorResponse(500, "No response returned from handler.");

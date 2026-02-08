@@ -1,4 +1,4 @@
-import { CompileConfig, DieselT, HookFunction, middlewareFunc } from "./types";
+import {  DieselT, HookFunction, middlewareFunc } from "./types";
 import { Context } from "./ctx";
 import { executeBunMiddlewares, generateErrorResponse, handleRouteNotFound, runFilter, runHooks } from "./utils/request.util";
 import { isPromise } from "./utils/promise";

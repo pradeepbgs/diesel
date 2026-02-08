@@ -2,16 +2,17 @@ import { Server } from "bun";
 
 import type { CookieOptions, ParseBodyResult } from "./types";
 import { getMimeType } from "./utils/mimeType";
+import { EMPTY_OBJ } from "./main";
 
-let ejsInstance: any = null;
+// let ejsInstance: any = null;
 
-async function getEjs() {
-  if (!ejsInstance) {
-    const mod = await import("ejs");
-    ejsInstance = mod.default || mod;
-  }
-  return ejsInstance;
-}
+// async function getEjs() {
+//   if (!ejsInstance) {
+//     const mod = await import("ejs");
+//     ejsInstance = mod.default || mod;
+//   }
+//   return ejsInstance;
+// }
 
 const typeMap: any = {
   string: "text/plain; charset=utf-8",
@@ -20,60 +21,65 @@ const typeMap: any = {
   ArrayBuffer: "application/octet-stream",
 };
 
+
 export class Context {
   req: Request;
-  server?: Server | undefined;
-  path?: string | undefined;
-  routePattern?: string;
-  paramNames?: string[] | Record<string, string>
-  env?: Record<string, any>;
-  executionContext?: any | undefined;
-  headers = new Headers();
+  server: Server | null;
+  path: string | null;
+  paramNames: string[] | Record<string, string>
+  env: Record<string, any> | null;
+  executionContext: any | null;
+  headers: Headers | null;
 
   // Lazily initialized
   private parsedQuery: Record<string, string> | null = null;
   private parsedParams: Record<string, string> | null = null;
   private parsedCookies: Record<string, string> | null = null;
   private parsedBody: Promise<any> | null = null;
-  private contextData: Record<string, any> = {};
+  private contextData: Record<string, any>;
   private urlObject: URL | null = null;
 
 
   constructor(
     req: Request,
-    server?: Server,
-    path?: string,
-    routePattern?: string,
-    paramNames?: string[] | Record<string, string>,
-    env?: Record<string, any>,
-    executionContext?: any
+    server: Server | null,
+    path: string | null,
+    paramNames: string[] | Record<string, string>,
+    env: Record<string, any> | null,
+    executionContext: any | null
   ) {
     this.req = req;
     this.server = server;
     this.path = path;
-    this.routePattern = routePattern;
     this.executionContext = executionContext;
     this.env = env;
-    this.paramNames = paramNames
+    this.paramNames = paramNames;
+
+    //
+    this.contextData = EMPTY_OBJ;
+    this.headers = null
   }
 
   // Methods
   setHeader(key: string, value: string): this {
+    if (!this.headers) this.headers = new Headers();
     this.headers.set(key, value);
     return this
   }
 
   removeHeader(key: string): this {
-    this.headers.delete(key)
+    if (this.headers) this.headers.delete(key)
     return this
   }
 
   set<T>(key: string, value: T): this {
+    if (this.contextData === EMPTY_OBJ) this.contextData = {};
     this.contextData[key] = value;
     return this;
   }
 
   get<T>(key: string): T | undefined {
+    if (this.contextData === EMPTY_OBJ) return undefined;
     return this.contextData[key];
   }
 
@@ -91,7 +97,7 @@ export class Context {
 
   get query(): Record<string, string> {
     if (!this.parsedQuery) {
-      this.parsedQuery = this.url.search ? Object.fromEntries(this.url.searchParams) : {};
+      this.parsedQuery = this.url.search ? Object.fromEntries(this.url.searchParams) : EMPTY_OBJ;
     }
     return this.parsedQuery;
   }
@@ -109,13 +115,13 @@ export class Context {
         throw new Error(`Failed to extract route parameters: ${message}`);
       }
     }
-    return this.parsedParams ?? {};
+    return this.parsedParams ?? EMPTY_OBJ;
   }
 
   get body(): Promise<any> {
     if (this.req.method === "GET") {
       console.error(`you are trying to access body in GET method ${this.path}`)
-      return Promise.resolve({});
+      return Promise.resolve(EMPTY_OBJ);
     }
 
     if (!this.parsedBody) {
@@ -137,20 +143,22 @@ export class Context {
   }
 
   text(data: string, status: number = 200, customHeaders?: HeadersInit): Response {
+    if (!this.headers) this.headers = new Headers()
     if (customHeaders) {
       for (const [key, value] of Object.entries(customHeaders)) {
         this.headers.set(key, value);
       }
     }
 
-    if (!this.headers.has("Content-Type")) {
-      this.headers.set("Content-Type", "text/plain; charset=utf-8");
+    if (!this.headers?.has("Content-Type")) {
+      this.headers?.set("Content-Type", "text/plain; charset=utf-8");
     }
 
     return new Response(data, { status, headers: this.headers });
   }
 
   send<T>(data: T, status: number = 200, customHeaders?: HeadersInit): Response {
+    if (!this.headers) this.headers = new Headers()
     if (customHeaders) {
       for (const [key, value] of Object.entries(customHeaders)) {
         this.headers.set(key, value);
@@ -175,6 +183,7 @@ export class Context {
   }
 
   json<T>(object: T, status: number = 200, customHeaders?: HeadersInit): Response {
+    if (!this.headers) this.headers = new Headers()
     if (customHeaders) {
       for (const [key, value] of Object.entries(customHeaders)) {
         this.headers.set(key, value);
@@ -189,6 +198,7 @@ export class Context {
   }
 
   file(filePath: string, mimeType?: string, status: number = 200, customHeaders?: HeadersInit): Response {
+    if (!this.headers) this.headers = new Headers()
     if (customHeaders) {
       for (const [key, value] of Object.entries(customHeaders)) {
         this.headers.set(key, value);
@@ -204,21 +214,23 @@ export class Context {
   }
 
 
-  async ejs(viewPath: string, data = {}, status: number = 200): Promise<Response> {
+  async ejs(viewPath: string, data = {}, status: number = 200): Promise<void> {
+    console.log('this method is diabled now for some time')
     // this.status = status;
-    const ejs = await getEjs();
-    try {
-      const template = await Bun.file(viewPath).text()
-      const rendered = ejs.render(template, data)
-      const headers = new Headers({ "Content-Type": "text/html; charset=utf-8" });
-      return new Response(rendered, { status, headers });
-    } catch (error) {
-      console.error("EJS Rendering Error:", error);
-      return new Response("Error rendering template", { status: 500 });
-    }
+    // const ejs = await getEjs();
+    // try {
+    //   const template = await Bun.file(viewPath).text()
+    //   const rendered = ejs.render(template, data)
+    //   const headers = new Headers({ "Content-Type": "text/html; charset=utf-8" });
+    //   return new Response(rendered, { status, headers });
+    // } catch (error) {
+    //   console.error("EJS Rendering Error:", error);
+    //   return new Response("Error rendering template", { status: 500 });
+    // }
   }
 
   redirect(path: string, status: number = 302): Response {
+    if (!this.headers) this.headers = new Headers()
     this.headers.set("Location", path);
     return new Response(null, { status, headers: this.headers });
   }
@@ -228,7 +240,7 @@ export class Context {
     value: string,
     options: CookieOptions = {}
   ): this {
-
+    if (!this.headers) this.headers = new Headers()
     let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(
       value
     )}`;
@@ -251,14 +263,14 @@ export class Context {
   get cookies(): Record<string, string> {
     if (!this.parsedCookies) {
       const cookieHeader = this.req.headers.get("cookie");
-      this.parsedCookies = cookieHeader ? parseCookie(cookieHeader) : {};
+      this.parsedCookies = cookieHeader ? parseCookie(cookieHeader) : EMPTY_OBJ;
     }
     return this.parsedCookies;
   }
 
   // Streams
   stream(callback: (controller: ReadableStreamDefaultController) => void): Response {
-    const headers = new Headers(this.headers);
+    const headers = new Headers(this.headers ?? new Headers());
     const stream = new ReadableStream({
       async start(controller) {
         await callback(controller);

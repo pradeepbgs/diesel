@@ -6,10 +6,6 @@ const app = new Hono()
         return c.text('Hello Hono!')
     })
 
-const dieselApp = new Diesel().get('/', () => new Response('Hello Diesel!'))
-
-app.mount('/api', dieselApp.fetch())
-
 Bun.serve({
     fetch: app.fetch,
     port: 3001,

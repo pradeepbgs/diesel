@@ -23,10 +23,26 @@
 // './src/middlewares/cors/cors.ts',
 // './src/middlewares/security/security.ts'
 
-Bun.build({
-    entrypoints: [
-        './src/main.ts',
+await Bun.build({
+    entrypoints:[
         './src/request_pipeline.ts',
+    ],
+    outdir: './dist',
+    minify:true
+})
+
+await Bun.build({
+    entrypoints:[
+        './src/main.ts',
+        './src/router/trie2.ts',
+    ],
+    outdir: './dist',
+    minify: true,
+})
+
+
+const result = await Bun.build({
+    entrypoints: [
         './src/handleRequest.ts',
         './src/router/trie.ts',
         './src/router/interface.ts',
@@ -37,8 +53,16 @@ Bun.build({
     ],
     outdir: './dist',
     minify: true,
-})
-console.log('build complete for main src')
+});
+
+if (!result.success) {
+    console.error("❌ BUILD FAILED");
+    for (const message of result.logs) {
+        console.error(message);
+    }
+} else {
+    console.log("✅ Build complete for main src");
+}
 
 Bun.build({
     entrypoints: [
@@ -50,6 +74,7 @@ Bun.build({
         './src/middlewares/ratelimit/implementation.ts',
         './src/middlewares/powered-by/index.ts',
         './src/middlewares/jwt/index.ts',
+        './src/middlewares/request-id/index.ts'
     ],
     outdir: './dist/middlewares',
     minify: true,
