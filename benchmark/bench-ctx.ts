@@ -1,7 +1,7 @@
 import { Context as HonoContext } from "./hono-ctx";
 import { Context as DieselContext } from "../src/ctx";
 
-const ITER = 1_000_000;
+const ITER = 10_000_00;
 
 // Minimal fake request
 const req = new Request("http://localhost/test");

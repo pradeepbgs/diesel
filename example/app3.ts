@@ -60,9 +60,10 @@ app.static('', '')
 app.get("/", (ctx: Context) => {
     // const ip = ctx.ip
     // console.log('ip ', ip)
-    // ctx.setHeader("Content-Type", "application/json; charset=utf-8")
-    return ctx.text("Hello world!", 200, {
-        'Content-Type': 'text/plain'
+    ctx.setHeader("access-control-allow-origin", "pradeep.com")
+    ctx.setHeader("Content-Type", "application/json; charset=utf-8")
+    return ctx.send("name",200,{
+        "Content-Type":"text/plain; charset=utf-8"
     })
 })
 

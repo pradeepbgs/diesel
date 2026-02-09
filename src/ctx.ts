@@ -120,7 +120,6 @@ export class Context {
 
   get body(): Promise<any> {
     if (this.req.method === "GET") {
-      console.error(`you are trying to access body in GET method ${this.path}`)
       return Promise.resolve(EMPTY_OBJ);
     }
 
@@ -142,13 +141,29 @@ export class Context {
     return this.parsedBody;
   }
 
-  text(data: string, status: number = 200, customHeaders?: HeadersInit): Response {
-    if (!this.headers) this.headers = new Headers()
-    if (customHeaders) {
-      for (const [key, value] of Object.entries(customHeaders)) {
-        this.headers.set(key, value);
+  text(data: string, status: number = 200, customHeaders?: Record<string, string>): Response {
+
+    if (!this.headers) {
+      if (!customHeaders) {
+        return new Response(data, {
+          status,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+          }
+        })
       }
+      const h: Record<string, string> = {
+        "Content-Type": "text/plain; charset=utf-8"
+      }
+      copyHeadersToObject(customHeaders, h);
+      return new Response(data, {
+        status,
+        headers: h
+      })
     }
+
+    // slow path , actually not slow , it's normal
+    if (customHeaders) applyCustomHeaders(this.headers, customHeaders);
 
     if (!this.headers?.has("Content-Type")) {
       this.headers?.set("Content-Type", "text/plain; charset=utf-8");
@@ -157,38 +172,74 @@ export class Context {
     return new Response(data, { status, headers: this.headers });
   }
 
-  send<T>(data: T, status: number = 200, customHeaders?: HeadersInit): Response {
-    if (!this.headers) this.headers = new Headers()
-    if (customHeaders) {
-      for (const [key, value] of Object.entries(customHeaders)) {
-        this.headers.set(key, value);
+  send<T>(data: T, status: number = 200, customHeaders?: Record<string, string>): Response {
+
+    let contentType: string;
+    let responseData: any;
+
+    if (data instanceof Uint8Array || data instanceof ArrayBuffer) {
+      contentType = "application/octet-stream";
+      responseData = data;
+    } else if (data !== null && typeof data === "object") {
+      contentType = "application/json; charset=utf-8";
+      responseData = JSON.stringify(data);
+    } else if (typeof data === "string") {
+      contentType = "text/plain; charset=utf-8";
+      responseData = data;
+    } else {
+      contentType = "text/plain; charset=utf-8";
+      responseData = String(data);
+    }
+    if (!this.headers) {
+      if (!customHeaders) {
+        return new Response(responseData, {
+          status,
+          headers: { "Content-Type": contentType }
+        });
       }
+
+      const h: Record<string, string> = {
+        "Content-Type": contentType
+      };
+      copyHeadersToObject(customHeaders, h);
+
+      return new Response(responseData, { status, headers: h });
     }
 
-    let dataType: string;
-    if (data instanceof Uint8Array) dataType = "Uint8Array";
-    else if (data instanceof ArrayBuffer) dataType = "ArrayBuffer";
-    else dataType = typeof data;
-
+    if (customHeaders) applyCustomHeaders(this.headers, customHeaders);
+    
     if (!this.headers.has("Content-Type")) {
-      this.headers.set("Content-Type", typeMap[dataType] ?? "text/plain; charset=utf-8");
+      this.headers.set("Content-Type", contentType);
     }
-
-    const responseData =
-      dataType === "object" && data !== null
-        ? JSON.stringify(data)
-        : (data as any);
 
     return new Response(responseData, { status, headers: this.headers });
   }
 
-  json<T>(object: T, status: number = 200, customHeaders?: HeadersInit): Response {
-    if (!this.headers) this.headers = new Headers()
-    if (customHeaders) {
-      for (const [key, value] of Object.entries(customHeaders)) {
-        this.headers.set(key, value);
+  json<T>(object: T, status: number = 200, customHeaders?: Record<string, string>): Response {
+
+    if (!this.headers) {
+      if (!customHeaders) {
+        return Response.json(object, {
+          status,
+          headers: {
+            "Content-Type": "application/json; charset=utf-8"
+          }
+        })
       }
+
+      const h: Record<string, string> = {
+        "Content-Type": "application/json; charset=utf-8"
+      }
+      copyHeadersToObject(customHeaders, h);
+      return Response.json(object, {
+        status,
+        headers: h
+      })
     }
+
+    // slow path
+    if (customHeaders) applyCustomHeaders(this.headers, customHeaders);
+    
 
     if (!this.headers.has("Content-Type")) {
       this.headers.set("Content-Type", "application/json; charset=utf-8");
@@ -197,19 +248,35 @@ export class Context {
     return new Response(JSON.stringify(object), { status, headers: this.headers });
   }
 
-  file(filePath: string, mimeType?: string, status: number = 200, customHeaders?: HeadersInit): Response {
-    if (!this.headers) this.headers = new Headers()
-    if (customHeaders) {
-      for (const [key, value] of Object.entries(customHeaders)) {
-        this.headers.set(key, value);
+  file(filePath: string, mimeType?: string, status: number = 200, customHeaders?: Record<string, string>): Response {
+    const file = Bun.file(filePath);
+
+    if (!this.headers) {
+      if (!customHeaders) {
+        return new Response(file, {
+          status,
+          headers: {
+            "Content-Type": mimeType ?? getMimeType(filePath),
+          }
+        })
       }
+
+      const h: Record<string, string> = {
+        "Content-Type": mimeType ?? getMimeType(filePath),
+      }
+      copyHeadersToObject(customHeaders, h);
+      return new Response(file, {
+        status,
+        headers: h
+      })
     }
+
+    if (customHeaders) applyCustomHeaders(this.headers, customHeaders);
 
     if (!this.headers.has("Content-Type")) {
       this.headers.set("Content-Type", mimeType ?? getMimeType(filePath));
     }
 
-    const file = Bun.file(filePath);
     return new Response(file, { status, headers: this.headers });
   }
 
@@ -307,6 +374,22 @@ export class Context {
 
 //   return cookies;
 // }
+
+function applyCustomHeaders(
+  headers: Headers,
+  customHeaders: Record<string, string>
+): void {
+  for (const k in customHeaders) {
+    headers.set(k, customHeaders[k]);
+  }
+}
+
+function copyHeadersToObject(customHeaders: Record<string, string>, obj: Record<string, string>): void {
+  for (const k in customHeaders) {
+    obj[k] = customHeaders[k];
+  }
+}
+
 
 function parseCookie(cookieHeader: string): Record<string, string> {
   return Object.fromEntries(
