@@ -1,6 +1,3 @@
-
-
-
 export function getMimeType(filePath: string): string {
     const ext = filePath.split('.').pop()?.toLowerCase();
     switch (ext) {

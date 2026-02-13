@@ -36,7 +36,7 @@ export class Context {
   private parsedParams: Record<string, string> | null = null;
   private parsedCookies: Record<string, string> | null = null;
   private parsedBody: Promise<any> | null = null;
-  private contextData: Record<string, any>;
+  private contextData: Record<string, any> = EMPTY_OBJ;
   private urlObject: URL | null = null;
 
 
@@ -51,12 +51,11 @@ export class Context {
     this.req = req;
     this.server = server;
     this.path = path;
-    this.executionContext = executionContext;
-    this.env = env;
     this.paramNames = paramNames;
+    this.env = env;
+    this.executionContext = executionContext;
 
     //
-    this.contextData = EMPTY_OBJ;
     this.headers = null
   }
 
@@ -103,16 +102,12 @@ export class Context {
   }
 
   get params(): Record<string, string> {
-
-    if (!Array.isArray(this.paramNames)) {
-      return this.paramNames as Record<string, string>
-    }
     if (!this.parsedParams) {
       try {
         this.parsedParams = extractParam(this.paramNames as any, this.path!);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
-        throw new Error(`Failed to extract route parameters: ${message}`);
+        throw new Error(`Failed t o extract route parameters: ${message}`);
       }
     }
     return this.parsedParams ?? EMPTY_OBJ;

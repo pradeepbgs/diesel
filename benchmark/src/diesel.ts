@@ -1,19 +1,21 @@
-  import Diesel from "../../src/main"
-  import type { ContextType } from "diesel-core"
+import Diesel from "../../src/main";
+import type { ContextType } from "diesel-core";
 
-  export const app = new Diesel({pipelineArchitecture:false})
+export const app = new Diesel({ pipelineArchitecture: false });
 
+app
+  .get("/", (c: ContextType) => {
+    return c.json({ message: "Hi there!" });
+  })
+  .get("/:id", (c: ContextType) => {
+    const id = c.params.id;
+    return c.json({ message: `No User ${id}` });
+  })
+  .get("user/:id/username", (c: ContextType) => {
+    const id = c.params.id;
+    return c.json({ message: `User ${id}` });
+  });
 
-  app
-      .get('/', (c: ContextType) => {
-          return c.json({ message: "Hi there!" });
-      })
+app.BunRoute("GET", "/", () => new Response("Hi there from Bun route!"));
 
-  for (let i = 0; i < 100; i++) {
-    app.get(`/r${i}`, (ctx:ContextType) => {
-      return ctx.json({ ok: true, route: i });
-    });
-  }
-
-
-  app.listen(3000)
+app.listen(3000);

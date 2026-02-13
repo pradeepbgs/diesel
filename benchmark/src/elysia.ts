@@ -5,7 +5,7 @@ const loggingPlugin = (elysia: Elysia) =>
         console.log(`Request received: ${request.method} ${request.url}`);
     });
 
-new Elysia()
+new Elysia({precompile:true})
     // .use(loggingPlugin)
     .get('/', 'Hello Elysia')
     .get('/user/:id', ({ params: { id } }) => id)

@@ -124,7 +124,6 @@ export const buildRequestPipeline = (diesel: DieselT) => {
           req, 
           server, 
           pathname, 
-          matchedRouteHandler?.path,
           matchedRouteHandler?.params,
           env,
           executionContext

@@ -57,7 +57,6 @@ import { HTTPException } from "./http-exception";
 import { Router, RouterFactory } from "./router/interface.js";
 import { supportedMethods } from './constant.js';
 import { isPromise } from "./utils/promise.js";
-import path from "path";
 
 export const EMPTY_OBJ = Object.freeze({});
 
@@ -221,7 +220,7 @@ export default class Diesel {
           else if (typeof path !== 'string') givenPath = '';
 
           const fullPath = prefix + givenPath
-            return (target as any)[prop](fullPath, givenHandler)
+          return (target as any)[prop](fullPath, givenHandler)
           // if (typeof path === 'string') return (target as any)[prop](fullPath, handler)
           // else if (typeof path === 'function') return (target as any)[prop](path)
 
@@ -509,7 +508,7 @@ export default class Diesel {
         return pipeline(req, this, server, undefined, undefined)
           .catch(async (error: any) => {
             return this.handleError(error, getPath(req.url), req)
-          });
+          })
       };
     }
 
@@ -522,16 +521,17 @@ export default class Diesel {
     req: Request,
     server?: Server,
     env?: Record<string, any>,
-    executionContext?: any): Promise<Response | undefined> {
+    executionContext?: any
+  ): Promise<Response | undefined> {
 
-    const pathname = getPath(req.url);
-    const matchedRouteHandler = this.router.find(req.method as HttpMethod, pathname);
+    const path = getPath(req.url);
+    const matchedRouteHandler = this.router.find(req.method as HttpMethod, path);
     const ctx = new Context(
       req,
       server || null,
-      pathname,
+      path,
       matchedRouteHandler?.params || EMPTY_OBJ,
-      env ||null,
+      env || null,
       executionContext || null
     );
 
@@ -578,9 +578,9 @@ export default class Diesel {
       //   return finalResult;
       // }
 
-      return await handleRouteNotFound(this as any, ctx as any, pathname)
+      return await handleRouteNotFound(this as any, ctx as any, path)
     } catch (err: any) {
-      return this.handleError(err, pathname, req)
+      return this.handleError(err, path, req)
     }
 
   }
@@ -719,11 +719,11 @@ export default class Diesel {
    same as Route
    */
   register(
-    module:(app:Diesel) => void
+    module: (app: Diesel) => void
   ): this {
     const newAPP = new Diesel()
     const wrapper = () => {
-      
+
     }
     return this
   }
@@ -843,5 +843,5 @@ export default class Diesel {
     this.emitter.emit(event, ...args);
     return this;
   }
-    
+
 }
