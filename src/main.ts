@@ -281,7 +281,7 @@ export default class Diesel {
 
           const res = authenticateJwtMiddleware(jwt, this.user_jwt_secret)(ctx);
           if (res) return res;
-        };
+        }
         this.router.addMiddleware('/', wrapper);
       },
 

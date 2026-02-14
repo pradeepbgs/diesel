@@ -46,7 +46,6 @@ const result = await Bun.build({
         './src/handleRequest.ts',
         './src/router/trie.ts',
         './src/router/interface.ts',
-        './src/router/find-my-way.ts',
         './src/http-exception.ts',
         './src/ctx.ts',
         './src/constant.ts'

@@ -1,9 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test'
 import {app} from './server'
 const port = process.env.PORT || 3000
-if (!port) {
-  throw new Error("PORT environment variable is not set.");
-}
+
 beforeAll(async () => {
   app.listen( port , () => {
     console.log('Server running on '+port)
@@ -135,6 +133,7 @@ describe("CORS Testing", () => {
 describe("Testing Dynamic routes - /api/param/:id/:username", () => {
   it("it should return 404 as we have set route- /api/param/:id/:username", async () => {
     const response = await fetch(`${baseUrl}/api/param`);
+    console.log('dynamic request response ',await response.json())
     expect(response.status).toBe(404);
   });
 
