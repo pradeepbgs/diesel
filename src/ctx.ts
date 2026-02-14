@@ -21,12 +21,11 @@ const typeMap: any = {
   ArrayBuffer: "application/octet-stream",
 };
 
-
 export class Context {
   req: Request;
   server: Server | null;
   path: string | null;
-  paramNames: string[] | Record<string, string>
+  param: Record<string, number> | null;
   env: Record<string, any> | null;
   executionContext: any | null;
   headers: Headers | null;
@@ -39,36 +38,35 @@ export class Context {
   private contextData: Record<string, any> = EMPTY_OBJ;
   private urlObject: URL | null = null;
 
-
   constructor(
     req: Request,
     server: Server | null,
     path: string | null,
-    paramNames: string[] | Record<string, string>,
+    param: Record<string, number> | null,
     env: Record<string, any> | null,
-    executionContext: any | null
+    executionContext: any | null,
   ) {
     this.req = req;
     this.server = server;
     this.path = path;
-    this.paramNames = paramNames;
+    this.param = param;
     this.env = env;
     this.executionContext = executionContext;
 
     //
-    this.headers = null
+    this.headers = null;
   }
 
   // Methods
   setHeader(key: string, value: string): this {
     if (!this.headers) this.headers = new Headers();
     this.headers.set(key, value);
-    return this
+    return this;
   }
 
   removeHeader(key: string): this {
-    if (this.headers) this.headers.delete(key)
-    return this
+    if (this.headers) this.headers.delete(key);
+    return this;
   }
 
   set<T>(key: string, value: T): this {
@@ -96,7 +94,9 @@ export class Context {
 
   get query(): Record<string, string> {
     if (!this.parsedQuery) {
-      this.parsedQuery = this.url.search ? Object.fromEntries(this.url.searchParams) : EMPTY_OBJ;
+      this.parsedQuery = this.url.search
+        ? Object.fromEntries(this.url.searchParams)
+        : EMPTY_OBJ;
     }
     return this.parsedQuery;
   }
@@ -104,9 +104,9 @@ export class Context {
   get params(): Record<string, string> {
     if (!this.parsedParams) {
       try {
-        this.parsedParams = extractParam(this.paramNames as any, this.path!);
+        this.parsedParams = parseParams(this.path,this.param);
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
+        const message = error instanceof Error ? error.message : String(error);
         throw new Error(`Failed t o extract route parameters: ${message}`);
       }
     }
@@ -136,25 +136,28 @@ export class Context {
     return this.parsedBody;
   }
 
-  text(data: string, status: number = 200, customHeaders?: Record<string, string>): Response {
-
+  text(
+    data: string,
+    status: number = 200,
+    customHeaders?: Record<string, string>,
+  ): Response {
     if (!this.headers) {
       if (!customHeaders) {
         return new Response(data, {
           status,
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
-          }
-        })
+          },
+        });
       }
       const h: Record<string, string> = {
-        "Content-Type": "text/plain; charset=utf-8"
-      }
+        "Content-Type": "text/plain; charset=utf-8",
+      };
       copyHeadersToObject(customHeaders, h);
       return new Response(data, {
         status,
-        headers: h
-      })
+        headers: h,
+      });
     }
 
     // slow path , actually not slow , it's normal
@@ -167,8 +170,11 @@ export class Context {
     return new Response(data, { status, headers: this.headers });
   }
 
-  send<T>(data: T, status: number = 200, customHeaders?: Record<string, string>): Response {
-
+  send<T>(
+    data: T,
+    status: number = 200,
+    customHeaders?: Record<string, string>,
+  ): Response {
     let contentType: string;
     let responseData: any;
 
@@ -189,12 +195,12 @@ export class Context {
       if (!customHeaders) {
         return new Response(responseData, {
           status,
-          headers: { "Content-Type": contentType }
+          headers: { "Content-Type": contentType },
         });
       }
 
       const h: Record<string, string> = {
-        "Content-Type": contentType
+        "Content-Type": contentType,
       };
       copyHeadersToObject(customHeaders, h);
 
@@ -202,7 +208,7 @@ export class Context {
     }
 
     if (customHeaders) applyCustomHeaders(this.headers, customHeaders);
-    
+
     if (!this.headers.has("Content-Type")) {
       this.headers.set("Content-Type", contentType);
     }
@@ -210,40 +216,50 @@ export class Context {
     return new Response(responseData, { status, headers: this.headers });
   }
 
-  json<T>(object: T, status: number = 200, customHeaders?: Record<string, string>): Response {
-
+  json<T>(
+    object: T,
+    status: number = 200,
+    customHeaders?: Record<string, string>,
+  ): Response {
     if (!this.headers) {
       if (!customHeaders) {
         return Response.json(object, {
           status,
           headers: {
-            "Content-Type": "application/json; charset=utf-8"
-          }
-        })
+            "Content-Type": "application/json; charset=utf-8",
+          },
+        });
       }
 
       const h: Record<string, string> = {
-        "Content-Type": "application/json; charset=utf-8"
-      }
+        "Content-Type": "application/json; charset=utf-8",
+      };
       copyHeadersToObject(customHeaders, h);
       return Response.json(object, {
         status,
-        headers: h
-      })
+        headers: h,
+      });
     }
 
     // slow path
     if (customHeaders) applyCustomHeaders(this.headers, customHeaders);
-    
 
     if (!this.headers.has("Content-Type")) {
       this.headers.set("Content-Type", "application/json; charset=utf-8");
     }
 
-    return new Response(JSON.stringify(object), { status, headers: this.headers });
+    return new Response(JSON.stringify(object), {
+      status,
+      headers: this.headers,
+    });
   }
 
-  file(filePath: string, mimeType?: string, status: number = 200, customHeaders?: Record<string, string>): Response {
+  file(
+    filePath: string,
+    mimeType?: string,
+    status: number = 200,
+    customHeaders?: Record<string, string>,
+  ): Response {
     const file = Bun.file(filePath);
 
     if (!this.headers) {
@@ -252,18 +268,18 @@ export class Context {
           status,
           headers: {
             "Content-Type": mimeType ?? getMimeType(filePath),
-          }
-        })
+          },
+        });
       }
 
       const h: Record<string, string> = {
         "Content-Type": mimeType ?? getMimeType(filePath),
-      }
+      };
       copyHeadersToObject(customHeaders, h);
       return new Response(file, {
         status,
-        headers: h
-      })
+        headers: h,
+      });
     }
 
     if (customHeaders) applyCustomHeaders(this.headers, customHeaders);
@@ -275,9 +291,8 @@ export class Context {
     return new Response(file, { status, headers: this.headers });
   }
 
-
   async ejs(viewPath: string, data = {}, status: number = 200): Promise<void> {
-    console.log('this method is diabled now for some time')
+    console.log("this method is diabled now for some time");
     // this.status = status;
     // const ejs = await getEjs();
     // try {
@@ -292,19 +307,15 @@ export class Context {
   }
 
   redirect(path: string, status: number = 302): Response {
-    if (!this.headers) this.headers = new Headers()
+    if (!this.headers) this.headers = new Headers();
     this.headers.set("Location", path);
     return new Response(null, { status, headers: this.headers });
   }
 
-  setCookie(
-    name: string,
-    value: string,
-    options: CookieOptions = {}
-  ): this {
-    if (!this.headers) this.headers = new Headers()
+  setCookie(name: string, value: string, options: CookieOptions = {}): this {
+    if (!this.headers) this.headers = new Headers();
     let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(
-      value
+      value,
     )}`;
 
     if (options.maxAge) cookieString += `; Max-Age=${options.maxAge}`;
@@ -321,7 +332,6 @@ export class Context {
     return this;
   }
 
-
   get cookies(): Record<string, string> {
     if (!this.parsedCookies) {
       const cookieHeader = this.req.headers.get("cookie");
@@ -331,7 +341,9 @@ export class Context {
   }
 
   // Streams
-  stream(callback: (controller: ReadableStreamDefaultController) => void): Response {
+  stream(
+    callback: (controller: ReadableStreamDefaultController) => void,
+  ): Response {
     const headers = new Headers(this.headers ?? new Headers());
     const stream = new ReadableStream({
       async start(controller) {
@@ -343,14 +355,13 @@ export class Context {
   }
 
   yieldStream(callback: () => AsyncIterable<any>): Response {
-    return new Response(
-      // {
-      //   async *[Symbol.asyncIterator]() {
-      //     yield* callback();
-      //   },
-      // },
-      // { headers: this.headers }
-    );
+    return new Response();
+    // {
+    //   async *[Symbol.asyncIterator]() {
+    //     yield* callback();
+    //   },
+    // },
+    // { headers: this.headers }
   }
 }
 
@@ -372,35 +383,37 @@ export class Context {
 
 function applyCustomHeaders(
   headers: Headers,
-  customHeaders: Record<string, string>
+  customHeaders: Record<string, string>,
 ): void {
   for (const k in customHeaders) {
     headers.set(k, customHeaders[k]);
   }
 }
 
-function copyHeadersToObject(customHeaders: Record<string, string>, obj: Record<string, string>): void {
+function copyHeadersToObject(
+  customHeaders: Record<string, string>,
+  obj: Record<string, string>,
+): void {
   for (const k in customHeaders) {
     obj[k] = customHeaders[k];
   }
 }
-
 
 function parseCookie(cookieHeader: string): Record<string, string> {
   return Object.fromEntries(
     cookieHeader.split(";").map((cookie) => {
       const [name, ...valueParts] = cookie.trim().split("=");
       return [name, decodeURIComponent(valueParts.join("="))];
-    })
+    }),
   );
 }
 
 export function extractParam(paramNames: string[], incomingPath: string) {
   // ["id","name"]
-  const param: Record<string, string> = {}
+  const param: Record<string, string> = {};
   // inComingpath = /user/2/pradeep
   const [pathWithoutQuery] = incomingPath.split("?");
-  const pathSegments = pathWithoutQuery.split("/").filter(s => s !== '')
+  const pathSegments = pathWithoutQuery.split("/").filter(Boolean);
 
   // let segmentStart = 0
   // let segmentIndex = 0
@@ -415,17 +428,17 @@ export function extractParam(paramNames: string[], incomingPath: string) {
   //   }
   // }
 
-  const start = pathSegments.length - paramNames.length
+  const start = pathSegments.length - paramNames.length;
 
   for (let i = 0; i < paramNames.length; i++) {
-    param[paramNames[i]] = pathSegments[start + i]
+    param[paramNames[i]] = pathSegments[start + i];
   }
-  return param
+  return param;
 }
 
 export function extractDynamicParams(
   originalPath: string,
-  incomingPath: string
+  incomingPath: string,
 ): Record<string, string> | null {
   const params: Record<string, string> = {};
   const routeSegments = originalPath.split("/");
@@ -444,7 +457,7 @@ export function extractDynamicParams(
 }
 
 async function parseBody(req: Request): Promise<ParseBodyResult> {
-  const contentType: string = req.headers.get("Content-Type") || ''
+  const contentType: string = req.headers.get("Content-Type") || "";
   if (!contentType) return {};
 
   const contentLength = req.headers.get("Content-Length");
@@ -471,4 +484,18 @@ async function parseBody(req: Request): Promise<ParseBodyResult> {
   }
 
   return { error: "Unknown request body type" };
+}
+
+/// param parser
+export function parseParams(inComingpath: string|null, param: Record<string, number>|null) {
+  const paramObject: Record<string, any> = {};
+  
+  const pathWithoutQuery = inComingpath?.split('?')[0]
+  // URL = /user/id/register?name=pradeep
+  // [ "/user/id/register", "name=pradeep" ]
+  const paths = pathWithoutQuery?.split('/').filter(Boolean);
+  for (const key in param) {
+    paramObject[key] = paths?.[param[key]];
+  }
+  return paramObject;
 }

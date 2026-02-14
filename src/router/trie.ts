@@ -1,5 +1,5 @@
 import { extractParam } from "../ctx";
-import { NormalizedRoute, Router } from "../router/interface";
+import { Find, Router } from "../router/interface";
 import type {
   handlerFunction,
   HttpMethod,
@@ -152,8 +152,7 @@ export default class Trie {
 // Implementation
 export class TrieRouter implements Router {
   private trie = new Trie();
-  private cache = new Map<string, NormalizedRoute>();
-
+  
   add(method: string, path: string, handler: handlerFunction) {
     this.trie.insert(path, { method, handler });
   }
@@ -162,16 +161,8 @@ export class TrieRouter implements Router {
     this.trie.pushMidl(path, ...handlers);
   }
 
-  find(method: string, path: string): NormalizedRoute | null {
+  find(method: string, path: string): Find | null {
     return this.trie.search(path, method as HttpMethod);
-
-    // const cacheKey = `${method}:${path}`;
-    // const cached = this.cache.get(cacheKey);
-    // if (cached) return cached;
-
-    // const result = this.trie.search(path, method as HttpMethod);
-    // if (result) this.cache.set(cacheKey, result);
-    // return result;
   }
 }
 

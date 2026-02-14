@@ -86,3 +86,9 @@ export class FastRouter {
     };
   }
 }
+
+const T = new FastRouter()
+T.add('GET', '/user', () => 'okkkk')
+
+const handler = T.find('GET', '/user')
+console.log(handler)

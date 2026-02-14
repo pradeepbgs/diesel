@@ -7,12 +7,14 @@ class TrieNodes {
   handlers: Map<string, handlerFunction>;
   paramName: string[];
   middlewares: middlewareFunc[];
+  params: Record<string, number>;
   constructor() {
     this.children = {};
     this.handlers = new Map();
     this.isEndOfWord = false;
     this.paramName = [];
     this.middlewares = [];
+    this.params = {}
   }
 }
 
@@ -53,7 +55,7 @@ export class TrieRouter {
     // node.isEndOfWord = true
   }
 
-  insert(method: string, path: string, handler: handlerFunction) {
+ insert(method: string, path: string, handler: handlerFunction) {
     let node = this.root;
 
     const pathSegments = path.split("/").filter(Boolean);
@@ -65,22 +67,25 @@ export class TrieRouter {
       node.paramName = [];
       return;
     }
-
-    for (const element of pathSegments) {
+   let routeparams :Record<string,number>={}
+    for (let i=0; i<pathSegments.length; i++) {
+      const element = pathSegments[i];
       let key = element;
+      let cleanParam = ''
       if (element.startsWith(":")) {
         key = ":";
+        cleanParam = element.slice(1)
       }
+      
 
       if (!node.children[key]) node.children[key] = new TrieNodes();
 
       node = node.children[key];
+      if(cleanParam) {
+        routeparams[cleanParam]=i
+      }
     }
-
-    node.paramName = pathSegments
-      .filter((s) => s.startsWith(":"))
-      .map((s) => s.slice(1));
-
+    node.params=routeparams
     node.handlers.set(method, handler);
     node.isEndOfWord = true;
   }
@@ -88,11 +93,16 @@ export class TrieRouter {
   search(method: string, path: string) {
     let node = this.root;
 
-    const pathSegments = path.split("/").filter(Boolean);
+    const pathSegments = path.split("/")
 
     let collected: middlewareFunc[] = this.globalMiddlewares.slice();
+    console.log('pathSegments ', pathSegments)
+    for (let i = 0; i < pathSegments.length; i++) {
+      const element = pathSegments[i];
+      if (element.length === 0) {
+        continue;
+      }
 
-    for (const element of pathSegments) {
       if (node.children[element]) {
         node = node.children[element]!;
       } else if (node.children[":"]) {
@@ -101,7 +111,7 @@ export class TrieRouter {
         node = node.children["*"];
         break;
       } else {
-        return { handler: collected, params: null };
+        return { params: node.params, handler: collected };
       }
 
       if (node.middlewares.length > 0) {
@@ -111,25 +121,23 @@ export class TrieRouter {
         }
       }
     }
-
     const methodHandler = node.handlers.get(method);
     if (methodHandler) collected.push(methodHandler);
     return {
-      params: node.paramName as string[],
+      params: node.params,
       handler: collected,
     };
   }
-
-  searchWithILoop(method: string, path: string) {
+  
+  search2(method: string, path: string) {
     let node = this.root;
 
-    const pathSegments = path.split("/").filter(Boolean);
+    const pathSegments = path.split("/").filter(Boolean)
 
     let collected: middlewareFunc[] = this.globalMiddlewares.slice();
 
     for (let i = 0; i < pathSegments.length; i++) {
       const element = pathSegments[i];
-
       if (node.children[element]) {
         node = node.children[element]!;
       } else if (node.children[":"]) {
@@ -138,7 +146,7 @@ export class TrieRouter {
         node = node.children["*"];
         break;
       } else {
-        return { handler: collected, params: null };
+        return { params: node.params, handler: collected };
       }
 
       if (node.middlewares.length > 0) {
@@ -148,14 +156,14 @@ export class TrieRouter {
         }
       }
     }
-
     const methodHandler = node.handlers.get(method);
     if (methodHandler) collected.push(methodHandler);
     return {
-      params: node.paramName as string[],
+      params: node.params,
       handler: collected,
     };
   }
+
 }
 
 export class TrieRouter2 implements Router {
@@ -176,17 +184,21 @@ export class TrieRouter2 implements Router {
   find(method: string, path: string): Find | null {
     return this.trie.search(method, path);
   }
-
+  
   find2(method: string, path: string): Find | null {
-    return this.trie.searchWithILoop(method, path);
+    return this.trie.search2(method, path);
   }
 
 }
 
 // const t1 = new TrieRouter()
-// t1.insert('GET', '/', () => "Hello /")
-// t1.insert('GET', "/user", () => "Hell /user")
-// t1.insert('GET', '/user/*', () => 'user/* route')
+// // t1.insert('GET', '/user/:id', () => "Hello /")
+// t1.insert('GET', "/ok/:id/username/:number", () => "Hello /")
+// const handler = t1.search('GET', '/ok/1/username/2')
+// console.log('real worldf handler = ',handler)
+// t1.insert('GET', '/user/:id/:number/contact', () => "Hello /")
+// t1.insert('GET', "/:username", () => "Hell /user")
+// t1.insert('GET', '/name', () => 'user/* route')
 // t1.insert('GET', '/hello/*', () => '/hello/*')
 // t1.insert('GET', '/moon/:id', () => "/moon/:id")
 

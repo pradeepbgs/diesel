@@ -11,7 +11,7 @@ const SEARCH_ITERATIONS = 1_000_000;
 const dummyHandler = () => "ok";
 
 function forceGC() {
-  if (global.gc) global.gc();
+  if (global.gc) global.gc()
 }
 
 function mem(label: string) {

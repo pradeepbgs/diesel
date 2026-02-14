@@ -5,11 +5,11 @@ import { TrieRouter2 } from "./trie2";
 export interface Router {
     add(method: string, path: string, handler: handlerFunction): void
     find(method: string, path: string): Find | null
-    addMiddleware(path: string, handlers: middlewareFunc[]): void
+    addMiddleware(path: string, handlers: middlewareFunc | middlewareFunc[]): void
 }
 
 export interface Find {
-    params: string[] | null;
+    params: Record<string, number>|null;
     handler: middlewareFunc[];
 }
 

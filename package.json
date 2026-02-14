@@ -77,8 +77,8 @@
     }
   },
   "scripts": {
-    "build": "bun run build.js",
-    "test": "bun run test"
+    "build": "bun build.js",
+    "test": "bun test"
   },
   "author": "Pradeep Kumar <pradeepbgs62019@gmail.com> (https://github.com/pradeepbgs)",
   "license": "MIT",
