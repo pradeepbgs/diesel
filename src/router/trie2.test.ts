@@ -1,11 +1,11 @@
 import { describe, expect, test, beforeAll } from "bun:test";
-import { TrieRouter2 } from "./trie2";
 import { ContextType } from "../types";
+import { TrieRouter } from "./trie";
 
-let router: TrieRouter2;
+let router: TrieRouter;
 
 beforeAll(() => {
-  router = new TrieRouter2();
+  router = new TrieRouter();
 
   // Static routes
   router.add("GET", "/", () => "root");
@@ -109,10 +109,10 @@ describe("TrieRouter2 - Router Tests", () => {
 });
 
 describe("TrieRouter2 - with Middlewares check", () => {
-  let router: TrieRouter2;
+  let router: TrieRouter;
 
   beforeAll(() => {
-    router = new TrieRouter2();
+    router = new TrieRouter();
 
     // Add global middlewares
     router.addMiddleware("/", (ctx: any) => {
