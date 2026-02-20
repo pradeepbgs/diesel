@@ -1,8 +1,10 @@
 import { TrieRouter } from "../../src/router/trie";
+import { TrieRouterWithObject } from "../../src/router/trie-with-obj";
 import { TrieRouter2 } from "../../src/router/trie2";
 import { FastRouter } from "./fast-r";
 import { FindMyWayRouter } from "./find-my-way";
 import { performance } from "perf_hooks";
+import { HonoTrieRouter } from "./hono/router";
 
 const NUM_ROUTES = 2000;
 const LARGE_ROUTES = 50000;
@@ -139,7 +141,9 @@ function runSuite(title: string, routes: string[], lookupBase: number) {
     FindMyWay: new FindMyWayRouter(),
     Trie1: new TrieRouter(),
     Trie2: new TrieRouter2(),
-    FastR : new FastRouter()
+    // FastR: new FastRouter(),
+    TrieWithObject: new TrieRouterWithObject(),
+    HonoTrieRouter: new HonoTrieRouter()
   };
 
   for (const [name, r] of Object.entries(routers)) {
@@ -171,4 +175,4 @@ runSuite("DEEP ROUTES", makeDeepRoutes(NUM_ROUTES), NUM_ROUTES);
 runSuite("CONFLICT ROUTES", makeConflictRoutes(NUM_ROUTES), NUM_ROUTES);
 
 // Large scale
-runSuite("LARGE SCALE", makeRoutes(LARGE_ROUTES), LARGE_ROUTES);
+// runSuite("LARGE SCALE", makeRoutes(LARGE_ROUTES), LARGE_ROUTES);

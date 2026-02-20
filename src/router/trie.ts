@@ -1,182 +1,185 @@
-import { extractParam } from "../ctx";
-import { Find, Router } from "../router/interface";
-import type {
-  handlerFunction,
-  HttpMethod,
-  middlewareFunc,
-  RouteHandlerT,
-} from "../types";
+import { EMPTY_OBJ } from "../main";
 
-class TrieNode {
-  children: Record<string, TrieNode>;
-  isEndOfWord: boolean;
-  handler: handlerFunction | null;
-  isDynamic: boolean;
-  pattern: string;
-  path: string;
-  methodMap: Map<string, handlerFunction>; // O(1) method lookup
-  segmentCount: number; // cached number of segments
-  params: string[];
-  middlewares: middlewareFunc[];
+class TrieNodes {
+  children: Record<string, TrieNodes>;
+  handlers: Record<string, Function>;
+  middlewares: Function[];
+  params: Record<string, number>;
   constructor() {
     this.children = {};
-    this.isEndOfWord = false;
-    this.handler = null;
-    this.isDynamic = false;
-    this.pattern = "";
-    this.path = "";
-    this.methodMap = new Map();
-    this.segmentCount = 0;
-    this.params = [];
+    this.handlers = {};
     this.middlewares = [];
+    this.params = {}
   }
 }
 
-export default class Trie {
-  root: TrieNode;
-  cachedSegments: Map<string, string[]>;
-  globalMiddlewares: middlewareFunc[];
-
+export class TrieRouter {
+  root: TrieNodes;
+  globalMiddlewares: Function[];
   constructor() {
-    this.root = new TrieNode();
-    this.cachedSegments = new Map();
+    this.root = new TrieNodes();
     this.globalMiddlewares = [];
   }
 
-  pushMidl(path: string, ...middlewares: middlewareFunc[]) {
-    let node = this.root;
-    const segments = path.split("/").filter(Boolean);
-
+  pushMiddleware(path: string, handlers: Function | Function[]) {
+    if (!Array.isArray(handlers)) handlers = [handlers];
     if (path === "/") {
-      node.handler = middlewares[0] as any;
-      this.globalMiddlewares.push(...middlewares);
+      this.globalMiddlewares.push(...handlers);
       return;
     }
 
-    for (const segment of segments) {
-      let key = segment;
-      if (segment.startsWith(":")) key = ":";
-      else if (segment.startsWith("*")) node.middlewares.push(...middlewares);
-
-      if (!node.children[key]) node.children[key] = new TrieNode();
-      node = node.children[key];
-    }
-    node.middlewares.push(...middlewares);
-    node.handler = middlewares[0] as any; // store first middleware
-  }
-
-  insert(path: string, route: RouteHandlerT): void {
     let node = this.root;
     const pathSegments = path.split("/").filter(Boolean);
 
-    this.cachedSegments.set(path, pathSegments);
+    for (const element of pathSegments) {
+      let key = element;
+      if (element.startsWith(":")) {
+        key = ":";
+      } else if (element.startsWith("*")) {
+        node.middlewares.push(...handlers);
+      }
+
+      if (!node.children[key]) node.children[key] = new TrieNodes();
+
+      node = node.children[key];
+    }
+
+    node.middlewares.push(...handlers);
+
+  }
+
+  addMiddleware(path: string, handlers: Function | Function[]): void {
+    return this.pushMiddleware(path, handlers)
+  }
+
+  insert(method: string, path: string, handler: Function) {
+    let node = this.root;
 
     if (path === "/") {
-      node.isEndOfWord = true;
-      node.handler = route.handler;
-      node.path = path;
-      node.methodMap.set(route.method!, route.handler);
-      node.segmentCount = 0;
-      node.params = [];
+      node.handlers[method] = handler
+      node.params = EMPTY_OBJ
       return;
     }
 
-    for (const segment of pathSegments) {
-      let key = segment;
-      let isDynamic = false;
+    const pathSegments = path.split("/").filter(Boolean);
 
-      if (segment.startsWith(":")) {
-        isDynamic = true;
+    let routeparams: Record<string, number> = {}
+    for (let i = 0; i < pathSegments.length; i++) {
+      const element = pathSegments[i];
+      let key = element;
+      let cleanParam = ''
+      if (element.startsWith(":")) {
         key = ":";
+        cleanParam = element.slice(1)
       }
 
-      if (segment === "*") key = "*";
 
-      if (!node.children[key]) node.children[key] = new TrieNode();
+      if (!node.children[key]) node.children[key] = new TrieNodes();
+
       node = node.children[key];
-      node.isDynamic = isDynamic;
-      node.pattern = segment;
+      if (cleanParam) {
+        routeparams[cleanParam] = i
+      }
     }
-
-    node.params = pathSegments
-      .filter((s) => s.startsWith(":"))
-      .map((s) => s.slice(1));
-
-    node.isEndOfWord = true;
-    node.path = path;
-    node.segmentCount = pathSegments.length;
-    node.methodMap.set(route.method!, route.handler);
-    node.handler = route.handler; // first handler reference
+    node.params = routeparams
+    node.handlers[method] = handler;
   }
 
-  search(path: string, method: HttpMethod) {
+  add(method: string, path: string, handler: Function) {
+    return this.insert(method, path, handler)
+  }
+
+  search(method: string, path: string) {
     let node = this.root;
-    const pathSegments =
-      this.cachedSegments.get(path) || path.split("/").filter(Boolean);
-    let collected: middlewareFunc[] = [...this.globalMiddlewares];
 
-    for (const segment of pathSegments) {
-      let key = segment;
+    const pathSegments = path.split("/")
 
-      if (node.children[key]) {
-        node = node.children[key];
+    let collected = this.globalMiddlewares.slice();
+    for (let i = 0; i < pathSegments.length; i++) {
+      const element = pathSegments[i];
+      if (element.length === 0) {
+        continue;
+      }
+
+      if (node.children[element]) {
+        node = node.children[element]!;
       } else if (node.children[":"]) {
         node = node.children[":"];
       } else if (node.children["*"]) {
         node = node.children["*"];
         break;
       } else {
-        return { handler: collected, params: [] };
+        return { params: node.params, handler: collected };
       }
 
       if (node.middlewares.length > 0) {
-        collected.push(...node.middlewares);
+        const mw = node.middlewares;
+        for (let j = 0; j < mw.length; j++) {
+          collected.push(mw[j]);
+        }
       }
     }
-
-    if (!node.isEndOfWord || node.segmentCount !== pathSegments.length)
-      return { handler: collected };
-
-    const handler = node.methodMap.get(method);
-    if (handler) collected.push(handler);
-
+    const methodHandler = node.handlers[method]
+    if (methodHandler) collected.push(methodHandler);
     return {
       params: node.params,
       handler: collected,
-      // path: node.path,x
-      // pattern: node.pattern,
     };
   }
+
+  find(method: string, path: string) {
+    return this.search(method, path)
+  }
+
 }
 
-// Implementation
-export class TrieRouter implements Router {
-  private trie = new Trie();
-  
-  add(method: string, path: string, handler: handlerFunction) {
-    this.trie.insert(path, { method, handler });
-  }
 
-  addMiddleware(path: string, ...handlers: middlewareFunc[] | any): void {
-    this.trie.pushMidl(path, ...handlers);
-  }
+// const t1 = new TrieRouter()
+// // t1.insert('GET', '/user/:id', () => "Hello /")
+// t1.insert('GET', "/ok/:id/username/:number", () => "Hello /")
+// const handler = t1.search('GET', '/ok/1/username/2')
+// console.log('real worldf handler = ',handler)
+// t1.insert('GET', '/user/:id/:number/contact', () => "Hello /")
+// t1.insert('GET', "/:username", () => "Hell /user")
+// t1.insert('GET', '/name', () => 'user/* route')
+// t1.insert('GET', '/hello/*', () => '/hello/*')
+// t1.insert('GET', '/moon/:id', () => "/moon/:id")
 
-  find(method: string, path: string): Find | null {
-    return this.trie.search(path, method as HttpMethod);
-  }
-}
+// t1.pushMiddleware('/', function home() {
+//     return "Midd /" as any
+// })
+// t1.pushMiddleware('/user/*', () => "user/* middleware " as any)
 
-// const t = new TrieRouter()
+// const h = t1.search('GET', '/user/2')
+
+// for (const k of h?.handler!) {
+//     console.log(k?.(null as any, null as any))
+// }
+
+// const router = new TrieRouter()
+// global middleware (applies to all requests)
+// router.pushMiddleware('/', () => 'log mid' as any);
+
+// // path-specific middleware
+// router.pushMiddleware('/users/*', () => "/user/* middleware" as any);        // applies to /users/* paths
+// router.pushMiddleware('/users/:id', () => "id checkmid " as any); // applies to /users/:id/*
+
+// routes
+// router.insert('GET', '/users', () => "get user by handlr") as any;
+// router.insert('GET', '/users/:id', () => "get user by id handler" as any);
+// router.insert('GET', '/users/:id/profile', () => "get user / id / profile");
+// router.insert('GET', '/users/hello', () => "Hello /user/hello")
+
+// const matched = router.search('POST', '/users/hello')
+// console.log(matched.handler?.length)
+// for (const k of matched?.handler!) {
+//     console.log(k?.(null as any, null as any))
+// }
+
+// for (let i = 0; i < 4; i++) {
+//     t1.f
+// }
+
+// const t = new TrieRouter2()
 // t.add('GET', '/user/:id/:name', () => 'root')
 // t.add('GET', '/user/:id/pk', () => 'root /user/:id/pk')
-
-// const m1 = t.find('GET', '/user/3/pradeep')
-// const m2 = t.find("GET", "/user/3/pk")
-
-// console.log(m1)
-
-// console.log(m2?.handler())
-// console.log(m1?.handler())
-
-// const p = extractParam(m1?.params as string[], '/user/3/pk/')
-// console.log(p)

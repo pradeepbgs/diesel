@@ -12,6 +12,14 @@ app
     const id = c.params.id;
     return c.json({ message: `User ${id}` });
   })
+  .get('/hello/*', (ctx: ContextType) => {
+    const params = ctx.params;
+    return ctx.text("hello /hello/foo")
+  })
+  .get('/hello/foo', (ctx: ContextType) => {
+    const params = ctx.params;
+    return ctx.text("hello /foo")
+  })
 
 app.BunRoute("GET", "/", () => new Response("Hi there from Bun route!"));
 
