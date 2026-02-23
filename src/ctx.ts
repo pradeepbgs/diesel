@@ -25,14 +25,13 @@ export class Context {
   req: Request;
   server: Server | null;
   path: string | null;
-  param: Record<string, number> | null;
+  param: Record<string, string> | undefined;
   env: Record<string, any> | null;
   executionContext: any | null;
   headers: Headers | null;
 
   // Lazily initialized
   private parsedQuery: Record<string, string> | null = null;
-  private parsedParams: Record<string, string> | null = null;
   private parsedCookies: Record<string, string> | null = null;
   private parsedBody: Promise<any> | null = null;
   private contextData: Record<string, any> = EMPTY_OBJ;
@@ -42,7 +41,7 @@ export class Context {
     req: Request,
     server: Server | null,
     path: string | null,
-    param: Record<string, number> | null,
+    param: Record<string, string> | undefined,
     env: Record<string, any> | null,
     executionContext: any | null,
   ) {
@@ -102,15 +101,16 @@ export class Context {
   }
 
   get params(): Record<string, string> {
-    if (!this.parsedParams) {
-      try {
-        this.parsedParams = parseParams(this.path,this.param);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        throw new Error(`Failed t o extract route parameters: ${message}`);
-      }
-    }
-    return this.parsedParams ?? EMPTY_OBJ;
+    return this.param ? this.param : EMPTY_OBJ
+    // if (!this.parsedParams) {
+    //   try {
+    //     this.parsedParams = parseParams(this.path,this.param);
+    //   } catch (error) {
+    //     const message = error instanceof Error ? error.message : String(error);
+    //     throw new Error(`Failed t o extract route parameters: ${message}`);
+    //   }
+    // }
+    // return this.parsedParams ?? EMPTY_OBJ;
   }
 
   get body(): Promise<any> {
