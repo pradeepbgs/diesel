@@ -2,6 +2,7 @@ import {
   CompileConfig,
   ContextType,
   corsT,
+  DieselFetchHandler,
   DieselOptions,
   errorFormat,
   FilterMethods,
@@ -106,6 +107,7 @@ export default class Diesel {
   head!: RouteHandler;
   options!: RouteHandler;
   propfind!: RouteHandler;
+  all!:RouteHandler
 
   constructor(options: DieselOptions = {}) {
 
@@ -528,11 +530,11 @@ export default class Diesel {
     const matchedRouteHandler = this.router.find(req.method as HttpMethod, path);
     const ctx = new Context(
       req,
-      server || null,
+      server,
       path,
       matchedRouteHandler?.params || EMPTY_OBJ,
-      env || null,
-      executionContext || null
+      env,
+      executionContext
     );
 
     try {
@@ -651,20 +653,20 @@ export default class Diesel {
 
   mount(
     prefix: string,
-    fetch: (request: Request, ...args: any) => Response | Promise<Response>,
+    fetch: DieselFetchHandler,
   ) {
     const cleanPrefix = prefix.endsWith("/*") ? prefix.slice(0, -1) : prefix;
     const prefixLength = cleanPrefix === '/' ? 0 : cleanPrefix.length;
-    this.use(prefix, (ctx: Context) => {
+    this.any(prefix, (ctx: Context) => {
       // build new url for fetch
       const url = new URL(ctx.req.url);
       // here we slice orgininal coming url like /diesel/hello so we have to slice /diesel
       // and only /hello should become new url
       url.pathname = url.pathname.slice(prefixLength) || '/';
       // create new Request with that url 
-      const newRequest = new Request(url.toString(), ctx.req);
+      const newRequest = new Request(url, ctx.req);
       // call fetch 
-      return fetch(newRequest, ctx.env, ctx.executionContext);
+      return fetch(newRequest, ctx.server, ctx.env, ctx.executionContext);
     });
   }
 
@@ -726,6 +728,11 @@ export default class Diesel {
 
     }
     return this
+  }
+  
+  sub(prefix: string, router: Diesel) {
+    const fetch = router.fetch() as DieselFetchHandler
+    return this.mount(prefix, fetch);
   }
 
   private addMiddlewareInRouter(path: string, handlers: middlewareFunc | middlewareFunc[]) {
@@ -843,5 +850,4 @@ export default class Diesel {
     this.emitter.emit(event, ...args);
     return this;
   }
-
 }

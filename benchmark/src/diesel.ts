@@ -2,11 +2,14 @@ import type { get } from "node:http";
 import Diesel from "../../src/main";
 import type { ContextType } from "diesel-core";
 
-export const app = new Diesel({ pipelineArchitecture: false });
+export const app = new Diesel();
 
 app
   .get("/", (c: ContextType) => {
     return c.json({ message: "Hi there!" });
+  })
+  .all('/', (c) => {
+    return c.text("from any")
   })
   .get("/user/:id", (c: ContextType) => {
     const id = c.params.id;
@@ -21,6 +24,6 @@ app
     return ctx.text("hello /foo")
   })
 
-app.BunRoute("GET", "/", () => new Response("Hi there from Bun route!"));
+// app.BunRoute("GET", "/", () => new Response("Hi there from Bun route!"));
 
 app.listen(3000);

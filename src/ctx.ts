@@ -23,11 +23,11 @@ const typeMap: any = {
 
 export class Context {
   req: Request;
-  server: Server | null;
+  server?: Server;
   path: string | null;
   param: Record<string, string> | undefined;
-  env: Record<string, any> | null;
-  executionContext: any | null;
+  env?: Record<string, any>;
+  executionContext?: any;
   headers: Headers | null;
 
   // Lazily initialized
@@ -39,11 +39,11 @@ export class Context {
 
   constructor(
     req: Request,
-    server: Server | null,
+    server: Server|undefined,
     path: string | null,
     param: Record<string, string> | undefined,
-    env: Record<string, any> | null,
-    executionContext: any | null,
+    env: Record<string, any> | undefined,
+    executionContext: any | undefined,
   ) {
     this.req = req;
     this.server = server;

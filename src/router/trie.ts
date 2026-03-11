@@ -5,13 +5,13 @@ class TrieNodes {
   handlers: Record<string, Function>;
   middlewares: Function[];
   params: Record<string, number>;
-  paramName: string
+  paramName: string;
   constructor() {
     this.children = {};
     this.handlers = {};
     this.middlewares = [];
-    this.params = {}
-    this.paramName=""
+    this.params = {};
+    this.paramName = "";
   }
 }
 
@@ -47,58 +47,56 @@ export class TrieRouter {
     }
 
     node.middlewares.push(...handlers);
-
   }
 
   addMiddleware(path: string, handlers: Function | Function[]): void {
-    return this.pushMiddleware(path, handlers)
+    return this.pushMiddleware(path, handlers);
   }
 
   insert(method: string, path: string, handler: Function) {
     let node = this.root;
 
     if (path === "/") {
-      node.handlers[method] = handler
-      node.params = EMPTY_OBJ
+      node.handlers[method] = handler;
+      node.params = EMPTY_OBJ;
       return;
     }
 
     const pathSegments = path.split("/").filter(Boolean);
 
-    let routeparams: Record<string, number> = {}
+    let routeparams: Record<string, number> = {};
     for (let i = 0; i < pathSegments.length; i++) {
       const element = pathSegments[i];
       let key = element;
-      let cleanParam = ''
+      let cleanParam = "";
       if (element.startsWith(":")) {
         key = ":";
-        cleanParam = element.slice(1)
+        cleanParam = element.slice(1);
       }
-
 
       if (!node.children[key]) node.children[key] = new TrieNodes();
 
       node = node.children[key];
       if (cleanParam) {
-        routeparams[cleanParam] = i
-        node.paramName=cleanParam
+        routeparams[cleanParam] = i;
+        node.paramName = cleanParam;
       }
     }
-    node.params = routeparams
+    node.params = routeparams;
     node.handlers[method] = handler;
   }
 
   add(method: string, path: string, handler: Function) {
-    return this.insert(method, path, handler)
+    return this.insert(method, path, handler);
   }
 
   search(method: string, path: string) {
     let node = this.root;
 
-    const pathSegments = path.split("/")
+    const pathSegments = path.split("/");
 
     let collected = this.globalMiddlewares.slice();
-    let paramObject:Record<string,any> | undefined
+    let paramObject: Record<string, any> | undefined;
 
     for (let i = 0; i < pathSegments.length; i++) {
       const element = pathSegments[i];
@@ -109,8 +107,8 @@ export class TrieRouter {
         node = node.children[element]!;
       } else if (node.children[":"]) {
         node = node.children[":"];
-        if(!paramObject) paramObject={}
-        paramObject[node.paramName]=element
+        if (!paramObject) paramObject = {};
+        paramObject[node.paramName] = element;
       } else if (node.children["*"]) {
         node = node.children["*"];
         break;
@@ -125,8 +123,14 @@ export class TrieRouter {
         }
       }
     }
-    const methodHandler = node.handlers[method]
-    if (methodHandler) collected.push(methodHandler);
+    // means we found the handler with method
+    if (node.handlers[method]) {
+      collected.push(node.handlers[method]);
+    }
+    // fallback to check if the node has all method
+    if (node.handlers["ALL"]) {
+      collected.push(node.handlers["ALL"]);
+    }
     return {
       params: paramObject,
       handler: collected,
@@ -134,11 +138,9 @@ export class TrieRouter {
   }
 
   find(method: string, path: string) {
-    return this.search(method, path)
+    return this.search(method, path);
   }
-
 }
-
 
 // const t1 = new TrieRouter()
 // // t1.insert('GET', '/user/:id', () => "Hello /")

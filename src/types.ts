@@ -232,3 +232,9 @@ export interface DieselOptions {
 }
 
 
+export type DieselFetchHandler = (
+  req: Request,
+  server?: Server,
+  env?: Record<string, any>,
+  executionContext?: any
+) => Promise<Response | undefined> | Response | undefined;
