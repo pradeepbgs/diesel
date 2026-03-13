@@ -3,7 +3,7 @@ import { Context } from "./ctx";
 import { getPath, tryDecodeURI } from "./utils/urls";
 import { generateErrorResponse, handleRouteNotFound, runFilter, runHooks, runMiddlewares } from "./utils/request.util";
 import { isPromise } from "./utils/promise";
-import Diesel from "./main";
+import Diesel, { EMPTY_OBJ } from "./main";
 
 
 export default async function handleRequest(
@@ -18,7 +18,14 @@ export default async function handleRequest(
 
   const matchedRouteHandler = diesel.router.find(req.method, pathname)
 
-  const ctx = new Context(req, server, pathname, matchedRouteHandler?.path as any, env??null, executionContext)
+  const ctx = new Context(
+        req,
+        server,
+        pathname,
+        matchedRouteHandler?.params || EMPTY_OBJ,
+        env,
+        executionContext
+      );
   // const ctx = createCtx(req,server,pathname,routeHandler?.path)
 
 

@@ -162,7 +162,7 @@ export class OldTrieRouter implements Router {
     this.trie.pushMidl(path, ...handlers);
   }
 
-  find(method: string, path: string): Find | null {
+  find(method: string, path: string): Find {
     return this.trie.search(path, method as HttpMethod) as any // 
   }
 }

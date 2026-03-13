@@ -96,7 +96,7 @@ export class TrieRouter {
     const pathSegments = path.split("/");
 
     let collected = this.globalMiddlewares.slice();
-    let paramObject: Record<string, any> | undefined;
+    let paramObject: Record<string, string> | undefined;
 
     for (let i = 0; i < pathSegments.length; i++) {
       const element = pathSegments[i];
