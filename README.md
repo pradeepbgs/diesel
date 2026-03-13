@@ -1,3 +1,5 @@
+[![Downloads](https://img.shields.io/npm/dm/@nativecn/cli.svg)](https://www.npmjs.com/package/diesel-core)
+
 ### [Read the docs](https://diesel-core.vercel.app/)
 
 # DieselJS
