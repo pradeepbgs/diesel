@@ -1,5 +1,5 @@
 import { Server } from "bun";
-import { ContextType, DieselT, handlerFunction, HookType } from "../types";
+import { ContextType, handlerFunction, HookType } from "../types";
 import { getMimeType } from "./mimeType";
 import { isPromise, isResponse } from "./promise";
 import Diesel from "../main";
@@ -17,23 +17,26 @@ export async function runHooks<T extends any[]>(
   }
 }
 
-export async function runMiddlewares(diesel: DieselT, pathname: string, ctx: ContextType) {
+// @ts-ignore
+// @ts-nocheck
+export async function runMiddlewares(diesel: Diesel, pathname: string, ctx: ContextType) {
 
-  const global = diesel.globalMiddlewares;
-  if (global.length) {
-    for (const middleware of global) {
-      const result = await middleware(ctx);
-      if (result) return result;
-    }
-  }
+  // @ts-nocheck
+  // const global = diesel.globalMiddlewares;
+  // if (global.length) {
+  //   for (const middleware of global) {
+  //     const result = await middleware(ctx);
+  //     if (result) return result;
+  //   }
+  // }
 
-  const local = diesel.middlewares.get(pathname)
-  if (local && local.length) {
-    for (const middleware of local) {
-      const result = await middleware(ctx);
-      if (result) return result;
-    }
-  }
+  // const local = diesel.middlewares.get(pathname)
+  // if (local && local.length) {
+  //   for (const middleware of local) {
+  //     const result = await middleware(ctx);
+  //     if (result) return result;
+  //   }
+  // }
 
   return null;
 }
@@ -77,7 +80,7 @@ export async function handleFilterRequest(
 }
 
 export async function handleBunFilterRequest(
-  diesel: DieselT,
+  diesel: Diesel,
   path: string,
   req: Request,
   server: Server) {

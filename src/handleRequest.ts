@@ -3,7 +3,8 @@ import { Context } from "./ctx";
 import { getPath, tryDecodeURI } from "./utils/urls";
 import { generateErrorResponse, handleRouteNotFound, runFilter, runHooks, runMiddlewares } from "./utils/request.util";
 import { isPromise } from "./utils/promise";
-import Diesel, { EMPTY_OBJ } from "./main";
+import Diesel from "./main";
+import { EMPTY_OBJ } from "./constant";
 
 
 export default async function handleRequest(

@@ -1,6 +1,5 @@
 import {
   CompileConfig,
-  ContextType,
   corsT,
   DieselFetchHandler,
   DieselOptions,
@@ -56,10 +55,8 @@ import {
 
 import { HTTPException } from "./http-exception";
 import { Router, RouterFactory } from "./router/interface.js";
-import { supportedMethods } from './constant.js';
+import { EMPTY_OBJ, supportedMethods } from './constant.js';
 import { isPromise } from "./utils/promise.js";
-
-export const EMPTY_OBJ = Object.freeze({});
 
 export default class Diesel {
   private static instance: Diesel
@@ -85,7 +82,7 @@ export default class Diesel {
   baseApiUrl: string
   private enableFileRouter: boolean
   idleTimeOut: number
-  routeNotFoundFunc: (c: ContextType) => void | Promise<void> | Promise<Response> | Response;
+  routeNotFoundFunc: (c: Context) => void | Promise<void> | Promise<Response> | Response;
   private prefixApiUrl: string | null
   compileConfig: CompileConfig | null
   #newPipelineArchitecture: boolean = false
@@ -107,7 +104,7 @@ export default class Diesel {
   head!: RouteHandler;
   options!: RouteHandler;
   propfind!: RouteHandler;
-  all!:RouteHandler
+  all!: RouteHandler
 
   constructor(options: DieselOptions = {}) {
 
@@ -259,7 +256,7 @@ export default class Diesel {
 
       authenticate: (fnc?: Function[] | middlewareFunc[]) => {
         if (fnc?.length) {
-          const wrapper = async (ctx: ContextType, server: Server) => {
+          const wrapper = async (ctx: Context, server: Server) => {
             const pathname = ctx.path!;
             for (const pub of this.filters) {
               if (pathname.startsWith(pub)) return;
@@ -275,7 +272,7 @@ export default class Diesel {
       },
 
       authenticateJwt: (jwt: any) => {
-        const wrapper = async (ctx: ContextType) => {
+        const wrapper = async (ctx: Context) => {
           const pathname = ctx.path!;
           for (const pub of this.filters) {
             if (pathname.startsWith(pub)) return;
@@ -288,7 +285,7 @@ export default class Diesel {
       },
 
       authenticateJwtDB: (jwt: any, User: any) => {
-        const wrapper = async (ctx: ContextType) => {
+        const wrapper = async (ctx: Context) => {
           const pathname = ctx.path!;
           for (const pub of this.filters) {
             if (pathname.startsWith(pub)) return;
@@ -555,7 +552,7 @@ export default class Diesel {
       }
 
       let finalResult
-      const handlers: any = matchedRouteHandler?.handler;
+      const handlers: Function[] = matchedRouteHandler?.handler;
 
       if (handlers.length === 1) {
         const result = handlers[0](ctx);
@@ -649,25 +646,32 @@ export default class Diesel {
   /**
    * Mount method
    * we can use 3rd party framework with diesel.js
+   * or we can use it for sub routing also , even i recommend using mount or sub for sub routing
    */
 
   mount(
     prefix: string,
-    fetch: DieselFetchHandler,
+    instance: Diesel | DieselFetchHandler,
   ) {
-    const cleanPrefix = prefix.endsWith("/*") ? prefix.slice(0, -1) : prefix;
-    const prefixLength = cleanPrefix === '/' ? 0 : cleanPrefix.length;
-    this.any(prefix, (ctx: Context) => {
-      // build new url for fetch
+    const fetchHandler =
+      typeof instance === "function"
+        ? instance
+        : instance.fetch() as DieselFetchHandler
+
+    const cleanPrefix = prefix.endsWith("/*")
+      ? prefix.slice(0, -1)
+      : prefix;
+
+    const prefixLength = cleanPrefix === '/'
+      ? 0
+      : cleanPrefix.length;
+
+    this.all(prefix, ((ctx: Context) => {
       const url = new URL(ctx.req.url);
-      // here we slice orgininal coming url like /diesel/hello so we have to slice /diesel
-      // and only /hello should become new url
       url.pathname = url.pathname.slice(prefixLength) || '/';
-      // create new Request with that url 
       const newRequest = new Request(url, ctx.req);
-      // call fetch 
-      return fetch(newRequest, ctx.server, ctx.env, ctx.executionContext);
-    });
+      return fetchHandler(newRequest, ctx.server, ctx.env, ctx.executionContext);
+    }) as handlerFunction);
   }
 
   /**
@@ -729,10 +733,9 @@ export default class Diesel {
     }
     return this
   }
-  
+  // sub routing but isolated
   sub(prefix: string, router: Diesel) {
-    const fetch = router.fetch() as DieselFetchHandler
-    return this.mount(prefix, fetch);
+    return this.mount(prefix, router);
   }
 
   private addMiddlewareInRouter(path: string, handlers: middlewareFunc | middlewareFunc[]) {
@@ -757,24 +760,9 @@ export default class Diesel {
 
     if (middlewareHandlers.length > 0) this.addMiddlewareInRouter(path, middlewareHandlers)
 
-
     try {
-      if (method === "ANY") {
-        const allMethods: HttpMethod[] = [
-          "GET", "POST", "PUT", "DELETE",
-          "PATCH", "OPTIONS", "HEAD", "PROPFIND",
-        ];
-        for (const method of allMethods) {
-          try {
-            this.router.add(method, path, handler);
-          } catch (error) {
-
-          }
-        }
-      }
-      else {
-        this.router.add(method, path, handler);
-      }
+      method = method === 'ANY' ? 'ALL' : method
+      this.router.add(method, path, handler);
     } catch (error) {
       console.error(`Error inserting ${path}:`, error);
     }

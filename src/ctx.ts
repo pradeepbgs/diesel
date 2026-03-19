@@ -2,7 +2,7 @@ import { Server } from "bun";
 
 import type { CookieOptions, ParseBodyResult } from "./types";
 import { getMimeType } from "./utils/mimeType";
-import { EMPTY_OBJ } from "./main";
+import { EMPTY_OBJ } from "./constant";
 
 // let ejsInstance: any = null;
 

@@ -10,3 +10,5 @@ export const supportedMethods = [
   "OPTIONS",
   "PROPFIND",
 ];
+
+export const EMPTY_OBJ = Object.freeze({});

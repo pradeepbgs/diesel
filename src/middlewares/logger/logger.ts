@@ -91,7 +91,7 @@ export const advancedLogger = (options?: AdvancedLoggerOptions) => {
 
         logger?.() ?? log(logLevel, 'Incoming Request', {
             method: ctx.req.method,
-            url: ctx.path,
+            url: ctx.path!,
             headers: {
                 'user-agent': ctx.req.headers.get('user-agent'),
                 'content-type': ctx.req.headers.get('content-type'),

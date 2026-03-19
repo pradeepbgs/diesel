@@ -1,4 +1,4 @@
-import {  DieselT, HookFunction, middlewareFunc } from "./types";
+import {  Diesel, HookFunction, middlewareFunc } from "./types";
 import { Context } from "./ctx";
 import { executeBunMiddlewares, generateErrorResponse, handleRouteNotFound, runFilter, runHooks } from "./utils/request.util";
 import { isPromise } from "./utils/promise";
@@ -104,7 +104,7 @@ const pushMiddlewares = (pipeline: string[], globalMiddlewares: middlewareFunc[]
   }
 }
 
-export const buildRequestPipeline = (diesel: DieselT) => {
+export const buildRequestPipeline = (diesel: Diesel) => {
   const pipeline: string[] = [];
 
   const PreHandlerHook = diesel?.hasPreHandlerHook ? diesel.hooks.preHandler : [] as any;
@@ -204,7 +204,7 @@ export const buildRequestPipeline = (diesel: DieselT) => {
 
 }
 
-export const BunRequestPipline = (diesel: DieselT, method: string, path: string, ...handlersOrResponse: Function[]) => {
+export const BunRequestPipline = (diesel: Diesel, method: string, path: string, ...handlersOrResponse: Function[]) => {
   const pipeline: string[] = []
   // handlers
   let response_data: string | object | undefined;
@@ -213,9 +213,9 @@ export const BunRequestPipline = (diesel: DieselT, method: string, path: string,
   }
   const handlers = handlersOrResponse
 
-  const globalMiddlewares = diesel?.hasMiddleware ? diesel.globalMiddlewares : [];
-  const pathMiddlewares = diesel?.hasMiddleware ? diesel.middlewares.get(path) || [] : [];
-  const allMiddlewares = [...globalMiddlewares, ...pathMiddlewares];
+  // const globalMiddlewares =  diesel.globalMiddlewares ?? [];
+  // const pathMiddlewares = diesel?.hasMiddleware ? diesel.middlewares.get(path) || [] : [];
+  // const allMiddlewares = [...globalMiddlewares, ...pathMiddlewares];
 
   // onReq hooks
   const onRequestHooks = diesel?.hasOnReqHook ? diesel.hooks.onRequest : [];
@@ -236,16 +236,16 @@ export const BunRequestPipline = (diesel: DieselT, method: string, path: string,
   }
 
   // Middlewares
-  if (allMiddlewares.length) {
-    pipeline.push(`
-      const globalMiddlewareResponse = await executeBunMiddlewares(
-        allMiddlewares,
-        req,
-        server
-      );
-      if (globalMiddlewareResponse) return globalMiddlewareResponse;
-    `);
-  }
+  // if (allMiddlewares.length) {
+  //   pipeline.push(`
+  //     const globalMiddlewareResponse = await executeBunMiddlewares(
+  //       allMiddlewares,
+  //       req,
+  //       server
+  //     );
+  //     if (globalMiddlewareResponse) return globalMiddlewareResponse;
+  //   `);
+  // }
 
   // filter 
   if (diesel.hasFilterEnabled) {
@@ -349,7 +349,7 @@ export const BunRequestPipline = (diesel: DieselT, method: string, path: string,
       runHooks,
       filterFunctions,
       onRequestHooks,
-      allMiddlewares
+      // allMiddlewares
     );
   // console.log(String(fnc))
   return fnc

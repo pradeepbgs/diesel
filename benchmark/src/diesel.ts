@@ -1,28 +1,38 @@
-import type { get } from "node:http";
+import { type Context } from "../../src/ctx";
 import Diesel from "../../src/main";
-import type { ContextType } from "diesel-core";
 
 export const app = new Diesel();
 
 app
-  .get("/", (c: ContextType) => {
+  .get("/", (c: Context) => {
     return c.json({ message: "Hi there!" });
   })
   .all('/', (c) => {
     return c.text("from any")
   })
-  .get("/user/:id", (c: ContextType) => {
+  .get("/user/:id", (c: Context) => {
     const id = c.params.id;
     return c.json({ message: `User ${id}` });
   })
-  .get('/hello/*', (ctx: ContextType) => {
+  .get('/hello/*', (ctx: Context) => {
     const params = ctx.params;
     return ctx.text("hello /hello/foo")
   })
-  .get('/hello/foo', (ctx: ContextType) => {
+  .get('/hello/foo', (ctx: Context) => {
     const params = ctx.params;
     return ctx.text("hello /foo")
   })
+
+  const user = new Diesel();
+  user.all("/", (c: Context) => {
+    return c.json({ message: "User Home!" });
+  })
+  .get("/profile", (c: Context) => {
+    return c.json({ message: "User Profile!" });
+  });
+
+
+  app.sub('/user', user)
 
 // app.BunRoute("GET", "/", () => new Response("Hi there from Bun route!"));
 

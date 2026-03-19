@@ -1,4 +1,4 @@
-import { EMPTY_OBJ } from "../main";
+import { EMPTY_OBJ } from "../constant";
 
 class TrieNodes {
   children: Record<string, TrieNodes>;
