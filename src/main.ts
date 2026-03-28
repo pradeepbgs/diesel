@@ -545,25 +545,25 @@ export default class Diesel {
       //   if (filterResp) return filterResp;
       // }
 
-      // pre-handler
+      // Middleware exec
+      if (matchedRouteHandler.middlewares?.length) {
+        for (const mw of matchedRouteHandler.middlewares) {
+          let res = mw(ctx);
+          res = isPromise(res) ? await res : res
+          if (res) return res;
+        }
+      }
+      
+      // pre handler
       if (this.hasPreHandlerHook) {
         const result = await runHooks('preHandler', this.hooks.preHandler, [ctx]);
         if (result) return result;
       }
 
       let finalResult
-      const handlers: Function[] = matchedRouteHandler?.handler;
-
-      if (handlers.length === 1) {
-        const result = handlers[0](ctx);
+      if (matchedRouteHandler.handler) {
+        const result = matchedRouteHandler.handler(ctx);
         finalResult = isPromise(result) ? await result : result;
-      }
-      else {
-        for (let i = 0; i < handlers.length; i++) {
-          const result = handlers[i](ctx);
-          finalResult = isPromise(result) ? await result : result;
-          if (finalResult) break;
-        }
       }
 
       // onSend
@@ -573,9 +573,6 @@ export default class Diesel {
       }
 
       if (finalResult) return finalResult
-      // if (isResponse(finalResult)) {
-      //   return finalResult;
-      // }
 
       return await handleRouteNotFound(this as any, ctx as any, path)
     } catch (err: any) {
@@ -724,7 +721,7 @@ export default class Diesel {
   /**
    same as Route
    */
-  register(
+  #register(
     module: (app: Diesel) => void
   ): this {
     const newAPP = new Diesel()

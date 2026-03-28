@@ -5,14 +5,10 @@ export const app = new Diesel();
 
 app
   .get("/", (c: Context) => {
-    return c.json({ message: "Hi there!" });
+    return c.text("Hi there!");
   })
   .all('/', (c) => {
     return c.text("from any")
-  })
-  .get("/user/:id", (c: Context) => {
-    const id = c.params.id;
-    return c.json({ message: `User ${id}` });
   })
   .get('/hello/*', (ctx: Context) => {
     const params = ctx.params;
@@ -23,16 +19,17 @@ app
     return ctx.text("hello /foo")
   })
 
-  const user = new Diesel();
-  user.all("/", (c: Context) => {
+  const user = new Diesel({logger:false});
+  user.get("/", (c: Context) => {
     return c.json({ message: "User Home!" });
   })
-  .get("/profile", (c: Context) => {
+  user.get("/profile", (c: Context) => {
     return c.json({ message: "User Profile!" });
   });
 
+  // console.log("user's instance hooks ", user.hooks)
 
-  app.sub('/user', user)
+  app.sub('/user/*', user)
 
 // app.BunRoute("GET", "/", () => new Response("Hi there from Bun route!"));
 

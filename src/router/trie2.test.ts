@@ -29,82 +29,59 @@ beforeAll(() => {
 });
 
 describe("TrieRouter2 - Router Tests", () => {
-  const runHandlers = (handlers: any, ctx: any) => {
-    let result: any;
-    for (const h of handlers) {
-      result = h(ctx);
-    }
-    return result;
-  };
-
-  test("should", () => {
+  test("should match org/team route", () => {
     const result = router.find("GET", "/orgs/apple/teams/design");
-    console.log(JSON.stringify(result));
-    expect(result ? runHandlers(result.handler, {} as any) : null).toBe("team");
+    expect(result.handler?.({} as any)).toBe("team");
   });
 
   test("should match root '/' route", () => {
     const result = router.find("GET", "/");
-    expect(result ? runHandlers(result.handler, {} as any) : null).toBe("root");
+    expect(result.handler?.({} as any)).toBe("root");
   });
 
   test("should match static routes", () => {
     const result = router.find("GET", "/about");
-    expect(result ? runHandlers(result.handler, {} as any) : null).toBe(
-      "about page",
-    );
+    expect(result.handler?.({} as any)).toBe("about page");
   });
 
   test("should match dynamic route", () => {
     const result = router.find("GET", "/user/123");
-    expect(result ? runHandlers(result.handler, {} as any) : null).toBe(
-      "dynamic user",
-    );
+    expect(result.handler?.({} as any)).toBe("dynamic user");
   });
 
   test("should match wildcard route", () => {
     const result = router.find("GET", "/files/images/2025/photo.png");
-    expect(result ? runHandlers(result.handler, {} as any) : null).toBe(
-      "catch all",
-    );
+    expect(result.handler?.({} as any)).toBe("catch all");
   });
 
   test("should correctly handle multiple HTTP methods on same path", () => {
     const getResult = router.find("GET", "/api/data");
     const postResult = router.find("POST", "/api/data");
 
-    expect(getResult ? runHandlers(getResult.handler, {} as any) : null).toBe(
-      "GET handler",
-    );
-    expect(postResult ? runHandlers(postResult.handler, {} as any) : null).toBe(
-      "POST handler",
-    );
+    expect(getResult.handler?.({} as any)).toBe("GET handler");
+    expect(postResult.handler?.({} as any)).toBe("POST handler");
   });
 
-  test("should return null when method does not match", () => {
+  test("should return undefined handler when method does not match", () => {
     const result = router.find("PUT", "/api/data");
-    expect(result?.handler).toBeDefined();
-    expect(result?.handler).toHaveLength(0);
+    expect(result.handler).toBeUndefined();
+    expect(result.middlewares).toBeDefined();
   });
 
   test("should handle deeply nested dynamic route", () => {
     const result = router.find("GET", "/a/123/c/456/e");
-    expect(result ? runHandlers(result.handler, {} as any) : null).toBe(
-      "nested",
-    );
+    expect(result.handler?.({} as any)).toBe("nested");
   });
 
   test("should prefer exact match over dynamic match", () => {
     const result = router.find("GET", "/user/profile");
-    expect(result ? runHandlers(result.handler, {} as any) : null).toBe(
-      "static profile",
-    );
+    expect(result.handler?.({} as any)).toBe("static profile");
   });
 
-  test("should return null for non-existent route", () => {
+  test("should return undefined handler for non-existent route", () => {
     const result = router.find("GET", "/non-existent");
-    expect(result?.handler).toBeDefined();
-    expect(result?.handler).toHaveLength(0);
+    expect(result.handler).toBeUndefined();
+    expect(result.middlewares).toBeDefined();
   });
 });
 
@@ -156,7 +133,6 @@ describe("TrieRouter2 - with Middlewares check", () => {
   test("should run all middlewares in order before handler", () => {
     const result = router.find("GET", "/");
 
-    // Create a fake context with get/set
     const ctx = {
       store: {} as Record<string, any>,
       get(key: string) {
@@ -169,26 +145,24 @@ describe("TrieRouter2 - with Middlewares check", () => {
 
     let output: any = "";
 
-    if (result?.handler.length) {
-      // invoke all handlers (middlewares + final handler)
-      for (const fn of result?.handler as any) {
-        output = fn(ctx);
-      }
-    }
+    for (const fn of result.middlewares ?? []) fn(ctx);
+    if (result.handler) output = result.handler(ctx);
 
     expect(output).toBe("mw1;mw2;handler;");
   });
 
   test("should return middlewares for non-existent route", () => {
     const result = router.find("GET", "/non-existent");
-    expect(result?.handler).toBeDefined();
-    expect(result!.handler).toHaveLength(2);
+    expect(result.middlewares).toBeDefined();
+    expect(result.middlewares).toHaveLength(2);
+    expect(result.handler).toBeUndefined();
   });
 
-  test("should return middlewares array when method does not match", () => {
+  test("should return middlewares when method does not match", () => {
     const result = router.find("POST", "/");
-    expect(result?.handler).toBeDefined();
-    expect(result!.handler).toHaveLength(2);
+    expect(result.middlewares).toBeDefined();
+    expect(result.middlewares).toHaveLength(2);
+    expect(result.handler).toBeUndefined();
   });
 
   test("should run wildcard and dynamic middlewares correctly", () => {
@@ -204,9 +178,9 @@ describe("TrieRouter2 - with Middlewares check", () => {
     };
 
     const result1 = router.find("GET", "/user/123");
-    if (result1?.handler.length) {
-      for (const fn of result1.handler as any) fn(ctx1);
-    }
+    for (const fn of result1.middlewares ?? []) fn(ctx1);
+    if (result1.handler) result1.handler(ctx1);
+
     expect(ctx1.get("/user/*")).toBe("/user/* middleware");
     expect(ctx1.get("id")).toBe("123");
 
@@ -223,11 +197,9 @@ describe("TrieRouter2 - with Middlewares check", () => {
 
     const result2 = router.find("GET", "/user/static");
     let output: any;
-    if (result2?.handler.length) {
-      for (const fn of result2.handler as any) {
-        output = fn(ctx2);
-      }
-    }
+    for (const fn of result2.middlewares ?? []) fn(ctx2);
+    if (result2.handler) output = result2.handler(ctx2);
+
     expect(output).toBe("user/static");
   });
 });

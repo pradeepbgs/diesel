@@ -9,7 +9,8 @@ export interface Router {
 
 export interface Find {
     params: Record<string, string> | undefined;
-    handler: Function[];
+    middlewares: Function[] | undefined;
+    handler: Function | undefined;
 }
 
 export class RouterFactory {

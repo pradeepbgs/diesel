@@ -26,9 +26,10 @@ fastify.addHook('onRequest', (_,ok,done) => {
   console.log('global hook')
   done()
 })
-// fastify.addHook('onSend', async (request, reply, payload) => {
-//   return payload
-// })
+fastify.addHook('onResponse', async (request, reply) => {
+  console.log("url ", request.routeOptions.url)
+  console.log("raw url ", request.url)
+})
 
 // Run the server!
 fastify.listen({ port: 3003 }, function (err, address) {

@@ -95,7 +95,7 @@ export class TrieRouter {
 
     const pathSegments = path.split("/");
 
-    let collected = this.globalMiddlewares.slice();
+    let collected_middlewares = this.globalMiddlewares.slice()
     let paramObject: Record<string, string> | undefined;
 
     for (let i = 0; i < pathSegments.length; i++) {
@@ -113,28 +113,40 @@ export class TrieRouter {
         node = node.children["*"];
         break;
       } else {
-        return { params: paramObject, handler: collected };
+        return { params: paramObject, middlewares: collected_middlewares, handler: undefined };
       }
 
       if (node.middlewares.length > 0) {
         const mw = node.middlewares;
         for (let j = 0; j < mw.length; j++) {
-          collected.push(mw[j]);
+          collected_middlewares.push(mw[j]);
         }
       }
     }
-    // means we found the handler with method
+
+    // if the handler is found with correct method
     if (node.handlers[method]) {
-      collected.push(node.handlers[method]);
+      return {
+        params: paramObject,
+        middlewares: collected_middlewares,
+        handler: node.handlers[method]
+      }
     }
-    // fallback to check if the node has all method
+    // else check for ALL method 
     if (node.handlers["ALL"]) {
-      collected.push(node.handlers["ALL"]);
+      return {
+        params: paramObject,
+        middlewares: collected_middlewares,
+        handler: node.handlers["ALL"]
+      }
     }
+
     return {
       params: paramObject,
-      handler: collected,
-    };
+      middlewares: collected_middlewares,
+      handler: undefined
+    }
+
   }
 
   find(method: string, path: string) {

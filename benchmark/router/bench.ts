@@ -1,5 +1,4 @@
 import { TrieRouter } from "../../src/router/trie";
-import { TrieRouterWithObject } from "../../src/router/trie-with-obj";
 import { FindMyWayRouter } from "./find-my-way";
 import { HonoTrieRouter } from "./hono/router";
 import { OldTrieRouter } from "../../src/router/old-trie";
@@ -172,9 +171,8 @@ function runSuite(title: string, routes: string[], lookupBase: number): void {
 
   const routers: Record<string, RouterInstance> = {
     FindMyWay: new FindMyWayRouter() as RouterInstance,
-    Trie1: new OldTrieRouter() as RouterInstance,
-    Trie2: new TrieRouter() as RouterInstance,
-    TrieWithObject: new TrieRouterWithObject() as RouterInstance,
+    OldTrie: new OldTrieRouter() as RouterInstance,
+    Trie: new TrieRouter() as RouterInstance,
     HonoTrieRouter: new HonoTrieRouter() as RouterInstance,
   };
 
